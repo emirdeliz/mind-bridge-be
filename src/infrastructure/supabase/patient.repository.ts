@@ -216,6 +216,20 @@ export const updatePatientForPsychologist = async (
     throw new NotFoundError('Patient not found');
   }
 
+  const newPassword = body.password?.trim();
+  if (newPassword) {
+    const { error: passwordError } = await admin.auth.admin.updateUserById(
+      patientId,
+      { password: newPassword }
+    );
+
+    if (passwordError) {
+      throw new Error(
+        `Failed to reset patient password: ${passwordError.message}`
+      );
+    }
+  }
+
   const updatePayload: Record<string, unknown> = {
     full_name: body.fullName,
     phone: body.phone ?? null,

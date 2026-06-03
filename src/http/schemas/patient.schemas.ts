@@ -22,7 +22,7 @@ export const savePatientBodySchema = Joi.object({
       return value;
     }),
   email: Joi.string().email().optional(),
-  password: Joi.string().min(6).optional(),
+  password: Joi.string().min(5).optional(),
   age: Joi.string().trim().allow('', null).optional(),
   address: Joi.string().trim().allow('', null).optional(),
   language: Joi.string().valid('en', 'es', 'pt').optional(),
@@ -30,5 +30,5 @@ export const savePatientBodySchema = Joi.object({
 
 export const createPatientBodySchema = savePatientBodySchema.keys({
   email: Joi.string().email().required(),
-  password: Joi.string().min(6).required(),
+  password: Joi.string().length(5).pattern(/^\d{5}$/).required(),
 });

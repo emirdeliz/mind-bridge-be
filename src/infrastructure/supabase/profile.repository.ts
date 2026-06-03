@@ -52,6 +52,7 @@ export const hasActiveCareRelationship = async (
     .eq('psychologist_id', psychologistId)
     .eq('patient_id', patientId)
     .eq('status', 'active')
+    .eq('is_deleted', false)
     .maybeSingle();
 
   if (error) {

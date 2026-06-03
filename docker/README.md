@@ -34,7 +34,7 @@ Com os containers rodando:
 npm run supabase:reset
 ```
 
-Isso recria o banco local e executa `supabase/migrations/001_initial_schema.sql` (profiles, care_relationships, RLS, trigger de signup).
+Isso recria o banco local e executa todas as migrations em `supabase/migrations/` (schema inicial, `is_deleted` e `last_consultation_at` em `care_relationships`).
 
 ## Conectar a API ao Supabase local
 

@@ -8,7 +8,7 @@ const envSchema = Joi.object({
   CORS_ORIGIN: Joi.string().uri().default('http://localhost:3000'),
   SUPABASE_URL: Joi.string().uri().required(),
   SUPABASE_ANON_KEY: Joi.string().required(),
-  SUPABASE_SERVICE_ROLE_KEY: Joi.string().optional(),
+  SUPABASE_SERVICE_ROLE_KEY: Joi.string().required(),
   OLLAMA_BASE_URL: Joi.string().uri().default('http://127.0.0.1:11434'),
   OLLAMA_CHAT_MODEL: Joi.string().default('llama3.2'),
   OLLAMA_EMBEDDING_MODEL: Joi.string().default('nomic-embed-text'),
@@ -20,7 +20,7 @@ export type Env = {
   CORS_ORIGIN: string;
   SUPABASE_URL: string;
   SUPABASE_ANON_KEY: string;
-  SUPABASE_SERVICE_ROLE_KEY?: string;
+  SUPABASE_SERVICE_ROLE_KEY: string;
   OLLAMA_BASE_URL: string;
   OLLAMA_CHAT_MODEL: string;
   OLLAMA_EMBEDDING_MODEL: string;

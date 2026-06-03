@@ -14,7 +14,8 @@
     "supabase:stop": "supabase stop",
     "supabase:status": "supabase status",
     "supabase:reset": "supabase db reset",
-    "supabase:env": "bash scripts/supabase-env.sh"
+    "supabase:env": "bash scripts/supabase-env.sh",
+    "seed:demo-patients": "node --env-file=.env scripts/seed-demo-patients.mjs"
   },
   "engines": {
     "node": ">=20"

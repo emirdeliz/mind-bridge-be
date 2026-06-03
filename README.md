@@ -77,6 +77,10 @@ npm run dev
 | GET    | `/me`                   | any                                        |
 | POST   | `/ai/patient/chat`      | patient (self only)                        |
 | POST   | `/ai/psychologist/chat` | psychologist + active `care_relationships` |
+| GET    | `/psychologist/patients` | psychologist (query: `name`, `includeDeleted`) |
+| POST   | `/psychologist/patients` | psychologist (creates Auth user + care link) |
+| PATCH  | `/psychologist/patients/:patientId` | psychologist |
+| DELETE | `/psychologist/patients/:patientId` | psychologist (soft delete: `is_deleted`) |
 
 ### Example: patient chat
 

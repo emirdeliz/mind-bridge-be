@@ -17,6 +17,12 @@ export class NotFoundError extends Error {
   }
 }
 
+export const assertPsychologist = (auth: AuthContext): void => {
+  if (auth.role !== 'psychologist') {
+    throw new ForbiddenError('Only psychologists may perform this action');
+  }
+};
+
 export const assertPatientSelf = (
   auth: AuthContext,
   patientId: string

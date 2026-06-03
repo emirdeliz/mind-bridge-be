@@ -18,12 +18,10 @@ export const createUserSupabaseClient = (
     },
   });
 
-export const createAdminSupabaseClient = (env: Env): SupabaseClient | null => {
-  if (!env.SUPABASE_SERVICE_ROLE_KEY) return null;
-  return createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, {
+export const createAdminSupabaseClient = (env: Env): SupabaseClient =>
+  createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, {
     auth: {
       autoRefreshToken: false,
       persistSession: false,
     },
   });
-};

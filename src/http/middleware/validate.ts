@@ -42,3 +42,25 @@ export const validateParams =
 
     request.params = value;
   };
+
+export const validateQuery =
+  (schema: ObjectSchema) =>
+  async (request: FastifyRequest, reply: FastifyReply) => {
+    const { value, error } = schema.validate(request.query, {
+      abortEarly: false,
+      stripUnknown: true,
+      convert: true,
+    });
+
+    if (error) {
+      return reply.status(400).send({
+        error: 'Validation failed',
+        details: error.details.map((detail) => ({
+          path: detail.path.join('.'),
+          message: detail.message,
+        })),
+      });
+    }
+
+    request.query = value;
+  };

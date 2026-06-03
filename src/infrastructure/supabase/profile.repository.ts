@@ -1,6 +1,6 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { SupabaseClient } from '@supabase/supabase-js';
 
-import type { AppLanguage, UserProfile, UserRole } from "../../domain/types.js";
+import type { AppLanguage, UserProfile, UserRole } from '@domain/types.js';
 
 type ProfileRow = {
   id: string;
@@ -26,9 +26,13 @@ const mapRow = (row: ProfileRow): UserProfile => ({
 
 export const getProfileByUserId = async (
   client: SupabaseClient,
-  userId: string,
+  userId: string
 ): Promise<UserProfile | null> => {
-  const { data, error } = await client.from("profiles").select("*").eq("id", userId).maybeSingle();
+  const { data, error } = await client
+    .from('profiles')
+    .select('*')
+    .eq('id', userId)
+    .maybeSingle();
 
   if (error) {
     throw new Error(`Failed to load profile: ${error.message}`);
@@ -40,14 +44,14 @@ export const getProfileByUserId = async (
 export const hasActiveCareRelationship = async (
   client: SupabaseClient,
   psychologistId: string,
-  patientId: string,
+  patientId: string
 ): Promise<boolean> => {
   const { data, error } = await client
-    .from("care_relationships")
-    .select("id")
-    .eq("psychologist_id", psychologistId)
-    .eq("patient_id", patientId)
-    .eq("status", "active")
+    .from('care_relationships')
+    .select('id')
+    .eq('psychologist_id', psychologistId)
+    .eq('patient_id', patientId)
+    .eq('status', 'active')
     .maybeSingle();
 
   if (error) {

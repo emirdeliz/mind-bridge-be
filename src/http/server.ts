@@ -1,16 +1,16 @@
-import cors from "@fastify/cors";
-import Fastify from "fastify";
+import cors from '@fastify/cors';
+import Fastify from 'fastify';
 
-import type { Env } from "../config/env.js";
-import { mapErrorToStatus } from "./errors.js";
-import { registerAuthPlugin } from "./plugins/auth.js";
-import { createAiRoutes } from "./routes/ai.routes.js";
-import { healthRoutes } from "./routes/health.routes.js";
-import { meRoutes } from "./routes/me.routes.js";
+import type { Env } from '@config/env.js';
+import { mapErrorToStatus } from '@http/errors.js';
+import { registerAuthPlugin } from '@http/plugins/auth.js';
+import { createAiRoutes } from '@http/routes/ai.routes.js';
+import { healthRoutes } from '@http/routes/health.routes.js';
+import { meRoutes } from '@http/routes/me.routes.js';
 
 export const buildServer = async (env: Env) => {
   const app = Fastify({
-    logger: env.NODE_ENV !== "test",
+    logger: env.NODE_ENV !== 'test',
   });
 
   await app.register(cors, {

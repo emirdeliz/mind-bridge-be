@@ -1,4 +1,4 @@
-import { Annotation } from "@langchain/langgraph";
+import { Annotation } from '@langchain/langgraph';
 
 export const PatientChatAnnotation = Annotation.Root({
   patientId: Annotation<string>,

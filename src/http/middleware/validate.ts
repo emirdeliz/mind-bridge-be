@@ -1,40 +1,44 @@
-import type { ObjectSchema } from "joi";
-import type { FastifyReply, FastifyRequest } from "fastify";
+import type { ObjectSchema } from 'joi';
+import type { FastifyReply, FastifyRequest } from 'fastify';
 
-export const validateBody = (schema: ObjectSchema) => async (request: FastifyRequest, reply: FastifyReply) => {
-  const { value, error } = schema.validate(request.body, {
-    abortEarly: false,
-    stripUnknown: true,
-  });
-
-  if (error) {
-    return reply.status(400).send({
-      error: "Validation failed",
-      details: error.details.map((detail) => ({
-        path: detail.path.join("."),
-        message: detail.message,
-      })),
+export const validateBody =
+  (schema: ObjectSchema) =>
+  async (request: FastifyRequest, reply: FastifyReply) => {
+    const { value, error } = schema.validate(request.body, {
+      abortEarly: false,
+      stripUnknown: true,
     });
-  }
 
-  request.body = value;
-};
+    if (error) {
+      return reply.status(400).send({
+        error: 'Validation failed',
+        details: error.details.map((detail) => ({
+          path: detail.path.join('.'),
+          message: detail.message,
+        })),
+      });
+    }
 
-export const validateParams = (schema: ObjectSchema) => async (request: FastifyRequest, reply: FastifyReply) => {
-  const { value, error } = schema.validate(request.params, {
-    abortEarly: false,
-    stripUnknown: true,
-  });
+    request.body = value;
+  };
 
-  if (error) {
-    return reply.status(400).send({
-      error: "Validation failed",
-      details: error.details.map((detail) => ({
-        path: detail.path.join("."),
-        message: detail.message,
-      })),
+export const validateParams =
+  (schema: ObjectSchema) =>
+  async (request: FastifyRequest, reply: FastifyReply) => {
+    const { value, error } = schema.validate(request.params, {
+      abortEarly: false,
+      stripUnknown: true,
     });
-  }
 
-  request.params = value;
-};
+    if (error) {
+      return reply.status(400).send({
+        error: 'Validation failed',
+        details: error.details.map((detail) => ({
+          path: detail.path.join('.'),
+          message: detail.message,
+        })),
+      });
+    }
+
+    request.params = value;
+  };

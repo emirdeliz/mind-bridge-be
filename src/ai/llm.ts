@@ -1,6 +1,6 @@
-import { ChatOllama } from "@langchain/ollama";
+import { ChatOllama } from '@langchain/ollama';
 
-import type { Env } from "../config/env.js";
+import type { Env } from '@config/env.js';
 
 export const createChatModel = (env: Env) =>
   new ChatOllama({

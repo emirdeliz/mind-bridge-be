@@ -4,14 +4,18 @@ Backend API for [mind-bridge-web](../mind-bridge-web): Node.js, TypeScript, Fast
 
 ## Stack
 
-| Layer | Technology |
-|-------|------------|
-| HTTP | Fastify 5 |
-| Validation | Joi |
-| Auth | Supabase JWT (`Authorization: Bearer`) |
-| Data | Supabase Postgres + RLS |
-| AI orchestration | LangGraph.js |
-| LLM | Ollama (`@langchain/ollama`) |
+| Layer            | Technology                             |
+| ---------------- | -------------------------------------- |
+| HTTP             | Fastify 5                              |
+| Validation       | Joi                                    |
+| Auth             | Supabase JWT (`Authorization: Bearer`) |
+| Data             | Supabase Postgres + RLS                |
+| AI orchestration | LangGraph.js                           |
+| LLM              | Ollama (`@langchain/ollama`)           |
+
+## Path aliases
+
+Imports use `@config`, `@domain`, `@application`, `@infrastructure`, `@http`, and `@ai` (same style as [mind-bridge-web](../mind-bridge-web)). Configured in `tsconfig.json`; `tsc-alias` rewrites them in `dist/` after `npm run build`.
 
 ## Project layout
 
@@ -26,7 +30,11 @@ src/
     graphs/         # LangGraph: patient chat, psychologist copilot
     state/
     llm.ts
-supabase/migrations/  # SQL schema + RLS starter
+supabase/
+  config.toml         # ports, auth redirects (local CLI)
+  migrations/         # SQL schema + RLS starter
+docker/README.md      # Supabase local via Docker
+scripts/              # supabase-start.sh, supabase-env.sh, …
 ```
 
 ## Setup
@@ -38,7 +46,15 @@ cp .env.example .env
 npm install
 ```
 
-Apply `supabase/migrations/001_initial_schema.sql` in your Supabase project.
+**Supabase local (Docker):** see [docker/README.md](./docker/README.md).
+
+```bash
+npm run supabase:start    # sobe containers
+npm run supabase:reset    # aplica supabase/migrations/
+npm run supabase:env      # preenche SUPABASE_* no .env
+```
+
+For a hosted project, apply `supabase/migrations/001_initial_schema.sql` in the Supabase SQL editor or via `supabase db push`.
 
 Ensure Ollama is running with the chat model from `.env`:
 
@@ -55,12 +71,12 @@ npm run dev
 
 ## API (authenticated unless noted)
 
-| Method | Path | Role |
-|--------|------|------|
-| GET | `/health` | public |
-| GET | `/me` | any |
-| POST | `/ai/patient/chat` | patient (self only) |
-| POST | `/ai/psychologist/chat` | psychologist + active `care_relationships` |
+| Method | Path                    | Role                                       |
+| ------ | ----------------------- | ------------------------------------------ |
+| GET    | `/health`               | public                                     |
+| GET    | `/me`                   | any                                        |
+| POST   | `/ai/patient/chat`      | patient (self only)                        |
+| POST   | `/ai/psychologist/chat` | psychologist + active `care_relationships` |
 
 ### Example: patient chat
 

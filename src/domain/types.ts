@@ -1,6 +1,6 @@
-export type UserRole = "patient" | "psychologist";
+export type UserRole = 'patient' | 'psychologist';
 
-export type AppLanguage = "en" | "es" | "pt";
+export type AppLanguage = 'en' | 'es' | 'pt';
 
 export interface UserProfile {
   id: string;
@@ -22,7 +22,7 @@ export interface AuthContext {
 
 export interface ChatMessage {
   id: string;
-  role: "user" | "assistant";
+  role: 'user' | 'assistant';
   content: string;
   createdAt: string;
 }

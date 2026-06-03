@@ -1,0 +1,32 @@
+import cors from "@fastify/cors";
+import Fastify from "fastify";
+
+import type { Env } from "../config/env.js";
+import { mapErrorToStatus } from "./errors.js";
+import { registerAuthPlugin } from "./plugins/auth.js";
+import { createAiRoutes } from "./routes/ai.routes.js";
+import { healthRoutes } from "./routes/health.routes.js";
+import { meRoutes } from "./routes/me.routes.js";
+
+export const buildServer = async (env: Env) => {
+  const app = Fastify({
+    logger: env.NODE_ENV !== "test",
+  });
+
+  await app.register(cors, {
+    origin: env.CORS_ORIGIN,
+    credentials: true,
+  });
+
+  app.setErrorHandler((error, _request, reply) => {
+    const mapped = mapErrorToStatus(error);
+    reply.status(mapped.statusCode).send({ error: mapped.message });
+  });
+
+  await app.register(healthRoutes);
+  await app.register(registerAuthPlugin(env));
+  await app.register(meRoutes);
+  await app.register(createAiRoutes(env));
+
+  return app;
+};

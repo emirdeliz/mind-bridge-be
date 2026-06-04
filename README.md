@@ -50,9 +50,12 @@ npm install
 
 ```bash
 npm run supabase:start    # sobe containers
-npm run supabase:reset    # aplica supabase/migrations/
+npm run supabase:reset    # migrations + seed local (psicólogo, pacientes, conteúdo clínico)
 npm run supabase:env      # preenche SUPABASE_* no .env
+npm run seed:local        # reexecutar seed sem reset (opcional)
 ```
+
+**Contas demo após seed:** `psicologo.demo@mindbridge.local` / `demo123456` · paciente `ana.demo@mindbridge.local` / `demo123456`
 
 For a hosted project, apply `supabase/migrations/001_initial_schema.sql` in the Supabase SQL editor or via `supabase db push`.
 
@@ -81,6 +84,8 @@ npm run dev
 | POST   | `/psychologist/patients` | psychologist (creates Auth user + care link) |
 | PATCH  | `/psychologist/patients/:patientId` | psychologist |
 | DELETE | `/psychologist/patients/:patientId` | psychologist (soft delete: `is_deleted`) |
+| GET    | `/psychologist/patients/:patientId/clinical-content` | psychologist + care link |
+| GET    | `/patient/clinical-content` | patient (self) |
 
 ### Example: patient chat
 
@@ -113,4 +118,4 @@ Login/signup stay on the **web client** via `@supabase/supabase-js`; this API do
 
 - Wire pgvector RAG in `retrieve` graph nodes
 - Persist chat turns to `chat_messages`
-- Connect `mind-bridge-web` to this API instead of local mocks
+- Persist session notes / dashboard edits via API (hoje seed + leitura)

@@ -13,9 +13,10 @@
     "supabase:start": "supabase start",
     "supabase:stop": "supabase stop",
     "supabase:status": "supabase status",
-    "supabase:reset": "supabase db reset",
+    "supabase:reset": "supabase db reset && npm run seed:local",
     "supabase:env": "bash scripts/supabase-env.sh",
-    "seed:demo-patients": "node --env-file=.env scripts/seed-demo-patients.mjs"
+    "seed:local": "node --env-file=.env scripts/seed-local-dev.mjs",
+    "seed:demo-patients": "npm run seed:local"
   },
   "engines": {
     "node": ">=20"

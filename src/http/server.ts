@@ -5,6 +5,7 @@ import type { Env } from '@config/env.js';
 import { mapErrorToStatus } from '@http/errors.js';
 import { registerAuthPlugin } from '@http/plugins/auth.js';
 import { createAiRoutes } from '@http/routes/ai.routes.js';
+import { createClinicalContentRoutes } from '@http/routes/clinical-content.routes.js';
 import { createPsychologistPatientsRoutes } from '@http/routes/psychologist-patients.routes.js';
 import { healthRoutes } from '@http/routes/health.routes.js';
 import { meRoutes } from '@http/routes/me.routes.js';
@@ -29,6 +30,7 @@ export const buildServer = async (env: Env) => {
   await app.register(meRoutes);
   await app.register(createAiRoutes(env));
   await app.register(createPsychologistPatientsRoutes(env));
+  await app.register(createClinicalContentRoutes());
 
   return app;
 };

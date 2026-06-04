@@ -1,4 +1,38 @@
+import { existsSync, readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+
 import Joi from 'joi';
+
+/** Node does not load `.env` automatically; seed uses `--env-file`, dev/start must too or use this. */
+const loadDotEnvFile = (): void => {
+  const envPath = resolve(process.cwd(), '.env');
+  if (!existsSync(envPath)) {
+    return;
+  }
+
+  const content = readFileSync(envPath, 'utf8');
+  for (const line of content.split('\n')) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith('#')) {
+      continue;
+    }
+    const separator = trimmed.indexOf('=');
+    if (separator === -1) {
+      continue;
+    }
+    const key = trimmed.slice(0, separator).trim();
+    let value = trimmed.slice(separator + 1).trim();
+    if (
+      (value.startsWith('"') && value.endsWith('"')) ||
+      (value.startsWith("'") && value.endsWith("'"))
+    ) {
+      value = value.slice(1, -1);
+    }
+    if (process.env[key] === undefined) {
+      process.env[key] = value;
+    }
+  }
+};
 
 const envSchema = Joi.object({
   NODE_ENV: Joi.string()
@@ -27,13 +61,17 @@ export type Env = {
 };
 
 export const loadEnv = (): Env => {
+  loadDotEnvFile();
+
   const { value, error } = envSchema.validate(process.env, {
     abortEarly: false,
     stripUnknown: false,
   });
 
   if (error) {
-    throw new Error(`Invalid environment: ${error.message}`);
+    throw new Error(
+      `Invalid environment: ${error.message}. Ensure mind-bridge-be/.env exists (copy from .env.example, run npm run supabase:env).`
+    );
   }
 
   return value as Env;

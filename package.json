@@ -13,7 +13,7 @@
     "supabase:start": "supabase start",
     "supabase:stop": "supabase stop",
     "supabase:status": "supabase status",
-    "supabase:reset": "supabase db reset && npm run seed:local",
+    "supabase:reset": "supabase db reset && npm run supabase:env && npm run seed:local",
     "supabase:env": "bash scripts/supabase-env.sh",
     "seed:local": "node --env-file=.env scripts/seed-local-dev.mjs",
     "seed:demo-patients": "npm run seed:local"

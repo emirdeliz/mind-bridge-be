@@ -20,6 +20,30 @@ const admin = createClient(url, serviceKey, {
   auth: { autoRefreshToken: false, persistSession: false },
 });
 
+const isInvalidJwtError = (message) =>
+  typeof message === 'string' &&
+  (message.includes('invalid JWT') ||
+    message.includes('signature is invalid') ||
+    message.includes('unable to parse or verify signature'));
+
+const assertServiceRoleKey = async () => {
+  const { error } = await admin.auth.admin.listUsers({ page: 1, perPage: 1 });
+  if (!error) {
+    return;
+  }
+
+  if (isInvalidJwtError(error.message)) {
+    console.error(
+      'SUPABASE_SERVICE_ROLE_KEY no .env não confere com o Supabase local (JWT inválido).'
+    );
+    console.error('Com o stack rodando, execute: npm run supabase:env');
+    console.error('Depois: npm run seed:local   (ou npm run supabase:reset)');
+    process.exit(1);
+  }
+
+  throw new Error(`Auth admin check failed: ${error.message}`);
+};
+
 const DEMO_PSYCHOLOGIST = {
   fullName: 'Psicólogo Demo',
   email: 'psicologo.demo@mindbridge.local',
@@ -88,6 +112,14 @@ const ensureAuthUser = async ({ email, password, role, fullName, phone }) => {
     });
 
     if (authError) {
+      if (isInvalidJwtError(authError.message)) {
+        console.error(
+          'SUPABASE_SERVICE_ROLE_KEY no .env não confere com o Supabase local (JWT inválido).'
+        );
+        console.error('Com o stack rodando, execute: npm run supabase:env');
+        console.error('Depois: npm run seed:local   (ou npm run supabase:reset)');
+        process.exit(1);
+      }
       throw new Error(`${email}: ${authError.message}`);
     }
 
@@ -162,6 +194,7 @@ const upsertClinical = async (patientId, email) => {
 
 const main = async () => {
   console.log('Seeding local dev data…');
+  await assertServiceRoleKey();
 
   const psychologistId = await ensureAuthUser({
     ...DEMO_PSYCHOLOGIST,

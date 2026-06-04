@@ -50,9 +50,9 @@ npm install
 
 ```bash
 npm run supabase:start    # sobe containers
-npm run supabase:reset    # migrations + seed local (psicólogo, pacientes, conteúdo clínico)
-npm run supabase:env      # preenche SUPABASE_* no .env
-npm run seed:local        # reexecutar seed sem reset (opcional)
+npm run supabase:reset    # migrations + sync chaves no .env + seed local
+npm run supabase:env      # só atualiza SUPABASE_* no .env (útil após reset manual)
+npm run seed:local        # reexecutar seed sem reset (rode supabase:env antes se JWT falhar)
 ```
 
 **Contas demo após seed:** `psicologo.demo@mindbridge.local` / `demo123456` · paciente `ana.demo@mindbridge.local` / `demo123456`

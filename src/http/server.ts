@@ -3,7 +3,7 @@ import Fastify from 'fastify';
 
 import type { Env } from '@config/env.js';
 import { mapErrorToStatus } from '@http/errors.js';
-import { registerAuthPlugin } from '@http/plugins/auth.js';
+import { registerAuthHook } from '@http/plugins/auth.js';
 import { createAiRoutes } from '@http/routes/ai.routes.js';
 import { createClinicalContentRoutes } from '@http/routes/clinical-content.routes.js';
 import { createPsychologistPatientsRoutes } from '@http/routes/psychologist-patients.routes.js';
@@ -25,8 +25,9 @@ export const buildServer = async (env: Env) => {
     reply.status(mapped.statusCode).send({ error: mapped.message });
   });
 
+  registerAuthHook(app, env);
+
   await app.register(healthRoutes);
-  await app.register(registerAuthPlugin(env));
   await app.register(meRoutes);
   await app.register(createAiRoutes(env));
   await app.register(createPsychologistPatientsRoutes(env));

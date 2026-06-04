@@ -1,4 +1,4 @@
-import type { FastifyPluginAsync, FastifyRequest } from 'fastify';
+import type { FastifyInstance, FastifyPluginAsync, FastifyRequest } from 'fastify';
 
 import type { Env } from '@config/env.js';
 import type { AuthContext, UserRole } from '@domain/types.js';
@@ -31,36 +31,39 @@ const extractBearerToken = (request: FastifyRequest): string => {
   return token;
 };
 
+/** Register on the root Fastify instance so all route plugins receive the hook. */
+export const registerAuthHook = (app: FastifyInstance, env: Env): void => {
+  app.addHook('preHandler', async (request) => {
+    if (request.routeOptions.config?.public) {
+      return;
+    }
+
+    const accessToken = extractBearerToken(request);
+    const supabase = createUserSupabaseClient(env, accessToken);
+    const { data, error } = await supabase.auth.getUser(accessToken);
+
+    if (error || !data.user) {
+      throw new Error('Unauthorized: invalid token');
+    }
+
+    const profile = await getProfileByUserId(supabase, data.user.id);
+    if (!profile || !isUserRole(profile.role)) {
+      throw new Error('Unauthorized: profile not found');
+    }
+
+    request.auth = {
+      userId: data.user.id,
+      email: data.user.email ?? profile.email,
+      role: profile.role,
+      accessToken,
+    };
+    request.userSupabase = supabase;
+  });
+};
+
+/** @deprecated Prefer registerAuthHook on the root app — encapsulated plugins skip sibling routes. */
 export const registerAuthPlugin =
   (env: Env): FastifyPluginAsync =>
   async (app) => {
-    app.decorateRequest('auth', undefined);
-    app.decorateRequest('userSupabase', undefined);
-
-    app.addHook('preHandler', async (request) => {
-      if (request.routeOptions.config?.public) {
-        return;
-      }
-
-      const accessToken = extractBearerToken(request);
-      const supabase = createUserSupabaseClient(env, accessToken);
-      const { data, error } = await supabase.auth.getUser(accessToken);
-
-      if (error || !data.user) {
-        throw new Error('Unauthorized: invalid token');
-      }
-
-      const profile = await getProfileByUserId(supabase, data.user.id);
-      if (!profile || !isUserRole(profile.role)) {
-        throw new Error('Unauthorized: profile not found');
-      }
-
-      request.auth = {
-        userId: data.user.id,
-        email: data.user.email ?? profile.email,
-        role: profile.role,
-        accessToken,
-      };
-      request.userSupabase = supabase;
-    });
+    registerAuthHook(app, env);
   };

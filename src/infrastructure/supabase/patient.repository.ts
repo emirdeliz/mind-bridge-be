@@ -33,8 +33,12 @@ const normalizePatient = (
 };
 
 const mapListRow = (
-  row: CareRelationshipRow
+  row: CareRelationshipRow | null | undefined
 ): PsychologistPatientListItem | null => {
+  if (!row) {
+    return null;
+  }
+
   const patient = normalizePatient(row.patient);
   if (!patient || patient.role !== 'patient') {
     return null;
@@ -85,8 +89,10 @@ export const listPatientsForPsychologist = async (
     throw new Error(`Failed to list patients: ${error.message}`);
   }
 
-  return (data as CareRelationshipRow[])
-    .map(mapListRow)
+  const rows = Array.isArray(data) ? data : [];
+
+  return rows
+    .map((row) => mapListRow(row as CareRelationshipRow))
     .filter((row): row is PsychologistPatientListItem => row !== null);
 };
 

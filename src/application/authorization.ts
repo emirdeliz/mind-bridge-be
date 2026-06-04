@@ -17,16 +17,22 @@ export class NotFoundError extends Error {
   }
 }
 
-export const assertPsychologist = (auth: AuthContext): void => {
+export const assertPsychologist = (auth: AuthContext | undefined): void => {
+  if (!auth) {
+    throw new Error('Unauthorized: missing auth context');
+  }
   if (auth.role !== 'psychologist') {
     throw new ForbiddenError('Only psychologists may perform this action');
   }
 };
 
 export const assertPatientSelf = (
-  auth: AuthContext,
+  auth: AuthContext | undefined,
   patientId: string
 ): void => {
+  if (!auth) {
+    throw new Error('Unauthorized: missing auth context');
+  }
   if (auth.role !== 'patient' || auth.userId !== patientId) {
     throw new ForbiddenError('Patients may only access their own data');
   }
@@ -34,9 +40,12 @@ export const assertPatientSelf = (
 
 export const assertPsychologistPatientAccess = async (
   client: SupabaseClient,
-  auth: AuthContext,
+  auth: AuthContext | undefined,
   patientId: string
 ): Promise<void> => {
+  if (!auth) {
+    throw new Error('Unauthorized: missing auth context');
+  }
   if (auth.role !== 'psychologist') {
     throw new ForbiddenError(
       'Only psychologists may access patient clinical data'

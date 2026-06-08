@@ -137,6 +137,53 @@ export type ClinicalContentSeedPayload = Omit<
   'patientId'
 >;
 
+export type UpdateClinicalSessionPayload = {
+  sessionContext?: string | null;
+  currentSessionNoteContent?: string | null;
+};
+
+export const updatePsychologistPatientClinicalSession = async (
+  admin: SupabaseClient,
+  patientId: string,
+  payload: UpdateClinicalSessionPayload
+): Promise<PatientClinicalContent> => {
+  const content = await ensurePatientClinicalContent(admin, patientId);
+
+  let sessionNotes = [...content.sessionNotes];
+  if (payload.currentSessionNoteContent !== undefined) {
+    const currentIndex = sessionNotes.findIndex(
+      (entry) => entry.isCurrent === true
+    );
+    if (currentIndex < 0) {
+      throw new Error('Current session note not found');
+    }
+    sessionNotes[currentIndex] = {
+      ...sessionNotes[currentIndex],
+      content: payload.currentSessionNoteContent ?? '',
+    };
+  }
+
+  const sessionContext =
+    payload.sessionContext !== undefined
+      ? payload.sessionContext
+      : content.sessionContext;
+
+  const nextPayload: ClinicalContentSeedPayload = {
+    dashboardSnapshot: content.dashboardSnapshot,
+    sessionContext,
+    sessionNotes,
+    sessionInsights: content.sessionInsights,
+    psychologistSummary: content.psychologistSummary,
+    psychologistChatSeed: content.psychologistChatSeed,
+    patientChatSeed: content.patientChatSeed,
+    patientSummary: content.patientSummary,
+  };
+
+  await upsertPatientClinicalContent(admin, patientId, nextPayload);
+
+  return { patientId, ...nextPayload };
+};
+
 export const upsertPatientClinicalContent = async (
   admin: SupabaseClient,
   patientId: string,

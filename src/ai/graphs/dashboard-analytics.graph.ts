@@ -4,7 +4,10 @@ import { Annotation } from '@langchain/langgraph';
 
 import type { Env } from '@config/env.js';
 import { createDashboardAnalyticsModel } from '@ai/llm.js';
-import { buildDashboardAnalyticsSystemPrompt } from '@ai/prompts/dashboard-analytics-system.js';
+import {
+  buildDashboardAnalyticsHumanPrompt,
+  buildDashboardAnalyticsSystemPrompt,
+} from '@ai/prompts/dashboard-analytics-system.js';
 import type { ClinicalChatMessage, DashboardSnapshot } from '@domain/clinical-content.types.js';
 import type { AppLanguage } from '@domain/types.js';
 
@@ -34,7 +37,10 @@ const createAnalyzeNode =
       })
     );
     const human = new HumanMessage(
-      'Atualize os indicadores do painel com base na sessão encerrada. Retorne somente JSON.'
+      buildDashboardAnalyticsHumanPrompt(
+        state.responseLanguage,
+        state.sessionConsiderations
+      )
     );
     const response = await model.invoke([system, human]);
     const raw =

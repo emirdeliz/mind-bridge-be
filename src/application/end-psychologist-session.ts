@@ -23,8 +23,12 @@ export const endPsychologistSession = async (
   const currentNote = content.sessionNotes.find(
     (entry) => entry.isCurrent === true
   );
-  const sessionConsiderations =
-    payload.currentSessionNoteContent ?? currentNote?.content ?? '';
+  const sessionConsiderations = (
+    payload.currentSessionNoteContent !== undefined &&
+    payload.currentSessionNoteContent !== null
+      ? payload.currentSessionNoteContent
+      : (currentNote?.content ?? '')
+  ).trim();
 
   const dashboardSnapshot = await generateDashboardSnapshotAfterSession(env, {
     currentSnapshot: content.dashboardSnapshot,

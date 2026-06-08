@@ -12,11 +12,11 @@ type DashboardAnalyticsContext = {
 
 const formatChatHistory = (history: ClinicalChatMessage[]): string => {
   if (!history.length) {
-    return '(sem mensagens)';
+    return '';
   }
 
   return history
-    .slice(-12)
+    .slice(-5)
     .map((entry) => {
       const role = entry.sender === 'user' ? 'Psicólogo' : 'Agente';
       return `- ${role}: ${entry.text}`;
@@ -37,59 +37,95 @@ const snapshotSummary = (snapshot: DashboardSnapshot): string =>
     2
   );
 
+const hasConsiderations = (text: string): boolean => text.trim().length > 0;
+
 export const buildDashboardAnalyticsSystemPrompt = (
   languageInput: unknown,
   context: DashboardAnalyticsContext
 ): string => {
   const language = normalizeAppLanguage(languageInput);
+  const considerations = context.sessionConsiderations.trim();
+  const chatBlock = formatChatHistory(context.chatHistory);
 
   const blocks: Record<AppLanguage, string[]> = {
     pt: [
       'Você é um agente clínico que atualiza indicadores do painel do psicólogo após o encerramento de uma sessão.',
-      'Analise considerações da sessão, contexto clínico e histórico de chat com o copiloto.',
+      'FONTE PRINCIPAL (obrigatória): o texto em "Considerações da sessão encerrada".',
+      'Baseie adesão ao diário, humor e temas clínicos PRINCIPALMENTE nessas considerações.',
+      'Use contexto clínico e chat apenas como complemento quando as considerações forem insuficientes.',
       'Responda APENAS com um objeto JSON válido, sem markdown, sem texto extra.',
       'Schema obrigatório:',
-      '{"moodDiaryAdherencePercent":number,"moodTrendData":number[],"clinicalThemeData":number[]}',
-      '- moodDiaryAdherencePercent: inteiro de 0 a 100 (adesão estimada ao diário de humor).',
-      '- moodTrendData: mesma quantidade de pontos que o histórico atual; cada valor entre 1 e 10 (evolução do humor).',
-      '- clinicalThemeData: mesma quantidade de temas que o histórico atual; inteiros >= 0 (menções por tema).',
-      'Mantenha coerência clínica: incremente temas realmente discutidos; ajuste humor conforme evolução relatada.',
-      `Painel atual:\n${snapshotSummary(context.currentSnapshot)}`,
-      `Considerações da sessão encerrada:\n${context.sessionConsiderations || '(vazio)'}`,
-      `Contexto clínico:\n${context.sessionContext || '(vazio)'}`,
-      `Chat psicólogo ↔ agente:\n${formatChatHistory(context.chatHistory)}`,
+      '{"moodDiaryAdherencePercent":number,"moodTrendLastValue":number,"clinicalThemeIncrements":number[]}',
+      '- moodDiaryAdherencePercent: inteiro 0–100 estimado a partir das considerações.',
+      '- moodTrendLastValue: número 1–10 para o ÚLTIMO ponto da evolução do humor (período mais recente).',
+      '- clinicalThemeIncrements: array com mesma quantidade de temas do painel; quantos pontos SOMAR em cada tema mencionado nas considerações (0 se não mencionado).',
+      `Considerações da sessão encerrada (FONTE PRINCIPAL):\n${considerations || '(vazio — use contexto e chat com cautela)'}`,
+      `Painel atual (referência numérica):\n${snapshotSummary(context.currentSnapshot)}`,
+      `Contexto clínico (complementar):\n${context.sessionContext.trim() || '(vazio)'}`,
+      ...(chatBlock && !hasConsiderations(considerations)
+        ? [`Chat psicólogo ↔ agente (complementar):\n${chatBlock}`]
+        : chatBlock
+          ? [`Chat psicólogo ↔ agente (apenas complemento):\n${chatBlock}`]
+          : []),
+      hasConsiderations(considerations)
+        ? 'Lembrete: as considerações da sessão são a fonte principal — não ignore esse texto.'
+        : 'Lembrete: sem considerações; infira com cautela a partir do contexto e do chat.',
     ],
     es: [
       'Eres un agente clínico que actualiza indicadores del panel del psicólogo al finalizar una sesión.',
-      'Analiza consideraciones de la sesión, contexto clínico e historial de chat con el copiloto.',
-      'Responde SOLO con un objeto JSON válido, sin markdown ni texto adicional.',
+      'FUENTE PRINCIPAL (obligatoria): el texto en "Consideraciones de la sesión".',
+      'Basa adherencia, humor y temas clínicos PRINCIPALMENTE en esas consideraciones.',
+      'Usa contexto clínico y chat solo como complemento.',
+      'Responde SOLO con JSON válido, sin markdown ni texto adicional.',
       'Esquema obligatorio:',
-      '{"moodDiaryAdherencePercent":number,"moodTrendData":number[],"clinicalThemeData":number[]}',
-      '- moodDiaryAdherencePercent: entero de 0 a 100 (adherencia estimada al diario de humor).',
-      '- moodTrendData: misma cantidad de puntos que el historial actual; cada valor entre 1 y 10.',
-      '- clinicalThemeData: misma cantidad de temas que el historial actual; enteros >= 0.',
-      'Mantén coherencia clínica según lo discutido en la sesión.',
+      '{"moodDiaryAdherencePercent":number,"moodTrendLastValue":number,"clinicalThemeIncrements":number[]}',
+      '- moodDiaryAdherencePercent: entero 0–100 según las consideraciones.',
+      '- moodTrendLastValue: número 1–10 para el ÚLTIMO punto de evolución del humor.',
+      '- clinicalThemeIncrements: array con la misma cantidad de temas; puntos a SUMAR por tema mencionado (0 si no aplica).',
+      `Consideraciones de la sesión (FUENTE PRINCIPAL):\n${considerations || '(vacío)'}`,
       `Panel actual:\n${snapshotSummary(context.currentSnapshot)}`,
-      `Consideraciones de la sesión:\n${context.sessionConsiderations || '(vacío)'}`,
-      `Contexto clínico:\n${context.sessionContext || '(vacío)'}`,
-      `Chat psicólogo ↔ agente:\n${formatChatHistory(context.chatHistory)}`,
+      `Contexto clínico (complementario):\n${context.sessionContext.trim() || '(vacío)'}`,
+      ...(chatBlock ? [`Chat psicólogo ↔ agente (complemento):\n${chatBlock}`] : []),
     ],
     en: [
       'You are a clinical agent updating psychologist dashboard metrics after a session ends.',
-      'Analyze session notes, clinical context, and psychologist–copilot chat history.',
+      'PRIMARY SOURCE (required): the text in "Session considerations".',
+      'Base diary adherence, mood, and clinical themes PRIMARILY on those considerations.',
+      'Use clinical context and chat only as supplementary input.',
       'Reply ONLY with valid JSON, no markdown, no extra text.',
       'Required schema:',
-      '{"moodDiaryAdherencePercent":number,"moodTrendData":number[],"clinicalThemeData":number[]}',
-      '- moodDiaryAdherencePercent: integer 0–100 (estimated mood diary adherence).',
-      '- moodTrendData: same length as current trend; each value 1–10 (mood evolution).',
-      '- clinicalThemeData: same length as current themes; integers >= 0 (mentions per theme).',
-      'Keep clinical coherence with what was discussed in the session.',
+      '{"moodDiaryAdherencePercent":number,"moodTrendLastValue":number,"clinicalThemeIncrements":number[]}',
+      '- moodDiaryAdherencePercent: integer 0–100 from session considerations.',
+      '- moodTrendLastValue: number 1–10 for the LATEST mood trend point only.',
+      '- clinicalThemeIncrements: array matching theme count; points to ADD per theme mentioned (0 if not mentioned).',
+      `Session considerations (PRIMARY SOURCE):\n${considerations || '(empty)'}`,
       `Current dashboard:\n${snapshotSummary(context.currentSnapshot)}`,
-      `Session considerations:\n${context.sessionConsiderations || '(empty)'}`,
-      `Clinical context:\n${context.sessionContext || '(empty)'}`,
-      `Psychologist ↔ agent chat:\n${formatChatHistory(context.chatHistory)}`,
+      `Clinical context (supplementary):\n${context.sessionContext.trim() || '(empty)'}`,
+      ...(chatBlock ? [`Psychologist ↔ agent chat (supplementary):\n${chatBlock}`] : []),
     ],
   };
 
   return blocks[language].join('\n\n');
+};
+
+export const buildDashboardAnalyticsHumanPrompt = (
+  languageInput: unknown,
+  sessionConsiderations: string
+): string => {
+  const language = normalizeAppLanguage(languageInput);
+  const considerations = sessionConsiderations.trim();
+
+  const blocks: Record<AppLanguage, string> = {
+    pt: considerations
+      ? `Com base PRINCIPALMENTE nas considerações abaixo, atualize os indicadores do painel e retorne somente JSON.\n\nConsiderações da sessão:\n${considerations}`
+      : 'Atualize os indicadores do painel com base no contexto disponível e retorne somente JSON.',
+    es: considerations
+      ? `Con base PRINCIPALMENTE en las consideraciones siguientes, actualiza los indicadores y devuelve solo JSON.\n\nConsideraciones:\n${considerations}`
+      : 'Actualiza los indicadores del panel según el contexto disponible y devuelve solo JSON.',
+    en: considerations
+      ? `Based PRIMARILY on the considerations below, update dashboard metrics and return JSON only.\n\nSession considerations:\n${considerations}`
+      : 'Update dashboard metrics from available context and return JSON only.',
+  };
+
+  return blocks[language];
 };

@@ -27,25 +27,22 @@ const getTodayWeekdayIndex = (): number => {
   return day === 0 ? 6 : day - 1;
 };
 
-const alignSeriesLength = (
-  data: number[],
-  expectedLength: number,
-  fallback: number[]
+const alignIncrementsLength = (
+  increments: number[],
+  expectedLength: number
 ): number[] => {
-  if (data.length === expectedLength) {
-    return data;
+  if (increments.length === expectedLength) {
+    return increments;
   }
 
-  if (data.length > expectedLength) {
-    return data.slice(-expectedLength);
+  if (increments.length > expectedLength) {
+    return increments.slice(0, expectedLength);
   }
 
-  const padded = [...fallback];
-  while (padded.length < expectedLength) {
-    padded.unshift(padded[0] ?? fallback[0] ?? 0);
-  }
-
-  return [...padded.slice(0, expectedLength - data.length), ...data];
+  return [
+    ...increments,
+    ...new Array(expectedLength - increments.length).fill(0),
+  ];
 };
 
 const applySupplementarySessionMetrics = (
@@ -81,21 +78,28 @@ const applyAiDashboardOutput = (
   base: DashboardSnapshot,
   ai: AiDashboardAnalyticsOutput
 ): DashboardSnapshot => {
-  const moodCategories = base.moodTrendCategories;
-  const themeCategories = base.clinicalThemeCategories;
-  const previousMood = base.moodTrendSeries[0]?.data ?? [];
-  const previousThemes = base.clinicalThemeSeries[0]?.data ?? [];
+  const previousMood = [...(base.moodTrendSeries[0]?.data ?? [])];
+  const previousThemes = [...(base.clinicalThemeSeries[0]?.data ?? [])];
+  const themeCount = Math.max(
+    base.clinicalThemeCategories.length,
+    previousThemes.length,
+    ai.clinicalThemeIncrements.length
+  );
 
-  const moodTrendData = alignSeriesLength(
-    ai.moodTrendData,
-    moodCategories.length || ai.moodTrendData.length,
-    previousMood
+  if (previousMood.length > 0) {
+    previousMood[previousMood.length - 1] = ai.moodTrendLastValue;
+  } else {
+    previousMood.push(ai.moodTrendLastValue);
+  }
+
+  const increments = alignIncrementsLength(
+    ai.clinicalThemeIncrements,
+    themeCount
   );
-  const clinicalThemeData = alignSeriesLength(
-    ai.clinicalThemeData,
-    themeCategories.length || ai.clinicalThemeData.length,
-    previousThemes
-  );
+  const clinicalThemeData = increments.map((increment, index) => {
+    const previous = previousThemes[index] ?? 0;
+    return previous + increment;
+  });
 
   return applySupplementarySessionMetrics({
     ...base,
@@ -103,7 +107,7 @@ const applyAiDashboardOutput = (
     moodTrendSeries: [
       {
         name: base.moodTrendSeries[0]?.name ?? MOOD_SERIES_NAME,
-        data: moodTrendData,
+        data: previousMood,
         color: base.moodTrendSeries[0]?.color ?? MOOD_SERIES_COLOR,
       },
     ],
@@ -132,16 +136,17 @@ export const generateDashboardSnapshotAfterSession = async (
   input: GenerateDashboardSnapshotInput
 ): Promise<DashboardSnapshot> => {
   const structuredBase = ensureDashboardSnapshotStructure(input.currentSnapshot);
-  const sessionText = [input.sessionConsiderations, input.sessionContext]
+  const sessionConsiderations = input.sessionConsiderations.trim();
+  const sessionText = [sessionConsiderations, input.sessionContext]
     .filter(Boolean)
     .join(' ');
 
   try {
     const raw = await runDashboardAnalyticsGraph(env, {
       currentSnapshot: structuredBase,
-      sessionConsiderations: input.sessionConsiderations,
+      sessionConsiderations,
       sessionContext: input.sessionContext,
-      chatHistory: input.chatHistory,
+      chatHistory: sessionConsiderations ? [] : input.chatHistory,
       language: input.language,
     });
 
@@ -152,6 +157,9 @@ export const generateDashboardSnapshotAfterSession = async (
 
     return applyAiDashboardOutput(structuredBase, parsed);
   } catch {
-    return bumpDashboardSnapshotAfterSession(structuredBase, sessionText);
+    return bumpDashboardSnapshotAfterSession(
+      structuredBase,
+      sessionConsiderations || sessionText
+    );
   }
 };

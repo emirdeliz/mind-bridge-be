@@ -2,6 +2,46 @@ import type { ClinicalChatMessage } from '@domain/clinical-content.types.js';
 import type { AppLanguage } from '@domain/types.js';
 
 export const PATIENT_CHAT_MAX_QUESTIONS = 3;
+export const PATIENT_CHAT_MAX_RESPONSE_CHARS = 160;
+
+export const truncatePatientChatResponse = (
+  text: string,
+  maxChars = PATIENT_CHAT_MAX_RESPONSE_CHARS
+): string => {
+  const trimmed = text.trim();
+  if (trimmed.length <= maxChars) {
+    return trimmed;
+  }
+
+  let cut = trimmed.slice(0, maxChars).trimEnd();
+  const lastQuestion = cut.lastIndexOf('?');
+  const lastSentenceEnd = Math.max(
+    cut.lastIndexOf('.'),
+    cut.lastIndexOf('!'),
+    lastQuestion
+  );
+
+  if (lastSentenceEnd >= Math.floor(maxChars * 0.55)) {
+    cut = cut.slice(0, lastSentenceEnd + 1).trimEnd();
+    if (cut.length <= maxChars) {
+      return cut;
+    }
+  }
+
+  const lastSpace = cut.lastIndexOf(' ');
+  if (lastSpace >= Math.floor(maxChars * 0.65)) {
+    cut = cut.slice(0, lastSpace).trimEnd();
+  }
+
+  if (!cut.endsWith('?') && !cut.endsWith('.') && !cut.endsWith('!')) {
+    if (cut.length + 1 <= maxChars) {
+      return `${cut}?`;
+    }
+    return `${cut.slice(0, maxChars - 1).trimEnd()}?`;
+  }
+
+  return cut.slice(0, maxChars).trimEnd();
+};
 
 export type PatientChatInteractionPhase =
   | 'question-1'

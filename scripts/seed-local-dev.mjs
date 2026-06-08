@@ -51,6 +51,29 @@ const DEMO_PSYCHOLOGIST = {
   password: 'demo123456',
 };
 
+const EMIR_PSYCHOLOGIST = {
+  fullName: 'Emir Marques',
+  email: 'emirdeliz@gmail.com',
+  phone: null,
+  password: 'Data@123',
+};
+
+const EMIR_PATIENTS = [
+  {
+    fullName: 'José Carlos',
+    email: 'josecarlos@gmail.com',
+    phone: '43423213213',
+    password: 'Data@123',
+    lastConsultationAt: null,
+    isDeleted: false,
+  },
+];
+
+const PSYCHOLOGIST_ACCOUNTS = [
+  { psychologist: DEMO_PSYCHOLOGIST, patients: null },
+  { psychologist: EMIR_PSYCHOLOGIST, patients: EMIR_PATIENTS },
+];
+
 const DEMO_PATIENTS = [
   {
     fullName: 'Ana M.',
@@ -192,17 +215,15 @@ const upsertClinical = async (patientId, email) => {
   }
 };
 
-const main = async () => {
-  console.log('Seeding local dev data…');
-  await assertServiceRoleKey();
-
+const seedPsychologistAccount = async (psychologist, patients) => {
   const psychologistId = await ensureAuthUser({
-    ...DEMO_PSYCHOLOGIST,
+    ...psychologist,
+    phone: psychologist.phone ?? '',
     role: 'psychologist',
   });
-  console.log(`Psychologist: ${DEMO_PSYCHOLOGIST.email} (${psychologistId})`);
+  console.log(`Psychologist: ${psychologist.email} (${psychologistId})`);
 
-  for (const demo of DEMO_PATIENTS) {
+  for (const demo of patients) {
     const patientId = await ensureAuthUser({
       email: demo.email,
       password: demo.password,
@@ -214,12 +235,25 @@ const main = async () => {
     await linkPatient(psychologistId, patientId, demo);
     await upsertClinical(patientId, demo.email);
 
-    console.log(`Patient: ${demo.fullName} (${demo.email})`);
+    console.log(`  Patient: ${demo.fullName} (${demo.email})`);
+  }
+};
+
+const main = async () => {
+  console.log('Seeding local dev data…');
+  await assertServiceRoleKey();
+
+  PSYCHOLOGIST_ACCOUNTS[0].patients = DEMO_PATIENTS;
+
+  for (const account of PSYCHOLOGIST_ACCOUNTS) {
+    await seedPsychologistAccount(account.psychologist, account.patients);
   }
 
   console.log('Done.');
-  console.log('Login psychologist:', DEMO_PSYCHOLOGIST.email, '/', DEMO_PSYCHOLOGIST.password);
-  console.log('Login patient (Ana):', DEMO_PATIENTS[0].email, '/', DEMO_PATIENTS[0].password);
+  console.log('Login demo psychologist:', DEMO_PSYCHOLOGIST.email, '/', DEMO_PSYCHOLOGIST.password);
+  console.log('Login demo patient (Ana):', DEMO_PATIENTS[0].email, '/', DEMO_PATIENTS[0].password);
+  console.log('Login Emir (psychologist):', EMIR_PSYCHOLOGIST.email, '/', EMIR_PSYCHOLOGIST.password);
+  console.log('Login José Carlos (patient):', EMIR_PATIENTS[0].email, '/', EMIR_PATIENTS[0].password);
 };
 
 main().catch((err) => {

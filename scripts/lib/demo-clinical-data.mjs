@@ -213,4 +213,18 @@ export const DEMO_CLINICAL_BY_EMAIL = {
   'bruno.demo@mindbridge.local': minimalPayload(),
   'carla.demo@mindbridge.local': minimalPayload(),
   'diego.demo@mindbridge.local': minimalPayload(),
+  'josecarlos@gmail.com': {
+    ...minimalPayload(),
+    sessionContext:
+      'Paciente José Carlos. Abordagem TCC com foco em ansiedade social e regulação emocional. Meta: identificar gatilhos em interações do dia a dia e praticar respiração diafragmática.',
+    sessionNotes: [
+      {
+        id: 'session-2026-06-08',
+        label: 'Sessão 08/06/2026 (atual)',
+        sessionDate: '08/06/2026',
+        content: '',
+        isCurrent: true,
+      },
+    ],
+  },
 };

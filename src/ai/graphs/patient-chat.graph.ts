@@ -7,7 +7,9 @@ import {
   getPatientChatClosingMessage,
   isPatientChatClosingPhase,
   resolvePatientChatInteractionPhase,
+  truncatePatientChatResponse,
 } from '@ai/prompts/patient-chat-interaction.js';
+import { buildPatientChatHumanPrompt } from '@ai/prompts/patient-chat-context-focus.js';
 import { buildPatientChatSystemPrompt } from '@ai/prompts/patient-chat-system.js';
 import { resolveLanguageInstruction } from '@ai/prompts/response-language.js';
 import type { ClinicalChatMessage } from '@domain/clinical-content.types.js';
@@ -63,14 +65,21 @@ const createRespondNode =
         .filter(Boolean)
         .join('\n\n')
     );
-    const human = new HumanMessage(state.userMessage);
+    const human = new HumanMessage(
+      buildPatientChatHumanPrompt(
+        language,
+        state.userMessage,
+        state.careContext,
+        state.interactionPhase as 'question-1' | 'question-2' | 'question-3'
+      )
+    );
     const response = await model.invoke([system, human]);
     const content =
       typeof response.content === 'string'
         ? response.content
         : String(response.content);
 
-    return { assistantMessage: content };
+    return { assistantMessage: truncatePatientChatResponse(content) };
   };
 
 export const createPatientChatGraph = (env: Env) => {

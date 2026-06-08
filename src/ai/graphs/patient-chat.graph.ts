@@ -3,6 +3,11 @@ import { HumanMessage, SystemMessage } from '@langchain/core/messages';
 
 import type { Env } from '@config/env.js';
 import { createPatientChatModel } from '@ai/llm.js';
+import {
+  getPatientChatClosingMessage,
+  isPatientChatClosingPhase,
+  resolvePatientChatInteractionPhase,
+} from '@ai/prompts/patient-chat-interaction.js';
 import { buildPatientChatSystemPrompt } from '@ai/prompts/patient-chat-system.js';
 import { resolveLanguageInstruction } from '@ai/prompts/response-language.js';
 import type { ClinicalChatMessage } from '@domain/clinical-content.types.js';
@@ -13,39 +18,50 @@ import {
 } from '@ai/state/patient-chat.state.js';
 
 const buildRetrievalContext = (state: PatientChatState): string => {
+  if (state.careContext?.trim()) {
+    return '';
+  }
+
   if (state.retrievalContext?.trim()) {
     return state.retrievalContext;
   }
-  return 'No additional retrieved context.';
-};
 
-const retrieveNode = async (
-  _state: PatientChatState
-): Promise<Partial<PatientChatState>> => {
-  // Placeholder until pgvector RAG is wired — keeps graph shape stable.
-  const retrievalContext = [
+  return [
     'Retrieved snippets (mock):',
     '- Patient reported work-related anxiety in recent interactions.',
     '- Sleep hygiene discussed in prior sessions.',
   ].join('\n');
-
-  return { retrievalContext };
 };
+
+const retrieveNode = async (
+  state: PatientChatState
+): Promise<Partial<PatientChatState>> => ({
+  retrievalContext: buildRetrievalContext(state),
+});
 
 const createRespondNode =
   (env: Env) =>
   async (state: PatientChatState): Promise<Partial<PatientChatState>> => {
-    const model = createPatientChatModel(env);
     const language = (state.responseLanguage as AppLanguage) ?? 'pt';
+
+    if (isPatientChatClosingPhase(state.interactionPhase)) {
+      return {
+        assistantMessage: getPatientChatClosingMessage(language),
+      };
+    }
+
+    const model = createPatientChatModel(env);
     const system = new SystemMessage(
       [
         buildPatientChatSystemPrompt(language, {
           psychologistContext: state.careContext,
-          retrievalContext: buildRetrievalContext(state),
           chatHistory: state.chatHistory,
+          interactionPhase: state.interactionPhase,
         }),
         resolveLanguageInstruction(language),
-      ].join('\n\n')
+      ]
+        .filter(Boolean)
+        .join('\n\n')
     );
     const human = new HumanMessage(state.userMessage);
     const response = await model.invoke([system, human]);
@@ -79,12 +95,15 @@ export const runPatientChatGraph = async (
     language?: AppLanguage;
   }
 ): Promise<string> => {
+  const chatHistory = input.chatHistory ?? [];
+  const interactionPhase = resolvePatientChatInteractionPhase(chatHistory);
   const app = createPatientChatGraph(env);
   const result = await app.invoke({
     patientId: input.patientId,
     userMessage: input.userMessage,
     careContext: input.psychologistContext ?? '',
-    chatHistory: input.chatHistory ?? [],
+    chatHistory,
+    interactionPhase,
     responseLanguage: input.language ?? 'pt',
     retrievalContext: input.retrievalContext ?? '',
     assistantMessage: '',

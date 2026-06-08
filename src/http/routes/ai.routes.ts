@@ -59,6 +59,7 @@ export const createAiRoutes =
           patientId: string;
           message: string;
           clinicalContext?: string;
+          sessionConsiderations?: string;
           language?: AppLanguage;
         };
 
@@ -73,6 +74,7 @@ export const createAiRoutes =
           patientId: body.patientId,
           userMessage: body.message,
           clinicalContext: body.clinicalContext,
+          sessionConsiderations: body.sessionConsiderations,
           language: body.language,
         });
 

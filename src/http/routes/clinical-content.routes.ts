@@ -4,9 +4,15 @@ import {
   assertPatientSelf,
   assertPsychologistPatientAccess,
 } from '@application/authorization.js';
+import { endPsychologistSession } from '@application/end-psychologist-session.js';
+import { normalizeAppLanguage } from '@ai/prompts/psychologist-copilot-system.js';
 import type { Env } from '@config/env.js';
+import type { AppLanguage } from '@domain/types.js';
 import { validateBody, validateParams } from '@http/middleware/validate.js';
-import { updateClinicalSessionBodySchema } from '@http/schemas/clinical-content.schemas.js';
+import {
+  endPsychologistSessionBodySchema,
+  updateClinicalSessionBodySchema,
+} from '@http/schemas/clinical-content.schemas.js';
 import { patientIdParamsSchema } from '@http/schemas/patient.schemas.js';
 import { createAdminSupabaseClient } from '@infrastructure/supabase/client.js';
 import {
@@ -66,6 +72,37 @@ export const createClinicalContentRoutes =
           admin,
           patientId,
           body
+        );
+
+        return { content };
+      }
+    );
+
+    app.post(
+      '/psychologist/patients/:patientId/end-session',
+      {
+        preHandler: [
+          validateParams(patientIdParamsSchema),
+          validateBody(endPsychologistSessionBodySchema),
+        ],
+      },
+      async (request) => {
+        const auth = request.auth!;
+        const supabase = request.userSupabase!;
+        const { patientId } = request.params as { patientId: string };
+        const body = request.body as {
+          currentSessionNoteContent?: string | null;
+          language?: AppLanguage;
+        };
+
+        await assertPsychologistPatientAccess(supabase, auth, patientId);
+
+        const content = await endPsychologistSession(
+          env,
+          admin,
+          patientId,
+          body,
+          normalizeAppLanguage(body.language)
         );
 
         return { content };

@@ -142,6 +142,10 @@ export type UpdateClinicalSessionPayload = {
   currentSessionNoteContent?: string | null;
 };
 
+export type EndPsychologistSessionPayload = {
+  currentSessionNoteContent?: string | null;
+};
+
 export const appendPsychologistChatMessages = async (
   admin: SupabaseClient,
   patientId: string,
@@ -199,6 +203,50 @@ export const updatePsychologistPatientClinicalSession = async (
   const nextPayload: ClinicalContentSeedPayload = {
     dashboardSnapshot: content.dashboardSnapshot,
     sessionContext,
+    sessionNotes,
+    sessionInsights: content.sessionInsights,
+    psychologistSummary: content.psychologistSummary,
+    psychologistChatSeed: content.psychologistChatSeed,
+    patientChatSeed: content.patientChatSeed,
+    patientSummary: content.patientSummary,
+  };
+
+  await upsertPatientClinicalContent(admin, patientId, nextPayload);
+
+  return { patientId, ...nextPayload };
+};
+
+export const endPsychologistPatientSession = async (
+  admin: SupabaseClient,
+  patientId: string,
+  payload: EndPsychologistSessionPayload,
+  dashboardSnapshot: DashboardSnapshot
+): Promise<PatientClinicalContent> => {
+  const content = await ensurePatientClinicalContent(admin, patientId);
+
+  let sessionNotes = [...content.sessionNotes];
+  const currentIndex = sessionNotes.findIndex(
+    (entry) => entry.isCurrent === true
+  );
+
+  if (currentIndex >= 0) {
+    const currentNote = sessionNotes[currentIndex];
+    const noteContent =
+      payload.currentSessionNoteContent ?? currentNote.content ?? '';
+
+    sessionNotes[currentIndex] = {
+      ...currentNote,
+      content: noteContent,
+      isCurrent: false,
+      label: currentNote.label.replace(' (atual)', ''),
+    };
+  }
+
+  sessionNotes = [buildCurrentSessionNote(), ...sessionNotes];
+
+  const nextPayload: ClinicalContentSeedPayload = {
+    dashboardSnapshot,
+    sessionContext: content.sessionContext,
     sessionNotes,
     sessionInsights: content.sessionInsights,
     psychologistSummary: content.psychologistSummary,

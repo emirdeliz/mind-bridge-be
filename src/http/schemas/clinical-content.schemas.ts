@@ -8,3 +8,8 @@ export const updateClinicalSessionBodySchema = Joi.object({
   .messages({
     'object.missing': 'Informe sessionContext ou currentSessionNoteContent',
   });
+
+export const endPsychologistSessionBodySchema = Joi.object({
+  currentSessionNoteContent: Joi.string().allow('', null).optional(),
+  language: Joi.string().valid('pt', 'en', 'es').optional(),
+});

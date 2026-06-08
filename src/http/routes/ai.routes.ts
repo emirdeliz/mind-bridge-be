@@ -1,6 +1,7 @@
 import type { FastifyPluginAsync } from 'fastify';
 
 import type { Env } from '@config/env.js';
+import type { AppLanguage } from '@domain/types.js';
 import {
   assertPatientSelf,
   assertPsychologistPatientAccess,
@@ -24,7 +25,11 @@ export const createAiRoutes =
       },
       async (request) => {
         const auth = request.auth!;
-        const body = request.body as { message: string; careContext?: string };
+        const body = request.body as {
+          message: string;
+          careContext?: string;
+          language?: AppLanguage;
+        };
 
         assertPatientSelf(auth, auth.userId);
 
@@ -32,6 +37,7 @@ export const createAiRoutes =
           patientId: auth.userId,
           userMessage: body.message,
           careContext: body.careContext,
+          language: body.language,
         });
 
         return {
@@ -53,6 +59,7 @@ export const createAiRoutes =
           patientId: string;
           message: string;
           clinicalContext?: string;
+          language?: AppLanguage;
         };
 
         if (auth.role !== 'psychologist') {
@@ -66,6 +73,7 @@ export const createAiRoutes =
           patientId: body.patientId,
           userMessage: body.message,
           clinicalContext: body.clinicalContext,
+          language: body.language,
         });
 
         return {

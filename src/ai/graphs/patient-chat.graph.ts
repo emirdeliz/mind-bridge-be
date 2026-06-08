@@ -3,6 +3,8 @@ import { HumanMessage, SystemMessage } from '@langchain/core/messages';
 
 import type { Env } from '@config/env.js';
 import { createChatModel } from '@ai/llm.js';
+import { resolveLanguageInstruction } from '@ai/prompts/response-language.js';
+import type { AppLanguage } from '@domain/types.js';
 import {
   PatientChatAnnotation,
   type PatientChatState,
@@ -36,6 +38,7 @@ const createRespondNode =
       [
         'You are a supportive mental-health companion for a patient between therapy sessions.',
         'Be empathetic, concise, and never provide diagnosis or emergency instructions without urging professional help.',
+        resolveLanguageInstruction(state.responseLanguage as AppLanguage),
         `Care plan context: ${state.careContext || 'Not provided.'}`,
         `Retrieved context:\n${buildRetrievalContext(state)}`,
       ].join('\n\n')
@@ -68,6 +71,7 @@ export const runPatientChatGraph = async (
     userMessage: string;
     careContext?: string;
     retrievalContext?: string;
+    language?: AppLanguage;
   }
 ): Promise<string> => {
   const app = createPatientChatGraph(env);
@@ -75,6 +79,7 @@ export const runPatientChatGraph = async (
     patientId: input.patientId,
     userMessage: input.userMessage,
     careContext: input.careContext ?? '',
+    responseLanguage: input.language ?? 'pt',
     retrievalContext: input.retrievalContext ?? '',
     assistantMessage: '',
   });

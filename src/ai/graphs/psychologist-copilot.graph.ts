@@ -4,12 +4,15 @@ import { Annotation } from '@langchain/langgraph';
 
 import type { Env } from '@config/env.js';
 import { createChatModel } from '@ai/llm.js';
+import { resolveLanguageInstruction } from '@ai/prompts/response-language.js';
+import type { AppLanguage } from '@domain/types.js';
 
 const PsychologistCopilotAnnotation = Annotation.Root({
   psychologistId: Annotation<string>,
   patientId: Annotation<string>,
   userMessage: Annotation<string>,
   clinicalContext: Annotation<string>,
+  responseLanguage: Annotation<string>,
   retrievalContext: Annotation<string>,
   assistantMessage: Annotation<string>,
 });
@@ -36,6 +39,7 @@ const createRespondNode =
       [
         'You assist a licensed psychotherapist during sessions.',
         'Provide structured clinical insights, patterns, and session focus — not definitive diagnoses.',
+        resolveLanguageInstruction(state.responseLanguage as AppLanguage),
         `Psychologist context: ${state.clinicalContext || 'Not provided.'}`,
         `Retrieved data:\n${state.retrievalContext}`,
       ].join('\n\n')
@@ -68,6 +72,7 @@ export const runPsychologistCopilotGraph = async (
     patientId: string;
     userMessage: string;
     clinicalContext?: string;
+    language?: AppLanguage;
   }
 ): Promise<string> => {
   const app = createPsychologistCopilotGraph(env);
@@ -76,6 +81,7 @@ export const runPsychologistCopilotGraph = async (
     patientId: input.patientId,
     userMessage: input.userMessage,
     clinicalContext: input.clinicalContext ?? '',
+    responseLanguage: input.language ?? 'pt',
     retrievalContext: '',
     assistantMessage: '',
   });

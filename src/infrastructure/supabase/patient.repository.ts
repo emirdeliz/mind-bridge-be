@@ -6,6 +6,7 @@ import type {
   PsychologistPatientSaveBody,
 } from '@domain/patient.types.js';
 import type { AppLanguage } from '@domain/types.js';
+import { ensurePatientClinicalContent } from './clinical-content.repository.js';
 
 type PatientEmbed = {
   id: string;
@@ -192,6 +193,8 @@ export const createPatientForPsychologist = async (
       `Failed to create care relationship: ${careError.message}`
     );
   }
+
+  await ensurePatientClinicalContent(admin, patientId);
 
   const created = await getPatientForPsychologist(
     admin,

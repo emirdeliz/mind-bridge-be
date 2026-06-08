@@ -31,7 +31,7 @@ export const buildServer = async (env: Env) => {
   await app.register(meRoutes);
   await app.register(createAiRoutes(env));
   await app.register(createPsychologistPatientsRoutes(env));
-  await app.register(createClinicalContentRoutes());
+  await app.register(createClinicalContentRoutes(env));
 
   return app;
 };

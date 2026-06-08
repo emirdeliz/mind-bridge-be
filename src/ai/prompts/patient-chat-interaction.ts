@@ -50,9 +50,9 @@ export type PatientChatInteractionPhase =
   | 'closing';
 
 const CLOSING_MESSAGES: Record<AppLanguage, string> = {
-  pt: 'Obrigado por compartilhar essas informações. Estou à disposição quando você precisar.',
-  es: 'Gracias por compartir esta información. Estoy a tu disposición cuando lo necesites.',
-  en: 'Thank you for sharing this information. I am here whenever you need me.',
+  pt: 'Agradeço por compartilhar estas informações. Permaneço à disposição para apoiá-lo(a) quando necessário.',
+  es: 'Agradezco que haya compartido esta información. Permanezco a su disposición para apoyarle cuando lo necesite.',
+  en: 'Thank you for sharing this information. I remain available to support you whenever needed.',
 };
 
 const CLOSING_MESSAGE_SET = new Set(Object.values(CLOSING_MESSAGES));

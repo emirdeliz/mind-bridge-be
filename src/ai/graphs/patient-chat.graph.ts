@@ -70,7 +70,8 @@ const createRespondNode =
         language,
         state.userMessage,
         state.careContext,
-        state.interactionPhase as 'question-1' | 'question-2' | 'question-3'
+        state.interactionPhase as 'question-1' | 'question-2' | 'question-3',
+        state.chatHistory
       )
     );
     const response = await model.invoke([system, human]);

@@ -2,16 +2,14 @@ import type { ClinicalChatMessage } from '@domain/clinical-content.types.js';
 import type { AppLanguage } from '@domain/types.js';
 
 import { buildContextFocusBlock } from './patient-chat-context-focus.js';
+import { buildPatientChatPacingGuidance } from './patient-chat-interaction.js';
 import { normalizeAppLanguage } from './psychologist-copilot-system.js';
-import {
-  PATIENT_CHAT_MAX_RESPONSE_CHARS,
-  type PatientChatInteractionPhase,
-} from './patient-chat-interaction.js';
+import { PATIENT_CHAT_MAX_RESPONSE_CHARS } from './patient-chat-interaction.js';
 
 type PatientChatPromptContext = {
   psychologistContext: string;
   chatHistory: ClinicalChatMessage[];
-  interactionPhase: PatientChatInteractionPhase;
+  questionCount: number;
 };
 
 const notProvided = (language: AppLanguage): string => {
@@ -54,36 +52,6 @@ const formatChatHistory = (
       return `${role}: ${message.text}`;
     })
     .join('\n');
-};
-
-const questionPhaseInstructions: Record<
-  AppLanguage,
-  Record<Exclude<PatientChatInteractionPhase, 'closing'>, string>
-> = {
-  pt: {
-    'question-1':
-      '1ª pergunta: valide o relato e pergunte sobre UM momento/situação específica que una a mensagem do paciente ao tema do contexto do psicólogo.',
-    'question-2':
-      '2ª pergunta: aprofunde UM detalhe novo (lugar, pessoa, horário, sensação) da última resposta — nunca uma pergunta ampla.',
-    'question-3':
-      '3ª pergunta: explore outro aspecto prático do contexto ainda não abordado (ex.: sono, trabalho, convívio). Seja específico.',
-  },
-  es: {
-    'question-1':
-      '1.ª pregunta: valide el relato y pregunte por UN momento/situación específica que una el mensaje del paciente con el tema del contexto.',
-    'question-2':
-      '2.ª pregunta: profundice UN detalle nuevo (lugar, persona, horario, sensación) de la última respuesta — nunca una pregunta amplia.',
-    'question-3':
-      '3.ª pregunta: explore otro aspecto práctico del contexto aún no abordado (sueño, trabajo, convivencia). Sea específico.',
-  },
-  en: {
-    'question-1':
-      '1st question: validate the report and ask about ONE specific moment/situation linking the patient message to the context theme.',
-    'question-2':
-      '2nd question: deepen ONE new detail (place, person, time, sensation) from the latest reply — never a broad question.',
-    'question-3':
-      '3rd question: explore another practical aspect of the context not yet covered (sleep, work, relationships). Be specific.',
-  },
 };
 
 const professionalToneRules: Record<AppLanguage, string> = {
@@ -138,55 +106,54 @@ export const buildPatientChatSystemPrompt = (
     context.psychologistContext.trim() || notProvided(language);
   const history = formatChatHistory(language, context.chatHistory);
   const hasContext = Boolean(context.psychologistContext.trim());
-  const phase = context.interactionPhase;
-
-  if (phase === 'closing') {
-    return '';
-  }
+  const questionCount = context.questionCount;
 
   const focusBlock = buildContextFocusBlock(
     language,
     context.psychologistContext,
-    phase
+    questionCount
   );
-  const phaseInstruction = questionPhaseInstructions[language][phase];
+  const pacingGuidance = buildPatientChatPacingGuidance(language, questionCount);
 
   const blocks: Record<AppLanguage, string[]> = {
     pt: [
       'Você acompanha o paciente entre sessões com o psicólogo, com tom profissional e vocabulário simples.',
       'Seja empático, sem diagnóstico, sem jargão técnico e sem substituir o psicólogo.',
       `Responda em no máximo ${PATIENT_CHAT_MAX_RESPONSE_CHARS} caracteres (1 ou 2 frases objetivas).`,
-      'OBRIGATÓRIO: termine com UMA pergunta específica (mencione situação concreta + tema do contexto).',
+      'Na maioria das respostas, termine com UMA pergunta sintética e específica. Se já houver informação suficiente, pode encerrar com acolhimento sem nova pergunta.',
       professionalToneRules.pt,
+      pacingGuidance,
       `Contexto do psicólogo (uso interno — traduza para linguagem simples na resposta):\n${psychologistContext}`,
       hasContext ? focusBlock : '',
-      phaseInstruction,
       `Histórico recente:\n${history}`,
-      'Lembrete: pergunta específica, linguagem simples, zero termos técnicos na resposta ao paciente.',
+      'PROIBIDO: raciocínio interno, análise, "Thinking Process", listas numeradas ou blocos de raciocínio. Envie SOMENTE a mensagem final ao paciente.',
+      'Lembrete: sintetize, mude o ângulo a cada pergunta, evite perguntas similares, linguagem simples.',
     ],
     es: [
       'Acompañas al paciente entre sesiones con el psicólogo, con tono profesional y vocabulario simple.',
       'Sé empático, sin diagnóstico, sin jerga técnica y sin reemplazar al psicólogo.',
       `Responde en máximo ${PATIENT_CHAT_MAX_RESPONSE_CHARS} caracteres (1 o 2 frases objetivas).`,
-      'OBLIGATORIO: termina con UNA pregunta específica (situación concreta + tema del contexto).',
+      'En la mayoría de las respuestas, termina con UNA pregunta sintética y específica. Si ya hay información suficiente, puedes cerrar con contención sin nueva pregunta.',
       professionalToneRules.es,
+      pacingGuidance,
       `Contexto del psicólogo (uso interno — traduce a lenguaje simple en la respuesta):\n${psychologistContext}`,
       hasContext ? focusBlock : '',
-      phaseInstruction,
       `Historial reciente:\n${history}`,
-      'Recordatorio: pregunta específica, lenguaje simple, cero términos técnicos en la respuesta al paciente.',
+      'PROHIBIDO: razonamiento interno, análisis, "Thinking Process", listas numeradas o bloques de razonamiento. Envía SOLO el mensaje final al paciente.',
+      'Recordatorio: sintetiza, cambia el ángulo en cada pregunta, evita preguntas similares, lenguaje simple.',
     ],
     en: [
       'You accompany the patient between sessions with the psychologist, with a professional tone and simple vocabulary.',
       'Be empathetic, without diagnosis, without technical jargon, and without replacing the psychologist.',
       `Reply in at most ${PATIENT_CHAT_MAX_RESPONSE_CHARS} characters (1 or 2 objective sentences).`,
-      'REQUIRED: end with ONE specific question (concrete situation + context theme).',
+      'In most replies, end with ONE synthesized, specific question. If there is already enough information, you may close warmly without a new question.',
       professionalToneRules.en,
+      pacingGuidance,
       `Psychologist context (internal use — translate to simple language in the reply):\n${psychologistContext}`,
       hasContext ? focusBlock : '',
-      phaseInstruction,
       `Recent history:\n${history}`,
-      'Reminder: specific question, simple language, zero technical terms in the reply to the patient.',
+      'FORBIDDEN: internal reasoning, analysis, "Thinking Process", numbered lists, or reasoning blocks. Send ONLY the final message to the patient.',
+      'Reminder: synthesize, change angle each question, avoid similar questions, simple language.',
     ],
   };
 

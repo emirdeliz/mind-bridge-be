@@ -25,6 +25,7 @@ export const createPatientChatModel = (env: Env) =>
     model: env.OLLAMA_CHAT_MODEL,
     temperature: 0.25,
     numPredict: 100,
+    think: false,
   });
 
 /** Structured JSON output for dashboard analytics after session end. */

@@ -1,7 +1,10 @@
 import type { ClinicalChatMessage } from '@domain/clinical-content.types.js';
 import type { AppLanguage } from '@domain/types.js';
 
-import type { PatientChatInteractionPhase } from './patient-chat-interaction.js';
+import {
+  buildAntiRepetitionGuidance,
+  extractRecentAgentQuestions,
+} from './patient-chat-interaction.js';
 
 const MIN_FOCUS_LENGTH = 8;
 const MAX_FOCUS_POINTS = 5;
@@ -26,7 +29,7 @@ export const extractContextFocusPoints = (context: string): string[] => {
 
 export const resolveQuestionFocusHint = (
   context: string,
-  phase: Exclude<PatientChatInteractionPhase, 'closing'>
+  questionCount: number
 ): string => {
   const focusPoints = extractContextFocusPoints(context);
 
@@ -34,10 +37,7 @@ export const resolveQuestionFocusHint = (
     return '';
   }
 
-  const index =
-    phase === 'question-1' ? 0 : phase === 'question-2' ? 1 : 2;
-
-  return focusPoints[index] ?? focusPoints[focusPoints.length - 1] ?? '';
+  return focusPoints[questionCount % focusPoints.length] ?? '';
 };
 
 const formatRecentPatientMessages = (
@@ -60,6 +60,8 @@ const specificQuestionRules: Record<AppLanguage, string> = {
     '4. Exemplo RUIM (genérico): "Poderia me contar o que ocorreu hoje?"',
     '5. Exemplo BOM (específico e simples): "Na conversa com colegas hoje, em que momento você se sentiu mais triste?"',
     '6. Exemplo RUIM (técnico): "Essa sensação configura um sintoma de ansiedade social na abordagem TCC?"',
+    '7. Exemplo BOM (sintético): "Na reunião de hoje, o que mais te deixou nervoso e como isso afetou o resto do dia?"',
+    '8. PROIBIDO perguntas muito similares às já feitas — mude pessoa, momento, sensação ou consequência.',
   ].join('\n'),
   es: [
     'REGLAS PARA PREGUNTA ESPECÍFICA (no genérica):',
@@ -69,6 +71,8 @@ const specificQuestionRules: Record<AppLanguage, string> = {
     '4. Ejemplo MALO (genérico): "¿Podría contarme qué ocurrió hoy?"',
     '5. Ejemplo BUENO (específico y simple): "En la conversación con colegas hoy, ¿en qué momento se sintió más triste?"',
     '6. Ejemplo MALO (técnico): "¿Esa sensación configura un síntoma de ansiedad social en el enfoque TCC?"',
+    '7. Ejemplo BUENO (sintético): "En la reunión de hoy, ¿qué le dejó más nervioso y cómo afectó el resto del día?"',
+    '8. PROHIBIDO preguntas muy similares a las ya hechas — cambie persona, momento, sensación o consecuencia.',
   ].join('\n'),
   en: [
     'SPECIFIC QUESTION RULES (not generic):',
@@ -78,16 +82,18 @@ const specificQuestionRules: Record<AppLanguage, string> = {
     '4. BAD example (generic): "Could you tell me what happened today?"',
     '5. GOOD example (specific and simple): "During today conversation with colleagues, when did you feel saddest?"',
     '6. BAD example (technical): "Does that feeling indicate a social anxiety symptom in the CBT approach?"',
+    '7. GOOD example (synthesized): "In today meeting, what made you most nervous and how did that affect the rest of your day?"',
+    '8. FORBIDDEN: questions very similar to ones already asked — change person, moment, sensation, or consequence.',
   ].join('\n'),
 };
 
 export const buildContextFocusBlock = (
   language: AppLanguage,
   context: string,
-  phase: Exclude<PatientChatInteractionPhase, 'closing'>
+  questionCount: number
 ): string => {
   const focusPoints = extractContextFocusPoints(context);
-  const focusHint = resolveQuestionFocusHint(context, phase);
+  const focusHint = resolveQuestionFocusHint(context, questionCount);
 
   if (!focusPoints.length) {
     const empty: Record<AppLanguage, string> = {
@@ -104,20 +110,20 @@ export const buildContextFocusBlock = (
     pt: [
       'Temas do contexto do psicólogo:',
       listedThemes,
-      `Tema prioritário nesta pergunta: ${focusHint}`,
-      'Use o tema acima só internamente. Na pergunta ao paciente, fale com palavras simples sobre situações do dia a dia.',
+      `Tema sugerido nesta pergunta: ${focusHint}`,
+      'Use o tema só internamente. Na pergunta ao paciente, sintetize em linguagem simples sobre situações do dia a dia.',
     ].join('\n'),
     es: [
       'Temas del contexto del psicólogo:',
       listedThemes,
-      `Tema prioritario en esta pregunta: ${focusHint}`,
-      'Usa el tema solo internamente. En la pregunta al paciente, habla con palabras simples sobre situaciones del día a día.',
+      `Tema sugerido en esta pregunta: ${focusHint}`,
+      'Usa el tema solo internamente. En la pregunta al paciente, sintetiza con palabras simples sobre situaciones del día a día.',
     ].join('\n'),
     en: [
       'Themes from psychologist context:',
       listedThemes,
-      `Priority theme for this question: ${focusHint}`,
-      'Use the theme internally only. In the question to the patient, use simple words about everyday situations.',
+      `Suggested theme for this question: ${focusHint}`,
+      'Use the theme internally only. In the question to the patient, synthesize with simple words about everyday situations.',
     ].join('\n'),
   };
 
@@ -128,69 +134,68 @@ export const buildPatientChatHumanPrompt = (
   language: AppLanguage,
   userMessage: string,
   context: string,
-  phase: Exclude<PatientChatInteractionPhase, 'closing'>,
+  questionCount: number,
   chatHistory: ClinicalChatMessage[] = []
 ): string => {
-  const focusHint = resolveQuestionFocusHint(context, phase);
+  const focusHint = resolveQuestionFocusHint(context, questionCount);
   const priorPatientMessages = formatRecentPatientMessages(chatHistory);
+  const priorAgentQuestions = extractRecentAgentQuestions(chatHistory);
+  const antiRepetitionBlock = buildAntiRepetitionGuidance(
+    language,
+    priorAgentQuestions
+  );
 
-  const phaseSteps: Record<AppLanguage, Record<string, string>> = {
-    pt: {
-      'question-1':
-        'Pergunte sobre UM momento ou situação específica ligada ao que o paciente acabou de dizer e ao tema do contexto.',
-      'question-2':
-        'Aprofunde UM detalhe novo da última resposta (quem, onde, quando, o que sentiu no corpo ou na mente).',
-      'question-3':
-        'Explore outro aspecto prático ainda não perguntado (rotina, pessoas, sono, trabalho) ligado ao contexto.',
-    },
-    es: {
-      'question-1':
-        'Pregunta por UN momento o situación específica ligada a lo que el paciente acaba de decir y al tema del contexto.',
-      'question-2':
-        'Profundiza UN detalle nuevo de la última respuesta (quién, dónde, cuándo, qué sintió).',
-      'question-3':
-        'Explora otro aspecto práctico aún no preguntado, ligado al contexto.',
-    },
-    en: {
-      'question-1':
-        'Ask about ONE specific moment or situation tied to what the patient just said and the context theme.',
-      'question-2':
-        'Deepen ONE new detail from the latest reply (who, where, when, what they felt).',
-      'question-3':
-        'Explore another practical aspect not yet asked, tied to the context.',
-    },
+  const stepHints: Record<AppLanguage, string> = {
+    pt:
+      questionCount === 0
+        ? 'Valide o relato e pergunte sobre UM momento ou situação específica ligada ao que o paciente disse.'
+        : 'Com base no que já foi dito, faça UMA pergunta com ângulo NOVO — aspecto, pessoa ou consequência ainda não explorados.',
+    es:
+      questionCount === 0
+        ? 'Valide el relato y pregunte por UN momento o situación específica ligada a lo que el paciente dijo.'
+        : 'Con base en lo ya dicho, haz UNA pregunta con ángulo NUEVO — aspecto, persona o consecuencia aún no explorados.',
+    en:
+      questionCount === 0
+        ? 'Validate the report and ask about ONE specific moment or situation tied to what the patient said.'
+        : 'Based on what was already said, ask ONE question from a NEW angle — unexplored aspect, person, or consequence.',
   };
 
   const blocks: Record<AppLanguage, string[]> = {
     pt: [
       `Mensagem atual do paciente: "${userMessage}"`,
       priorPatientMessages
-        ? `Relatos anteriores do paciente nesta interação: ${priorPatientMessages}`
+        ? `Relatos anteriores do paciente: ${priorPatientMessages}`
         : '',
+      `Perguntas do agente até agora nesta conversa: ${questionCount}`,
+      antiRepetitionBlock,
       specificQuestionRules.pt,
       focusHint ? `Tema do psicólogo para conectar: ${focusHint}` : '',
-      phaseSteps.pt[phase],
-      'Monte a pergunta citando situação concreta, com palavras simples. Não use termos do contexto clínico na pergunta.',
+      stepHints.pt,
+      'Monte UMA pergunta sintética, com palavras simples. Não use termos clínicos do contexto.',
     ],
     es: [
       `Mensaje actual del paciente: "${userMessage}"`,
       priorPatientMessages
         ? `Relatos anteriores del paciente: ${priorPatientMessages}`
         : '',
+      `Preguntas del agente hasta ahora en esta conversación: ${questionCount}`,
+      antiRepetitionBlock,
       specificQuestionRules.es,
       focusHint ? `Tema del psicólogo para conectar: ${focusHint}` : '',
-      phaseSteps.es[phase],
-      'Formula la pregunta citando situación concreta, con palabras simples. No uses términos clínicos del contexto.',
+      stepHints.es,
+      'Formula UNA pregunta sintética, con palabras simples. No uses términos clínicos del contexto.',
     ],
     en: [
       `Current patient message: "${userMessage}"`,
       priorPatientMessages
-        ? `Prior patient reports in this interaction: ${priorPatientMessages}`
+        ? `Prior patient reports: ${priorPatientMessages}`
         : '',
+      `Agent questions so far in this conversation: ${questionCount}`,
+      antiRepetitionBlock,
       specificQuestionRules.en,
       focusHint ? `Psychologist theme to connect: ${focusHint}` : '',
-      phaseSteps.en[phase],
-      'Build the question citing a concrete situation, with simple words. Do not use clinical terms from the context.',
+      stepHints.en,
+      'Build ONE synthesized question with simple words. Do not use clinical terms from the context.',
     ],
   };
 

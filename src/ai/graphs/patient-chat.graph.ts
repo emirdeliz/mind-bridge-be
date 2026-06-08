@@ -4,10 +4,10 @@ import { HumanMessage, SystemMessage } from '@langchain/core/messages';
 import type { Env } from '@config/env.js';
 import { createPatientChatModel } from '@ai/llm.js';
 import {
-  getPatientChatClosingMessage,
-  isPatientChatClosingPhase,
-  resolvePatientChatInteractionPhase,
-  truncatePatientChatResponse,
+  countAgentQuestionsInChat,
+  finalizePatientChatResponse,
+  getPatientChatFallbackReply,
+  isLeakedPatientChatReasoning,
 } from '@ai/prompts/patient-chat-interaction.js';
 import { buildPatientChatHumanPrompt } from '@ai/prompts/patient-chat-context-focus.js';
 import { buildPatientChatSystemPrompt } from '@ai/prompts/patient-chat-system.js';
@@ -45,12 +45,7 @@ const createRespondNode =
   (env: Env) =>
   async (state: PatientChatState): Promise<Partial<PatientChatState>> => {
     const language = (state.responseLanguage as AppLanguage) ?? 'pt';
-
-    if (isPatientChatClosingPhase(state.interactionPhase)) {
-      return {
-        assistantMessage: getPatientChatClosingMessage(language),
-      };
-    }
+    const questionCount = countAgentQuestionsInChat(state.chatHistory);
 
     const model = createPatientChatModel(env);
     const system = new SystemMessage(
@@ -58,7 +53,7 @@ const createRespondNode =
         buildPatientChatSystemPrompt(language, {
           psychologistContext: state.careContext,
           chatHistory: state.chatHistory,
-          interactionPhase: state.interactionPhase,
+          questionCount,
         }),
         resolveLanguageInstruction(language),
       ]
@@ -70,7 +65,7 @@ const createRespondNode =
         language,
         state.userMessage,
         state.careContext,
-        state.interactionPhase as 'question-1' | 'question-2' | 'question-3',
+        questionCount,
         state.chatHistory
       )
     );
@@ -80,7 +75,12 @@ const createRespondNode =
         ? response.content
         : String(response.content);
 
-    return { assistantMessage: truncatePatientChatResponse(content) };
+    let assistantMessage = finalizePatientChatResponse(content);
+    if (!assistantMessage || isLeakedPatientChatReasoning(assistantMessage)) {
+      assistantMessage = getPatientChatFallbackReply(language);
+    }
+
+    return { assistantMessage };
   };
 
 export const createPatientChatGraph = (env: Env) => {
@@ -106,14 +106,12 @@ export const runPatientChatGraph = async (
   }
 ): Promise<string> => {
   const chatHistory = input.chatHistory ?? [];
-  const interactionPhase = resolvePatientChatInteractionPhase(chatHistory);
   const app = createPatientChatGraph(env);
   const result = await app.invoke({
     patientId: input.patientId,
     userMessage: input.userMessage,
     careContext: input.psychologistContext ?? '',
     chatHistory,
-    interactionPhase,
     responseLanguage: input.language ?? 'pt',
     retrievalContext: input.retrievalContext ?? '',
     assistantMessage: '',

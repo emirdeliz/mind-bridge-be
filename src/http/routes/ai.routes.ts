@@ -1,6 +1,9 @@
+import { randomUUID } from 'node:crypto';
+
 import type { FastifyPluginAsync } from 'fastify';
 
 import type { Env } from '@config/env.js';
+import type { ClinicalChatMessage } from '@domain/clinical-content.types.js';
 import { normalizeAppLanguage } from '@ai/prompts/psychologist-copilot-system.js';
 import type { AppLanguage } from '@domain/types.js';
 import {
@@ -15,10 +18,16 @@ import {
   patientChatBodySchema,
   psychologistChatBodySchema,
 } from '@http/schemas/ai.schemas.js';
+import { createAdminSupabaseClient } from '@infrastructure/supabase/client.js';
+import {
+  appendPsychologistChatMessages,
+  ensurePatientClinicalContent,
+} from '@infrastructure/supabase/clinical-content.repository.js';
 
 export const createAiRoutes =
   (env: Env): FastifyPluginAsync =>
   async (app) => {
+    const admin = createAdminSupabaseClient(env);
     app.post(
       '/ai/patient/chat',
       {
@@ -70,6 +79,12 @@ export const createAiRoutes =
 
         await assertPsychologistPatientAccess(supabase, auth, body.patientId);
 
+        const clinicalContent = await ensurePatientClinicalContent(
+          admin,
+          body.patientId
+        );
+        const chatHistory = clinicalContent.psychologistChatSeed ?? [];
+
         const reply = await runPsychologistCopilotGraph(env, {
           psychologistId: auth.userId,
           patientId: body.patientId,
@@ -77,7 +92,30 @@ export const createAiRoutes =
           clinicalContext: body.clinicalContext,
           sessionConsiderations: body.sessionConsiderations,
           language: normalizeAppLanguage(body.language),
+          chatHistory,
         });
+
+        const exchangedAt = new Date().toISOString();
+        const persistedMessages: ClinicalChatMessage[] = [
+          {
+            id: randomUUID(),
+            sender: 'user',
+            text: body.message,
+            createdAt: exchangedAt,
+          },
+          {
+            id: randomUUID(),
+            sender: 'agent',
+            text: reply,
+            createdAt: new Date().toISOString(),
+          },
+        ];
+
+        await appendPsychologistChatMessages(
+          admin,
+          body.patientId,
+          persistedMessages
+        );
 
         return {
           message: reply,

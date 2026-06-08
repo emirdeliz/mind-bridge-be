@@ -142,6 +142,34 @@ export type UpdateClinicalSessionPayload = {
   currentSessionNoteContent?: string | null;
 };
 
+export const appendPsychologistChatMessages = async (
+  admin: SupabaseClient,
+  patientId: string,
+  messages: ClinicalChatMessage[]
+): Promise<PatientClinicalContent> => {
+  if (!messages.length) {
+    return ensurePatientClinicalContent(admin, patientId);
+  }
+
+  const content = await ensurePatientClinicalContent(admin, patientId);
+  const psychologistChatSeed = [...content.psychologistChatSeed, ...messages];
+
+  const nextPayload: ClinicalContentSeedPayload = {
+    dashboardSnapshot: content.dashboardSnapshot,
+    sessionContext: content.sessionContext,
+    sessionNotes: content.sessionNotes,
+    sessionInsights: content.sessionInsights,
+    psychologistSummary: content.psychologistSummary,
+    psychologistChatSeed,
+    patientChatSeed: content.patientChatSeed,
+    patientSummary: content.patientSummary,
+  };
+
+  await upsertPatientClinicalContent(admin, patientId, nextPayload);
+
+  return { patientId, ...nextPayload };
+};
+
 export const updatePsychologistPatientClinicalSession = async (
   admin: SupabaseClient,
   patientId: string,

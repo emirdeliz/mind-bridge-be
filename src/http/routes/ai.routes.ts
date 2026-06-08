@@ -19,7 +19,9 @@ import {
   psychologistChatBodySchema,
 } from '@http/schemas/ai.schemas.js';
 import { createAdminSupabaseClient } from '@infrastructure/supabase/client.js';
+import { recordPatientInteraction } from '@application/enrich-dashboard-snapshot.js';
 import {
+  appendPatientChatMessages,
   appendPsychologistChatMessages,
   ensurePatientClinicalContent,
 } from '@infrastructure/supabase/clinical-content.repository.js';
@@ -48,6 +50,28 @@ export const createAiRoutes =
           userMessage: body.message,
           careContext: body.careContext,
           language: normalizeAppLanguage(body.language),
+        });
+
+        const exchangedAt = new Date().toISOString();
+        const persistedMessages: ClinicalChatMessage[] = [
+          {
+            id: randomUUID(),
+            sender: 'user',
+            text: body.message,
+            createdAt: exchangedAt,
+          },
+          {
+            id: randomUUID(),
+            sender: 'agent',
+            text: reply,
+            createdAt: new Date().toISOString(),
+          },
+        ];
+
+        await appendPatientChatMessages(admin, auth.userId, persistedMessages);
+        await recordPatientInteraction(admin, auth.userId, {
+          channel: 'text',
+          source: 'web',
         });
 
         return {

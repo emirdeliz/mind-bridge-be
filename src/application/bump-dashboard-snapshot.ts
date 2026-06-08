@@ -21,9 +21,6 @@ const MOOD_SERIES_NAME = 'Humor médio';
 const MOOD_SERIES_COLOR = '#5eead4';
 const CLINICAL_SERIES_NAME = 'Menções';
 const CLINICAL_SERIES_COLOR = '#a78bfa';
-const WEEKLY_SERIES_NAME = 'Interações';
-const WEEKLY_SERIES_COLOR = '#818cf8';
-
 const formatWeekLabel = (date: Date): string => {
   const day = String(date.getDate()).padStart(2, '0');
   const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -125,12 +122,7 @@ const detectClinicalThemeIndex = (
   return 0;
 };
 
-const getTodayWeekdayIndex = (): number => {
-  const day = new Date().getDay();
-  return day === 0 ? 6 : day - 1;
-};
-
-/** Atualiza indicadores do painel após encerrar uma sessão de psicoterapia. */
+/** Atualiza humor e temas clínicos após encerrar sessão (fallback sem IA). */
 export const bumpDashboardSnapshotAfterSession = (
   current: DashboardSnapshot,
   sessionText = ''
@@ -144,18 +136,6 @@ export const bumpDashboardSnapshotAfterSession = (
     moodData[lastIndex] = Math.min(10, Math.max(1, Number(nextValue.toFixed(1))));
   }
 
-  const weeklyData = [...(base.weeklyInteractionSeries[0]?.data ?? [])];
-  const todayIndex = getTodayWeekdayIndex();
-  if (weeklyData.length > todayIndex) {
-    weeklyData[todayIndex] += 1;
-  }
-
-  const channels = base.interactionChannels.map((channel) =>
-    channel.name === 'Texto'
-      ? { ...channel, value: channel.value + 1 }
-      : channel
-  );
-
   const clinicalCategories = base.clinicalThemeCategories.length
     ? base.clinicalThemeCategories
     : [...DEFAULT_CLINICAL_THEMES];
@@ -168,8 +148,6 @@ export const bumpDashboardSnapshotAfterSession = (
     clinicalData[themeIndex] += 1;
   }
 
-  const adherenceBoost = base.moodDiaryAdherencePercent === 0 ? 12 : 8;
-
   return {
     ...base,
     moodTrendSeries: [
@@ -179,18 +157,6 @@ export const bumpDashboardSnapshotAfterSession = (
         color: base.moodTrendSeries[0]?.color ?? MOOD_SERIES_COLOR,
       },
     ],
-    weeklyInteractionSeries: [
-      {
-        name: base.weeklyInteractionSeries[0]?.name ?? WEEKLY_SERIES_NAME,
-        data: weeklyData,
-        color: base.weeklyInteractionSeries[0]?.color ?? WEEKLY_SERIES_COLOR,
-      },
-    ],
-    interactionChannels: channels,
-    moodDiaryAdherencePercent: Math.min(
-      100,
-      base.moodDiaryAdherencePercent + adherenceBoost
-    ),
     clinicalThemeCategories: clinicalCategories,
     clinicalThemeSeries: [
       {

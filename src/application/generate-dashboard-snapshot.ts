@@ -19,13 +19,6 @@ const MOOD_SERIES_NAME = 'Humor médio';
 const MOOD_SERIES_COLOR = '#5eead4';
 const CLINICAL_SERIES_NAME = 'Menções';
 const CLINICAL_SERIES_COLOR = '#a78bfa';
-const WEEKLY_SERIES_NAME = 'Interações';
-const WEEKLY_SERIES_COLOR = '#818cf8';
-
-const getTodayWeekdayIndex = (): number => {
-  const day = new Date().getDay();
-  return day === 0 ? 6 : day - 1;
-};
 
 const alignIncrementsLength = (
   increments: number[],
@@ -43,35 +36,6 @@ const alignIncrementsLength = (
     ...increments,
     ...new Array(expectedLength - increments.length).fill(0),
   ];
-};
-
-const applySupplementarySessionMetrics = (
-  snapshot: DashboardSnapshot
-): DashboardSnapshot => {
-  const weeklyData = [...(snapshot.weeklyInteractionSeries[0]?.data ?? [])];
-  const todayIndex = getTodayWeekdayIndex();
-  if (weeklyData.length > todayIndex) {
-    weeklyData[todayIndex] += 1;
-  }
-
-  const channels = snapshot.interactionChannels.map((channel) =>
-    channel.name === 'Texto'
-      ? { ...channel, value: channel.value + 1 }
-      : channel
-  );
-
-  return {
-    ...snapshot,
-    weeklyInteractionSeries: [
-      {
-        name: snapshot.weeklyInteractionSeries[0]?.name ?? WEEKLY_SERIES_NAME,
-        data: weeklyData,
-        color: snapshot.weeklyInteractionSeries[0]?.color ?? WEEKLY_SERIES_COLOR,
-      },
-    ],
-    interactionChannels: channels,
-    lastUpdatedAt: new Date().toISOString(),
-  };
 };
 
 const applyAiDashboardOutput = (
@@ -101,9 +65,8 @@ const applyAiDashboardOutput = (
     return previous + increment;
   });
 
-  return applySupplementarySessionMetrics({
+  return {
     ...base,
-    moodDiaryAdherencePercent: ai.moodDiaryAdherencePercent,
     moodTrendSeries: [
       {
         name: base.moodTrendSeries[0]?.name ?? MOOD_SERIES_NAME,
@@ -119,7 +82,7 @@ const applyAiDashboardOutput = (
       },
     ],
     lastUpdatedAt: new Date().toISOString(),
-  });
+  };
 };
 
 export type GenerateDashboardSnapshotInput = {
@@ -130,7 +93,7 @@ export type GenerateDashboardSnapshotInput = {
   language?: AppLanguage;
 };
 
-/** Gera snapshot do painel via agente de IA; usa heurística se o modelo falhar. */
+/** Gera evolução do humor e temas clínicos via agente de IA; usa heurística se o modelo falhar. */
 export const generateDashboardSnapshotAfterSession = async (
   env: Env,
   input: GenerateDashboardSnapshotInput

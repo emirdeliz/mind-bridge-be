@@ -9,6 +9,7 @@ import {
   type EndPsychologistSessionPayload,
 } from '@infrastructure/supabase/clinical-content.repository.js';
 
+import { enrichDashboardSnapshotWithPatientActivity } from './enrich-dashboard-snapshot.js';
 import { generateDashboardSnapshotAfterSession } from './generate-dashboard-snapshot.js';
 
 export const endPsychologistSession = async (
@@ -30,13 +31,20 @@ export const endPsychologistSession = async (
       : (currentNote?.content ?? '')
   ).trim();
 
-  const dashboardSnapshot = await generateDashboardSnapshotAfterSession(env, {
+  const aiSnapshot = await generateDashboardSnapshotAfterSession(env, {
     currentSnapshot: content.dashboardSnapshot,
     sessionConsiderations,
     sessionContext: content.sessionContext ?? '',
     chatHistory: content.psychologistChatSeed,
     language,
   });
+
+  const dashboardSnapshot = await enrichDashboardSnapshotWithPatientActivity(
+    admin,
+    patientId,
+    aiSnapshot,
+    content.patientChatSeed
+  );
 
   return endPsychologistPatientSession(
     admin,

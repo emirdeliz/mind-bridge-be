@@ -1,5 +1,4 @@
 export type AiDashboardAnalyticsOutput = {
-  moodDiaryAdherencePercent: number;
   moodTrendLastValue: number;
   clinicalThemeIncrements: number[];
 };
@@ -31,20 +30,14 @@ export const parseDashboardAnalyticsResponse = (
 
   try {
     const parsed = JSON.parse(jsonMatch[0]) as Record<string, unknown>;
-    const adherence = Number(parsed.moodDiaryAdherencePercent);
     const moodTrendLastValue = Number(parsed.moodTrendLastValue);
     const clinicalThemeIncrements = toNumberArray(parsed.clinicalThemeIncrements);
 
-    if (
-      Number.isNaN(adherence) ||
-      Number.isNaN(moodTrendLastValue) ||
-      !clinicalThemeIncrements?.length
-    ) {
+    if (Number.isNaN(moodTrendLastValue) || !clinicalThemeIncrements?.length) {
       return null;
     }
 
     return {
-      moodDiaryAdherencePercent: Math.round(clamp(adherence, 0, 100)),
       moodTrendLastValue: Number(clamp(moodTrendLastValue, 1, 10).toFixed(1)),
       clinicalThemeIncrements: clinicalThemeIncrements.map((value) =>
         Math.max(0, Math.round(value))

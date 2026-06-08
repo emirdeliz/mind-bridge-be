@@ -20,10 +20,12 @@ import {
 } from '@http/schemas/ai.schemas.js';
 import { createAdminSupabaseClient } from '@infrastructure/supabase/client.js';
 import { recordPatientInteraction } from '@application/enrich-dashboard-snapshot.js';
+import { updateMoodFromPatientChat } from '@application/update-mood-from-patient-chat.js';
 import {
   appendPatientChatMessages,
   appendPsychologistChatMessages,
   ensurePatientClinicalContent,
+  updatePatientDashboardSnapshot,
 } from '@infrastructure/supabase/clinical-content.repository.js';
 
 export const createAiRoutes =
@@ -68,11 +70,27 @@ export const createAiRoutes =
           },
         ];
 
-        await appendPatientChatMessages(admin, auth.userId, persistedMessages);
+        const content = await appendPatientChatMessages(
+          admin,
+          auth.userId,
+          persistedMessages
+        );
         await recordPatientInteraction(admin, auth.userId, {
           channel: 'text',
           source: 'web',
         });
+
+        const moodSnapshot = await updateMoodFromPatientChat(env, {
+          currentSnapshot: content.dashboardSnapshot,
+          userMessage: body.message,
+          chatHistory: content.patientChatSeed,
+          language: normalizeAppLanguage(body.language),
+        });
+        await updatePatientDashboardSnapshot(
+          admin,
+          auth.userId,
+          moodSnapshot
+        );
 
         return {
           message: reply,

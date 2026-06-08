@@ -28,10 +28,10 @@ const toWeekdayIndex = (date: Date): number => {
   return day === 0 ? 6 : day - 1;
 };
 
-const uniqueMoodDiaryDays = (interactions: PatientInteraction[]): number => {
+const uniqueChatEngagementDays = (interactions: PatientInteraction[]): number => {
   const days = new Set<string>();
   for (const entry of interactions) {
-    if (entry.channel !== 'mood_diary') continue;
+    if (entry.channel !== 'text' && entry.channel !== 'audio') continue;
     days.add(entry.createdAt.slice(0, 10));
   }
   return days.size;
@@ -72,12 +72,12 @@ export const computePatientDashboardMetrics = (
   const rollingWeekStart = new Date(reference);
   rollingWeekStart.setDate(rollingWeekStart.getDate() - 6);
   rollingWeekStart.setHours(0, 0, 0, 0);
-  const moodDiaryDays = uniqueMoodDiaryDays(
+  const chatEngagementDays = uniqueChatEngagementDays(
     interactions.filter((entry) => new Date(entry.createdAt) >= rollingWeekStart)
   );
   const moodDiaryAdherencePercent = Math.min(
     100,
-    Math.round((moodDiaryDays / MOOD_DIARY_TARGET_DAYS) * 100)
+    Math.round((chatEngagementDays / MOOD_DIARY_TARGET_DAYS) * 100)
   );
 
   return {

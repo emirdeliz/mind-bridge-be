@@ -216,7 +216,7 @@ export const DEMO_CLINICAL_BY_EMAIL = {
   'josecarlos@gmail.com': {
     ...minimalPayload(),
     sessionContext:
-      'Paciente José Carlos. Abordagem TCC com foco em ansiedade social e regulação emocional. Meta: identificar gatilhos em interações do dia a dia e praticar respiração diafragmática.',
+      'Paciente José Carlos. Meta: identificar gatilhos em interações do dia a dia.',
     sessionNotes: [
       {
         id: 'session-2026-06-08',

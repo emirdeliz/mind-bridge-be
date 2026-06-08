@@ -145,9 +145,40 @@ export const finalizePatientChatResponse = (text: string): string =>
   truncatePatientChatResponse(sanitizePatientChatResponse(text));
 
 const FALLBACK_REPLIES: Record<AppLanguage, string> = {
-  pt: 'Compreendo. Poderia me contar um momento recente em que isso aconteceu com você?',
-  es: 'Comprendo. ¿Podría contarme un momento reciente en que eso le ocurrió?',
-  en: 'I understand. Could you tell me about a recent moment when that happened for you?',
+  pt: 'Compreendo. O que você sente agora, além do que me contou?',
+  es: 'Comprendo. ¿Qué siente ahora, además de lo que me contó?',
+  en: 'I understand. What do you feel right now, besides what you shared?',
+};
+
+export const buildPresentMomentGuidance = (language: AppLanguage): string => {
+  const blocks: Record<AppLanguage, string> = {
+    pt: [
+      'FOCO NO AGORA (obrigatório):',
+      '- Responda e pergunte sobre o que o paciente sente ou vive NESTE MOMENTO da conversa.',
+      '- PROIBIDO marcas temporais: hoje, ontem, amanhã, esta noite, esta manhã, essa semana, recentemente, ultimamente, no resto do dia, há pouco.',
+      '- Prefira: "agora", "neste momento", "enquanto conversamos", "o que você sente", "o que percebe no corpo".',
+      '- Exemplo RUIM (temporal): "Como a tristeza afetou seu sono hoje à noite?"',
+      '- Exemplo BOM (agora): "Neste momento, além da tristeza, o que mais você sente?"',
+    ].join('\n'),
+    es: [
+      'ENFOQUE EN EL AHORA (obligatorio):',
+      '- Responde y pregunta por lo que el paciente siente o vive EN ESTE MOMENTO de la conversa.',
+      '- PROHIBIDO marcas temporales: hoy, ayer, mañana, esta noche, esta mañana, esta semana, recientemente, últimamente, el resto del día.',
+      '- Prefiere: "ahora", "en este momento", "mientras conversamos", "qué siente", "qué nota en el cuerpo".',
+      '- Ejemplo MALO (temporal): "¿Cómo afectó la tristeza su sueño esta noche?"',
+      '- Ejemplo BUENO (ahora): "En este momento, además de la tristeza, ¿qué más siente?"',
+    ].join('\n'),
+    en: [
+      'PRESENT-MOMENT FOCUS (required):',
+      '- Reply and ask about what the patient feels or experiences RIGHT NOW in this conversation.',
+      '- FORBIDDEN time markers: today, yesterday, tomorrow, tonight, this morning, this week, recently, lately, rest of the day.',
+      '- Prefer: "right now", "at this moment", "as we talk", "what you feel", "what you notice in your body".',
+      '- BAD example (temporal): "How did the sadness affect your sleep tonight?"',
+      '- GOOD example (now): "Right now, besides sadness, what else do you feel?"',
+    ].join('\n'),
+  };
+
+  return blocks[language] ?? blocks.pt;
 };
 
 export const getPatientChatFallbackReply = (language: AppLanguage): string =>
@@ -205,10 +236,10 @@ export const buildAntiRepetitionGuidance = (
       listedQuestions,
       '- PROIBIDO repetir ou reformular com pouca mudança qualquer pergunta acima.',
       '- PROIBIDO fazer perguntas muito similares (mesmo tema, mesmo momento, mesma pessoa, mesma sensação).',
-      '- Mude o ângulo: outro aspecto da rotina, consequência do evento, pessoa diferente, antes/depois, impacto no sono ou no trabalho.',
+      '- Mude o ângulo: outra sensação no corpo, outra pessoa envolvida, outro pensamento que surge agora.',
       '- Se o paciente já respondeu um ponto, avance para outro ainda não explorado ou encerre com acolhimento.',
-      'Exemplo RUIM (similar): já perguntou "em que momento se sentiu triste na conversa?" → não pergunte "quando a tristeza foi mais forte na conversa?".',
-      'Exemplo BOM (ângulo novo): após explorar o momento, pergunte como isso afetou o restante do dia ou o que fez em seguida.',
+      'Exemplo RUIM (similar): já perguntou "o que sente agora de tristeza?" → não pergunte "a tristeza é forte neste momento?".',
+      'Exemplo BOM (ângulo novo): após explorar a tristeza, pergunte o que mais surge no corpo ou na mente agora.',
     ].join('\n'),
     es: [
       'ANTI-REPETICIÓN (obligatorio):',
@@ -216,10 +247,10 @@ export const buildAntiRepetitionGuidance = (
       listedQuestions,
       '- PROHIBIDO repetir o reformular con poco cambio cualquier pregunta anterior.',
       '- PROHIBIDO hacer preguntas muy similares (mismo tema, mismo momento, misma persona, misma sensación).',
-      '- Cambia el ángulo: otro aspecto de la rutina, consecuencia del evento, otra persona, antes/después, impacto en el sueño o el trabajo.',
+      '- Cambia el ángulo: otra sensación en el cuerpo, otra persona involucrada, otro pensamiento que surge ahora.',
       '- Si el paciente ya respondió un punto, avanza a otro aún no explorado o cierra con contención.',
-      'Ejemplo MALO (similar): ya preguntó "¿en qué momento se sintió triste?" → no pregunte "¿cuándo fue más fuerte la tristeza?".',
-      'Ejemplo BUENO (ángulo nuevo): tras explorar el momento, pregunte cómo afectó el resto del día.',
+      'Ejemplo MALO (similar): ya preguntó "¿qué siente ahora de tristeza?" → no pregunte "¿la tristeza es fuerte en este momento?".',
+      'Ejemplo BUENO (ángulo nuevo): tras explorar la tristeza, pregunte qué más surge en el cuerpo o la mente ahora.',
     ].join('\n'),
     en: [
       'ANTI-REPETITION (required):',
@@ -227,10 +258,10 @@ export const buildAntiRepetitionGuidance = (
       listedQuestions,
       '- FORBIDDEN to repeat or lightly rephrase any question above.',
       '- FORBIDDEN to ask very similar questions (same theme, moment, person, or sensation).',
-      '- Change the angle: another routine aspect, event consequence, different person, before/after, impact on sleep or work.',
+      '- Change the angle: another body sensation, another person involved, another thought arising now.',
       '- If the patient already answered a point, move to another unexplored aspect or close warmly.',
-      'BAD example (similar): already asked "when did you feel sad in the conversation?" → do not ask "when was the sadness strongest?".',
-      'GOOD example (new angle): after exploring the moment, ask how it affected the rest of the day.',
+      'BAD example (similar): already asked "what sadness do you feel now?" → do not ask "is the sadness strong right now?".',
+      'GOOD example (new angle): after exploring sadness, ask what else arises in the body or mind now.',
     ].join('\n'),
   };
 

@@ -2,7 +2,10 @@ import type { ClinicalChatMessage } from '@domain/clinical-content.types.js';
 import type { AppLanguage } from '@domain/types.js';
 
 import { buildContextFocusBlock } from './patient-chat-context-focus.js';
-import { buildPatientChatPacingGuidance } from './patient-chat-interaction.js';
+import {
+  buildPatientChatPacingGuidance,
+  buildPresentMomentGuidance,
+} from './patient-chat-interaction.js';
 import { normalizeAppLanguage } from './psychologist-copilot-system.js';
 import { PATIENT_CHAT_MAX_RESPONSE_CHARS } from './patient-chat-interaction.js';
 
@@ -60,14 +63,15 @@ const professionalToneRules: Record<AppLanguage, string> = {
     '- Seja respeitoso e acolhedor, com palavras do dia a dia.',
     '- O paciente NÃO entende termos clínicos. Nunca repita siglas, nomes de terapias, diagnósticos ou jargão do contexto do psicólogo.',
     '- Use palavras comuns: tristeza, nervosismo, preocupação, medo, cansaço, dificuldade para dormir, conversar com pessoas.',
-    '- Prefira: "Compreendo", "Agradeço por compartilhar", "Poderia me contar", "Em que momento".',
+    '- Prefira: "Compreendo", "Agradeço por compartilhar", "O que você sente agora", "Neste momento".',
+    '- PROIBIDO marcas temporais na resposta: hoje, ontem, esta noite, esta manhã, recentemente, no resto do dia.',
     '- PROIBIDO na resposta ao paciente: TCC, CBT, sintoma, abordagem, regulação emocional, psicoeducação, transtorno, diagnóstico.',
     '- O contexto do psicólogo orienta O QUE explorar; a resposta usa SOMENTE linguagem simples.',
     'INTERPRETAÇÃO:',
     '1. Leia o contexto e traduza internamente para situações da vida real.',
     '2. Não pergunte o que o paciente já disse.',
     '3. Pergunte sobre situações concretas, nunca sobre tratamento ou método.',
-    '4. A pergunta deve citar lugar, pessoa, momento ou situação específica.',
+    '4. A pergunta deve explorar o que o paciente sente agora — cite pessoa ou situação da mensagem, sem referência a tempo.',
   ].join('\n'),
   es: [
     'TONO PROFESIONAL Y SIMPLE:',
@@ -80,7 +84,7 @@ const professionalToneRules: Record<AppLanguage, string> = {
     '1. Lee el contexto y tradúcelo a situaciones de la vida real.',
     '2. No preguntes lo que el paciente ya dijo.',
     '3. Pregunta por situaciones concretas, nunca sobre tratamiento.',
-    '4. La pregunta debe citar lugar, persona, momento o situación específica.',
+    '4. La pregunta debe explorar lo que el paciente siente ahora — cite persona o situación del mensaje, sin referencia temporal.',
   ].join('\n'),
   en: [
     'PROFESSIONAL AND SIMPLE TONE:',
@@ -93,7 +97,7 @@ const professionalToneRules: Record<AppLanguage, string> = {
     '1. Read the context and translate it internally into real-life situations.',
     '2. Do not ask what the patient already said.',
     '3. Ask about concrete situations, never about treatment.',
-    '4. The question must cite a specific place, person, moment, or situation.',
+    '4. The question must explore what the patient feels now — cite person or situation from the message, without time references.',
   ].join('\n'),
 };
 
@@ -114,6 +118,7 @@ export const buildPatientChatSystemPrompt = (
     questionCount
   );
   const pacingGuidance = buildPatientChatPacingGuidance(language, questionCount);
+  const presentMomentGuidance = buildPresentMomentGuidance(language);
 
   const blocks: Record<AppLanguage, string[]> = {
     pt: [
@@ -122,12 +127,13 @@ export const buildPatientChatSystemPrompt = (
       `Responda em no máximo ${PATIENT_CHAT_MAX_RESPONSE_CHARS} caracteres (1 ou 2 frases objetivas).`,
       'Na maioria das respostas, termine com UMA pergunta sintética e específica. Se já houver informação suficiente, pode encerrar com acolhimento sem nova pergunta.',
       professionalToneRules.pt,
+      presentMomentGuidance,
       pacingGuidance,
       `Contexto do psicólogo (uso interno — traduza para linguagem simples na resposta):\n${psychologistContext}`,
       hasContext ? focusBlock : '',
       `Histórico recente:\n${history}`,
       'PROIBIDO: raciocínio interno, análise, "Thinking Process", listas numeradas ou blocos de raciocínio. Envie SOMENTE a mensagem final ao paciente.',
-      'Lembrete: sintetize, mude o ângulo a cada pergunta, evite perguntas similares, linguagem simples.',
+      'Lembrete: agora, sintetize, mude o ângulo a cada pergunta, evite perguntas similares, linguagem simples.',
     ],
     es: [
       'Acompañas al paciente entre sesiones con el psicólogo, con tono profesional y vocabulario simple.',
@@ -135,12 +141,13 @@ export const buildPatientChatSystemPrompt = (
       `Responde en máximo ${PATIENT_CHAT_MAX_RESPONSE_CHARS} caracteres (1 o 2 frases objetivas).`,
       'En la mayoría de las respuestas, termina con UNA pregunta sintética y específica. Si ya hay información suficiente, puedes cerrar con contención sin nueva pregunta.',
       professionalToneRules.es,
+      presentMomentGuidance,
       pacingGuidance,
       `Contexto del psicólogo (uso interno — traduce a lenguaje simple en la respuesta):\n${psychologistContext}`,
       hasContext ? focusBlock : '',
       `Historial reciente:\n${history}`,
       'PROHIBIDO: razonamiento interno, análisis, "Thinking Process", listas numeradas o bloques de razonamiento. Envía SOLO el mensaje final al paciente.',
-      'Recordatorio: sintetiza, cambia el ángulo en cada pregunta, evita preguntas similares, lenguaje simple.',
+      'Recordatorio: ahora, sintetiza, cambia el ángulo en cada pregunta, evita preguntas similares, lenguaje simple.',
     ],
     en: [
       'You accompany the patient between sessions with the psychologist, with a professional tone and simple vocabulary.',
@@ -148,12 +155,13 @@ export const buildPatientChatSystemPrompt = (
       `Reply in at most ${PATIENT_CHAT_MAX_RESPONSE_CHARS} characters (1 or 2 objective sentences).`,
       'In most replies, end with ONE synthesized, specific question. If there is already enough information, you may close warmly without a new question.',
       professionalToneRules.en,
+      presentMomentGuidance,
       pacingGuidance,
       `Psychologist context (internal use — translate to simple language in the reply):\n${psychologistContext}`,
       hasContext ? focusBlock : '',
       `Recent history:\n${history}`,
       'FORBIDDEN: internal reasoning, analysis, "Thinking Process", numbered lists, or reasoning blocks. Send ONLY the final message to the patient.',
-      'Reminder: synthesize, change angle each question, avoid similar questions, simple language.',
+      'Reminder: right now, synthesize, change angle each question, avoid similar questions, simple language.',
     ],
   };
 

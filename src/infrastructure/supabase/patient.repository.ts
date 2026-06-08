@@ -11,6 +11,7 @@ import { ensurePatientClinicalContent } from './clinical-content.repository.js';
 type PatientEmbed = {
   id: string;
   full_name: string | null;
+  email: string | null;
   phone: string | null;
   role: string;
 };
@@ -48,6 +49,7 @@ const mapListRow = (
   return {
     id: patient.id,
     fullName: patient.full_name,
+    email: patient.email,
     phone: patient.phone,
     lastConsultationAt: row.last_consultation_at,
     isDeleted: row.is_deleted,
@@ -68,6 +70,7 @@ export const listPatientsForPsychologist = async (
       patient:profiles!patient_id (
         id,
         full_name,
+        email,
         phone,
         role
       )
@@ -112,6 +115,7 @@ export const getPatientForPsychologist = async (
       patient:profiles!patient_id (
         id,
         full_name,
+        email,
         phone,
         role
       )

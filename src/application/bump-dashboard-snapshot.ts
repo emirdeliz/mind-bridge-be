@@ -67,9 +67,9 @@ export const ensureDashboardSnapshotStructure = (
     weeklyInteractionCategories: ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'],
     weeklyInteractionSeries: [
       {
-        name: WEEKLY_SERIES_NAME,
+        name: 'Interações',
         data: [0, 0, 0, 0, 0, 0, 0],
-        color: WEEKLY_SERIES_COLOR,
+        color: '#818cf8',
       },
     ],
     interactionChannels: [

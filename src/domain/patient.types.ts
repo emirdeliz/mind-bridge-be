@@ -3,6 +3,7 @@ import type { AppLanguage } from '@domain/types.js';
 export interface PsychologistPatientListItem {
   id: string;
   fullName: string | null;
+  email: string | null;
   phone: string | null;
   lastConsultationAt: string | null;
   isDeleted: boolean;

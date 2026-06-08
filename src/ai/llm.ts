@@ -18,6 +18,15 @@ export const createPsychologistCopilotModel = (env: Env) =>
     numPredict: 96,
   });
 
+/** Short, fluid replies for patient ↔ AI chat. */
+export const createPatientChatModel = (env: Env) =>
+  new ChatOllama({
+    baseUrl: env.OLLAMA_BASE_URL,
+    model: env.OLLAMA_CHAT_MODEL,
+    temperature: 0.35,
+    numPredict: 120,
+  });
+
 /** Structured JSON output for dashboard analytics after session end. */
 export const createDashboardAnalyticsModel = (env: Env) =>
   new ChatOllama({

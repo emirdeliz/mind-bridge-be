@@ -47,10 +47,18 @@ export const createAiRoutes =
 
         assertPatientSelf(auth, auth.userId);
 
+        const clinicalContent = await ensurePatientClinicalContent(
+          admin,
+          auth.userId
+        );
+        const psychologistContext =
+          clinicalContent.sessionContext?.trim() || body.careContext?.trim() || '';
+
         const reply = await runPatientChatGraph(env, {
           patientId: auth.userId,
           userMessage: body.message,
-          careContext: body.careContext,
+          psychologistContext,
+          chatHistory: clinicalContent.patientChatSeed ?? [],
           language: normalizeAppLanguage(body.language),
         });
 

@@ -2,8 +2,10 @@ import { END, START, StateGraph } from '@langchain/langgraph';
 import { HumanMessage, SystemMessage } from '@langchain/core/messages';
 
 import type { Env } from '@config/env.js';
-import { createChatModel } from '@ai/llm.js';
+import { createPatientChatModel } from '@ai/llm.js';
+import { buildPatientChatSystemPrompt } from '@ai/prompts/patient-chat-system.js';
 import { resolveLanguageInstruction } from '@ai/prompts/response-language.js';
+import type { ClinicalChatMessage } from '@domain/clinical-content.types.js';
 import type { AppLanguage } from '@domain/types.js';
 import {
   PatientChatAnnotation,
@@ -33,14 +35,16 @@ const retrieveNode = async (
 const createRespondNode =
   (env: Env) =>
   async (state: PatientChatState): Promise<Partial<PatientChatState>> => {
-    const model = createChatModel(env);
+    const model = createPatientChatModel(env);
+    const language = (state.responseLanguage as AppLanguage) ?? 'pt';
     const system = new SystemMessage(
       [
-        'You are a supportive mental-health companion for a patient between therapy sessions.',
-        'Be empathetic, concise, and never provide diagnosis or emergency instructions without urging professional help.',
-        resolveLanguageInstruction(state.responseLanguage as AppLanguage),
-        `Care plan context: ${state.careContext || 'Not provided.'}`,
-        `Retrieved context:\n${buildRetrievalContext(state)}`,
+        buildPatientChatSystemPrompt(language, {
+          psychologistContext: state.careContext,
+          retrievalContext: buildRetrievalContext(state),
+          chatHistory: state.chatHistory,
+        }),
+        resolveLanguageInstruction(language),
       ].join('\n\n')
     );
     const human = new HumanMessage(state.userMessage);
@@ -69,7 +73,8 @@ export const runPatientChatGraph = async (
   input: {
     patientId: string;
     userMessage: string;
-    careContext?: string;
+    psychologistContext?: string;
+    chatHistory?: ClinicalChatMessage[];
     retrievalContext?: string;
     language?: AppLanguage;
   }
@@ -78,7 +83,8 @@ export const runPatientChatGraph = async (
   const result = await app.invoke({
     patientId: input.patientId,
     userMessage: input.userMessage,
-    careContext: input.careContext ?? '',
+    careContext: input.psychologistContext ?? '',
+    chatHistory: input.chatHistory ?? [],
     responseLanguage: input.language ?? 'pt',
     retrievalContext: input.retrievalContext ?? '',
     assistantMessage: '',

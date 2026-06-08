@@ -1,6 +1,7 @@
 import type { FastifyPluginAsync } from 'fastify';
 
 import type { Env } from '@config/env.js';
+import { normalizeAppLanguage } from '@ai/prompts/psychologist-copilot-system.js';
 import type { AppLanguage } from '@domain/types.js';
 import {
   assertPatientSelf,
@@ -37,7 +38,7 @@ export const createAiRoutes =
           patientId: auth.userId,
           userMessage: body.message,
           careContext: body.careContext,
-          language: body.language,
+          language: normalizeAppLanguage(body.language),
         });
 
         return {
@@ -75,7 +76,7 @@ export const createAiRoutes =
           userMessage: body.message,
           clinicalContext: body.clinicalContext,
           sessionConsiderations: body.sessionConsiderations,
-          language: body.language,
+          language: normalizeAppLanguage(body.language),
         });
 
         return {

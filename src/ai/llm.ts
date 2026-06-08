@@ -8,3 +8,12 @@ export const createChatModel = (env: Env) =>
     model: env.OLLAMA_CHAT_MODEL,
     temperature: 0.4,
   });
+
+/** Tighter generation budget for in-session psychologist copilot replies. */
+export const createPsychologistCopilotModel = (env: Env) =>
+  new ChatOllama({
+    baseUrl: env.OLLAMA_BASE_URL,
+    model: env.OLLAMA_CHAT_MODEL,
+    temperature: 0.2,
+    numPredict: 96,
+  });

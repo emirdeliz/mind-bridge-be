@@ -3,8 +3,13 @@ import { HumanMessage, SystemMessage } from '@langchain/core/messages';
 import { Annotation } from '@langchain/langgraph';
 
 import type { Env } from '@config/env.js';
-import { createChatModel } from '@ai/llm.js';
-import { resolveLanguageInstruction } from '@ai/prompts/response-language.js';
+import { createPsychologistCopilotModel } from '@ai/llm.js';
+import { compactPsychologistCopilotReply } from '@ai/prompts/psychologist-copilot-response.js';
+import {
+  buildPsychologistCopilotRetrievalContext,
+  buildPsychologistCopilotSystemPrompt,
+  normalizeAppLanguage,
+} from '@ai/prompts/psychologist-copilot-system.js';
 import type { AppLanguage } from '@domain/types.js';
 
 const PsychologistCopilotAnnotation = Annotation.Root({
@@ -23,11 +28,10 @@ type PsychologistCopilotState = typeof PsychologistCopilotAnnotation.State;
 const retrieveNode = async (
   state: PsychologistCopilotState
 ): Promise<Partial<PsychologistCopilotState>> => ({
-  retrievalContext: [
-    'Retrieved clinical notes (mock):',
-    `- Patient ${state.patientId}: mood avg 4.2/10 last 7 days.`,
-    '- Diary adherence below target.',
-  ].join('\n'),
+  retrievalContext: buildPsychologistCopilotRetrievalContext(
+    normalizeAppLanguage(state.responseLanguage),
+    state.patientId
+  ),
 });
 
 const createRespondNode =
@@ -35,25 +39,23 @@ const createRespondNode =
   async (
     state: PsychologistCopilotState
   ): Promise<Partial<PsychologistCopilotState>> => {
-    const model = createChatModel(env);
+    const model = createPsychologistCopilotModel(env);
+    const language = normalizeAppLanguage(state.responseLanguage);
     const system = new SystemMessage(
-      [
-        'You assist a licensed psychotherapist during sessions.',
-        'Provide structured clinical insights, patterns, and session focus — not definitive diagnoses.',
-        resolveLanguageInstruction(state.responseLanguage as AppLanguage),
-        `Current session considerations (psychotherapy notes): ${state.sessionConsiderations || 'Not provided.'}`,
-        `Psychologist context for AI: ${state.clinicalContext || 'Not provided.'}`,
-        `Retrieved data:\n${state.retrievalContext}`,
-      ].join('\n\n')
+      buildPsychologistCopilotSystemPrompt(language, {
+        sessionConsiderations: state.sessionConsiderations,
+        clinicalContext: state.clinicalContext,
+        retrievalContext: state.retrievalContext,
+      })
     );
     const human = new HumanMessage(state.userMessage);
     const response = await model.invoke([system, human]);
-    const content =
+    const raw =
       typeof response.content === 'string'
         ? response.content
         : String(response.content);
 
-    return { assistantMessage: content };
+    return { assistantMessage: compactPsychologistCopilotReply(raw) };
   };
 
 export const createPsychologistCopilotGraph = (env: Env) => {

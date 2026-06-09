@@ -7,7 +7,6 @@ import {
   buildPresentMomentGuidance,
 } from './patient-chat-interaction.js';
 import { normalizeAppLanguage } from './psychologist-copilot-system.js';
-import { PATIENT_CHAT_MAX_RESPONSE_CHARS } from './patient-chat-interaction.js';
 
 type PatientChatPromptContext = {
   psychologistContext: string;
@@ -124,7 +123,7 @@ export const buildPatientChatSystemPrompt = (
     pt: [
       'Você acompanha o paciente entre sessões com o psicólogo, com tom profissional e vocabulário simples.',
       'Seja empático, sem diagnóstico, sem jargão técnico e sem substituir o psicólogo.',
-      `Responda em no máximo ${PATIENT_CHAT_MAX_RESPONSE_CHARS} caracteres (1 ou 2 frases objetivas).`,
+      'Responda com clareza e objetividade, usando o espaço necessário para acolher e conduzir a conversa.',
       'Na maioria das respostas, termine com UMA pergunta sintética e específica. Se já houver informação suficiente, pode encerrar com acolhimento sem nova pergunta.',
       professionalToneRules.pt,
       presentMomentGuidance,
@@ -138,7 +137,7 @@ export const buildPatientChatSystemPrompt = (
     es: [
       'Acompañas al paciente entre sesiones con el psicólogo, con tono profesional y vocabulario simple.',
       'Sé empático, sin diagnóstico, sin jerga técnica y sin reemplazar al psicólogo.',
-      `Responde en máximo ${PATIENT_CHAT_MAX_RESPONSE_CHARS} caracteres (1 o 2 frases objetivas).`,
+      'Responde con claridad y objetividad, usando el espacio necesario para contener y guiar la conversación.',
       'En la mayoría de las respuestas, termina con UNA pregunta sintética y específica. Si ya hay información suficiente, puedes cerrar con contención sin nueva pregunta.',
       professionalToneRules.es,
       presentMomentGuidance,
@@ -152,7 +151,7 @@ export const buildPatientChatSystemPrompt = (
     en: [
       'You accompany the patient between sessions with the psychologist, with a professional tone and simple vocabulary.',
       'Be empathetic, without diagnosis, without technical jargon, and without replacing the psychologist.',
-      `Reply in at most ${PATIENT_CHAT_MAX_RESPONSE_CHARS} characters (1 or 2 objective sentences).`,
+      'Reply clearly and objectively, using as much space as needed to support and guide the conversation.',
       'In most replies, end with ONE synthesized, specific question. If there is already enough information, you may close warmly without a new question.',
       professionalToneRules.en,
       presentMomentGuidance,

@@ -19,13 +19,13 @@ export const createPsychologistCopilotModel = (env: Env) =>
     think: false,
   });
 
-/** Professional, concise replies for patient ↔ AI chat. */
+/** Patient ↔ AI chat replies without a fixed character cap. */
 export const createPatientChatModel = (env: Env) =>
   new ChatOllama({
     baseUrl: env.OLLAMA_BASE_URL,
     model: env.OLLAMA_CHAT_MODEL,
     temperature: 0.25,
-    numPredict: 100,
+    numPredict: 512,
     think: false,
   });
 

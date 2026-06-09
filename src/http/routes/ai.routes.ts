@@ -26,6 +26,7 @@ import {
   enrichDashboardSnapshotWithPatientActivity,
   recordPatientInteraction,
 } from '@application/enrich-dashboard-snapshot.js';
+import { refreshPatientInteractionSummary } from '@application/refresh-patient-interaction-summary.js';
 import { refreshPsychologistSessionInsights } from '@application/refresh-psychologist-session-insights.js';
 import { updateMoodFromPatientChat } from '@application/update-mood-from-patient-chat.js';
 import {
@@ -107,9 +108,16 @@ export const createAiRoutes =
           moodSnapshot
         );
 
+        const refreshedContent = await refreshPatientInteractionSummary(
+          admin,
+          auth.userId,
+          normalizeAppLanguage(body.language)
+        );
+
         return {
           message: reply,
           patientId: auth.userId,
+          patientSummary: refreshedContent.patientSummary,
         };
       }
     );

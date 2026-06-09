@@ -237,6 +237,29 @@ export type UpdatePsychologistSessionInsightsPayload = {
   sessionInsights: SessionInsight[];
 };
 
+export const updatePatientInteractionSummary = async (
+  admin: SupabaseClient,
+  patientId: string,
+  patientSummary: string | null
+): Promise<PatientClinicalContent> => {
+  const content = await ensurePatientClinicalContent(admin, patientId);
+
+  const nextPayload: ClinicalContentSeedPayload = {
+    dashboardSnapshot: content.dashboardSnapshot,
+    sessionContext: content.sessionContext,
+    sessionNotes: content.sessionNotes,
+    sessionInsights: content.sessionInsights,
+    psychologistSummary: content.psychologistSummary,
+    psychologistChatSeed: content.psychologistChatSeed,
+    patientChatSeed: content.patientChatSeed,
+    patientSummary,
+  };
+
+  await upsertPatientClinicalContent(admin, patientId, nextPayload);
+
+  return { patientId, ...nextPayload };
+};
+
 export const updatePsychologistSessionInsights = async (
   admin: SupabaseClient,
   patientId: string,

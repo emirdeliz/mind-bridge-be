@@ -6,7 +6,6 @@ import type { Env } from '@config/env.js';
 import { createPsychologistCopilotModel } from '@ai/llm.js';
 import { finalizePsychologistCopilotReply } from '@ai/prompts/psychologist-copilot-response.js';
 import {
-  buildPsychologistCopilotRetrievalContext,
   buildPsychologistCopilotSystemPrompt,
   normalizeAppLanguage,
 } from '@ai/prompts/psychologist-copilot-system.js';
@@ -28,15 +27,6 @@ const PsychologistCopilotAnnotation = Annotation.Root({
 });
 
 type PsychologistCopilotState = typeof PsychologistCopilotAnnotation.State;
-
-const retrieveNode = async (
-  state: PsychologistCopilotState
-): Promise<Partial<PsychologistCopilotState>> => ({
-  retrievalContext: buildPsychologistCopilotRetrievalContext(
-    normalizeAppLanguage(state.responseLanguage),
-    state.patientId
-  ),
-});
 
 const createRespondNode =
   (env: Env) =>
@@ -73,10 +63,8 @@ const createRespondNode =
 
 export const createPsychologistCopilotGraph = (env: Env) => {
   const graph = new StateGraph(PsychologistCopilotAnnotation)
-    .addNode('retrieve', retrieveNode)
     .addNode('respond', createRespondNode(env))
-    .addEdge(START, 'retrieve')
-    .addEdge('retrieve', 'respond')
+    .addEdge(START, 'respond')
     .addEdge('respond', END);
 
   return graph.compile();
@@ -92,6 +80,7 @@ export const runPsychologistCopilotGraph = async (
     sessionConsiderations?: string;
     language?: AppLanguage;
     chatHistory?: ClinicalChatMessage[];
+    retrievalContext?: string;
   }
 ): Promise<string> => {
   const app = createPsychologistCopilotGraph(env);
@@ -102,7 +91,7 @@ export const runPsychologistCopilotGraph = async (
     clinicalContext: input.clinicalContext ?? '',
     sessionConsiderations: input.sessionConsiderations ?? '',
     responseLanguage: input.language ?? 'pt',
-    retrievalContext: '',
+    retrievalContext: input.retrievalContext ?? '',
     chatHistory: input.chatHistory ?? [],
     assistantMessage: '',
   });

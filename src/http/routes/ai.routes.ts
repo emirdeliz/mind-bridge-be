@@ -4,7 +4,10 @@ import type { FastifyPluginAsync } from 'fastify';
 
 import type { Env } from '@config/env.js';
 import type { ClinicalChatMessage } from '@domain/clinical-content.types.js';
-import { normalizeAppLanguage } from '@ai/prompts/psychologist-copilot-system.js';
+import {
+  buildPsychologistCopilotRetrievalContext,
+  normalizeAppLanguage,
+} from '@ai/prompts/psychologist-copilot-system.js';
 import type { AppLanguage } from '@domain/types.js';
 import {
   assertPatientSelf,
@@ -19,7 +22,10 @@ import {
   psychologistChatBodySchema,
 } from '@http/schemas/ai.schemas.js';
 import { createAdminSupabaseClient } from '@infrastructure/supabase/client.js';
-import { recordPatientInteraction } from '@application/enrich-dashboard-snapshot.js';
+import {
+  enrichDashboardSnapshotWithPatientActivity,
+  recordPatientInteraction,
+} from '@application/enrich-dashboard-snapshot.js';
 import { updateMoodFromPatientChat } from '@application/update-mood-from-patient-chat.js';
 import {
   appendPatientChatMessages,
@@ -134,6 +140,21 @@ export const createAiRoutes =
           body.patientId
         );
         const chatHistory = clinicalContent.psychologistChatSeed ?? [];
+        const dashboardSnapshot = await enrichDashboardSnapshotWithPatientActivity(
+          admin,
+          body.patientId,
+          clinicalContent.dashboardSnapshot,
+          clinicalContent.patientChatSeed
+        );
+        const retrievalContext = buildPsychologistCopilotRetrievalContext(
+          normalizeAppLanguage(body.language),
+          {
+            dashboardSnapshot,
+            psychologistSummary: clinicalContent.psychologistSummary,
+            patientSummary: clinicalContent.patientSummary,
+            sessionInsights: clinicalContent.sessionInsights,
+          }
+        );
 
         const reply = await runPsychologistCopilotGraph(env, {
           psychologistId: auth.userId,
@@ -143,6 +164,7 @@ export const createAiRoutes =
           sessionConsiderations: body.sessionConsiderations,
           language: normalizeAppLanguage(body.language),
           chatHistory,
+          retrievalContext,
         });
 
         const exchangedAt = new Date().toISOString();

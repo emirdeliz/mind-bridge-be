@@ -1,7 +1,9 @@
 import type { AppLanguage } from '@domain/types.js';
 
-/** Keeps copilot replies to a single sentence without cutting mid-text. */
+/** Keeps brief copilot replies to a single sentence without cutting mid-text. */
 export const PSYCHOLOGIST_COPILOT_MAX_SENTENCES = 1;
+
+const NUMBERED_LIST_LINE_PATTERN = /^\s*\d+[\).:\-]\s+\S/;
 
 const THINKING_PROCESS_PATTERN = /thinking\s*process\s*:?/i;
 
@@ -106,6 +108,44 @@ export const sanitizePsychologistCopilotResponse = (text: string): string => {
   return cleaned;
 };
 
+const normalizeListLine = (line: string): string =>
+  line
+    .replace(/\*\*([^*]+)\*\*/g, '$1')
+    .replace(/\*([^*]+)\*/g, '$1')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+const isMetaLine = (line: string): boolean => {
+  const trimmed = line.trim();
+  if (!trimmed) {
+    return true;
+  }
+
+  return (
+    THINKING_PROCESS_PATTERN.test(trimmed) ||
+    ANALYSIS_LINE_PATTERN.test(trimmed) ||
+    COPILOT_META_PATTERN.test(trimmed)
+  );
+};
+
+const extractNumberedList = (text: string): string => {
+  const cleaned = stripThinkTags(text.trim());
+  if (!cleaned) {
+    return '';
+  }
+
+  const lines = cleaned
+    .split('\n')
+    .map(normalizeListLine)
+    .filter(Boolean);
+
+  const listLines = lines.filter(
+    (line) => NUMBERED_LIST_LINE_PATTERN.test(line) && !isMetaLine(line)
+  );
+
+  return listLines.length >= 2 ? listLines.join('\n') : '';
+};
+
 /**
  * Strips list formatting and keeps the first sentence in full (no ellipsis).
  */
@@ -153,6 +193,11 @@ export const finalizePsychologistCopilotReply = (
   text: string,
   language: AppLanguage
 ): string => {
+  const numberedList = extractNumberedList(text);
+  if (numberedList && !isLeakedPsychologistCopilotReasoning(numberedList)) {
+    return numberedList;
+  }
+
   const sanitized = sanitizePsychologistCopilotResponse(text);
   const compacted = compactPsychologistCopilotReply(sanitized);
 

@@ -26,6 +26,7 @@ import {
   enrichDashboardSnapshotWithPatientActivity,
   recordPatientInteraction,
 } from '@application/enrich-dashboard-snapshot.js';
+import { refreshPsychologistSessionInsights } from '@application/refresh-psychologist-session-insights.js';
 import { updateMoodFromPatientChat } from '@application/update-mood-from-patient-chat.js';
 import {
   appendPatientChatMessages,
@@ -189,10 +190,19 @@ export const createAiRoutes =
           persistedMessages
         );
 
+        const refreshedContent = await refreshPsychologistSessionInsights(
+          env,
+          admin,
+          body.patientId,
+          normalizeAppLanguage(body.language)
+        );
+
         return {
           message: reply,
           patientId: body.patientId,
           psychologistId: auth.userId,
+          psychologistSummary: refreshedContent.psychologistSummary,
+          sessionInsights: refreshedContent.sessionInsights,
         };
       }
     );

@@ -5,6 +5,7 @@ import {
   assertPsychologistPatientAccess,
 } from '@application/authorization.js';
 import { endPsychologistSession } from '@application/end-psychologist-session.js';
+import { refreshPsychologistSessionInsights } from '@application/refresh-psychologist-session-insights.js';
 import { enrichDashboardSnapshotWithPatientActivity } from '@application/enrich-dashboard-snapshot.js';
 import { normalizeAppLanguage } from '@ai/prompts/psychologist-copilot-system.js';
 import type { Env } from '@config/env.js';
@@ -74,14 +75,18 @@ export const createClinicalContentRoutes =
         const body = request.body as {
           sessionContext?: string | null;
           currentSessionNoteContent?: string | null;
+          language?: AppLanguage;
         };
 
         await assertPsychologistPatientAccess(supabase, auth, patientId);
 
-        const content = await updatePsychologistPatientClinicalSession(
+        await updatePsychologistPatientClinicalSession(admin, patientId, body);
+
+        const content = await refreshPsychologistSessionInsights(
+          env,
           admin,
           patientId,
-          body
+          normalizeAppLanguage(body.language)
         );
 
         return { content };

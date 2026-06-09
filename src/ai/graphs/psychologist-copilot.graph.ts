@@ -4,7 +4,7 @@ import { Annotation } from '@langchain/langgraph';
 
 import type { Env } from '@config/env.js';
 import { createPsychologistCopilotModel } from '@ai/llm.js';
-import { compactPsychologistCopilotReply } from '@ai/prompts/psychologist-copilot-response.js';
+import { finalizePsychologistCopilotReply } from '@ai/prompts/psychologist-copilot-response.js';
 import {
   buildPsychologistCopilotRetrievalContext,
   buildPsychologistCopilotSystemPrompt,
@@ -66,7 +66,9 @@ const createRespondNode =
         ? response.content
         : String(response.content);
 
-    return { assistantMessage: compactPsychologistCopilotReply(raw) };
+    return {
+      assistantMessage: finalizePsychologistCopilotReply(raw, language),
+    };
   };
 
 export const createPsychologistCopilotGraph = (env: Env) => {

@@ -16,6 +16,7 @@ export const createPsychologistCopilotModel = (env: Env) =>
     model: env.OLLAMA_CHAT_MODEL,
     temperature: 0.2,
     numPredict: 96,
+    think: false,
   });
 
 /** Professional, concise replies for patient ↔ AI chat. */

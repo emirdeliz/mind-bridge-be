@@ -38,12 +38,12 @@ export const createDashboardAnalyticsModel = (env: Env) =>
     numPredict: 512,
   });
 
-/** Weekly cross-conversation pattern detection for psychologist insights. */
+/** Weekly cross-conversation insights (patterns + recommended actions) — brief output. */
 export const createPatientChatPatternsModel = (env: Env) =>
   new ChatOllama({
     baseUrl: env.OLLAMA_BASE_URL,
     model: env.OLLAMA_CHAT_MODEL,
-    temperature: 0.12,
-    numPredict: 512,
+    temperature: 0.1,
+    numPredict: 192,
     think: false,
   });

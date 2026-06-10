@@ -8,7 +8,7 @@ import { ensurePatientClinicalContent } from '@infrastructure/supabase/clinical-
 import { hasWeeklyPatientChatReports } from './patient-chat-interaction-groups.js';
 import { refreshPatientInteractionSummary } from './refresh-patient-interaction-summary.js';
 import { refreshPsychologistSessionInsights } from './refresh-psychologist-session-insights.js';
-import { refreshWeeklyPatternsInsight } from './refresh-weekly-patterns-insight.js';
+import { refreshWeeklyAgenticInsights } from './refresh-weekly-agentic-insights.js';
 
 const hasPatientChatReports = (content: PatientClinicalContent): boolean =>
   content.patientChatSeed.some((message) => message.sender === 'user');
@@ -58,7 +58,7 @@ export const ensureClinicalInsightsOnRead = async (
         language
       );
     } else if (hasWeeklyPatientChatReports(content.patientChatSeed)) {
-      content = await refreshWeeklyPatternsInsight(
+      content = await refreshWeeklyAgenticInsights(
         env,
         admin,
         patientId,

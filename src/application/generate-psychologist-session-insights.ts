@@ -3,7 +3,9 @@ import { parsePsychologistSessionInsightsResponse } from '@ai/prompts/psychologi
 import type { Env } from '@config/env.js';
 
 import { applyAgenticPatternsInsight } from './apply-agentic-patterns-insight.js';
+import { applyAgenticRecommendedActionsInsight } from './apply-agentic-recommended-actions-insight.js';
 import { generateDetectedPatternsInsight } from './generate-detected-patterns-insight.js';
+import { generateRecommendedActionsInsight } from './generate-recommended-actions-insight.js';
 import { buildPatientInteractionSummary } from './generate-patient-interaction-summary.js';
 import type {
   ClinicalChatMessage,
@@ -80,7 +82,6 @@ const buildHeuristicPsychologistSessionInsights = (
   const latestAgentReply = latestChatLine(input.chatHistory, 'agent');
   const latestPsychologistMessage = latestChatLine(input.chatHistory, 'user');
   const latestPatientReport = latestChatLine(input.patientChatHistory, 'user');
-  const latestPatientAgentReply = latestChatLine(input.patientChatHistory, 'agent');
   const patientUserCount = input.patientChatHistory.filter(
     (entry) => entry.sender === 'user'
   ).length;
@@ -155,23 +156,13 @@ const buildHeuristicPsychologistSessionInsights = (
   }
 
   const actions: string[] = [];
-  if (latestPatientAgentReply) {
+  if (latestPatientReport) {
     actions.push(
-      `Explorar na sessão o que o paciente relatou ao agente: ${latestPatientAgentReply.slice(0, 160)}`
+      'Análise agêntica pendente — ações serão sugeridas com base nas conversas da última semana.'
     );
-  }
-  if (latestAgentReply) {
-    actions.push(latestAgentReply);
-  }
-  if (considerations) {
+  } else if (considerations) {
     actions.push('Revisar e validar as considerações da sessão com o paciente.');
-  }
-  if (!actions.length && latestPatientReport) {
-    actions.push(
-      'Revisar os relatos do paciente com o agente de IA e aprofundar na próxima sessão.'
-    );
-  }
-  if (!actions.length) {
+  } else {
     actions.push('Registrar considerações da sessão para consolidar o plano terapêutico.');
   }
 
@@ -206,36 +197,54 @@ export const generatePsychologistSessionInsights = async (
     input.patientChatHistory,
     language
   );
-  const agenticPatterns = await generateDetectedPatternsInsight(
-    env,
-    input.patientChatHistory,
-    language,
-    input.sessionContext
-  );
+  const [agenticPatterns, agenticActions] = await Promise.all([
+    generateDetectedPatternsInsight(
+      env,
+      input.patientChatHistory,
+      language,
+      input.sessionContext
+    ),
+    generateRecommendedActionsInsight(
+      env,
+      input.patientChatHistory,
+      language,
+      input.sessionContext,
+      input.sessionConsiderations
+    ),
+  ]);
 
   const heuristic = buildHeuristicPsychologistSessionInsights(input);
   if (!heuristic) {
     return null;
   }
 
-  const withPatterns = (result: PsychologistSessionInsightsResult) => ({
-    psychologistSummary: interactionsSummary ?? result.psychologistSummary,
-    sessionInsights: applyAgenticPatternsInsight(
+  const withAgenticInsights = (result: PsychologistSessionInsightsResult) => {
+    let sessionInsights = applyAgenticPatternsInsight(
       result.sessionInsights,
       agenticPatterns,
       language
-    ),
-  });
+    );
+    sessionInsights = applyAgenticRecommendedActionsInsight(
+      sessionInsights,
+      agenticActions,
+      language
+    );
+
+    return {
+      psychologistSummary: interactionsSummary ?? result.psychologistSummary,
+      sessionInsights,
+    };
+  };
 
   try {
     const raw = await runPsychologistSessionInsightsGraph(env, input);
     const parsed = parsePsychologistSessionInsightsResponse(raw);
     if (parsed) {
-      return withPatterns(parsed);
+      return withAgenticInsights(parsed);
     }
   } catch {
     // fallback below
   }
 
-  return withPatterns(heuristic);
+  return withAgenticInsights(heuristic);
 };

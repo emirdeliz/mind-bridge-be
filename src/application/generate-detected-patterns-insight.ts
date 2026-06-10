@@ -9,7 +9,7 @@ import {
   hasWeeklyPatientChatReports,
 } from './patient-chat-interaction-groups.js';
 
-const MAX_PATTERNS_CHARS = 800;
+const MAX_PATTERNS_CHARS = 280;
 
 const truncate = (text: string): string => {
   const trimmed = text.trim();

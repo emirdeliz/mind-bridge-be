@@ -228,3 +228,221 @@ export const DEMO_CLINICAL_BY_EMAIL = {
     ],
   },
 };
+
+const daysAgoDate = (daysAgo) => {
+  const date = new Date();
+  date.setDate(date.getDate() - daysAgo);
+  return date;
+};
+
+const atLocalTimeIso = (date, hour, minute = 0) => {
+  const value = new Date(date);
+  value.setHours(hour, minute, 0, 0);
+  return value.toISOString();
+};
+
+const formatSessionDate = (date) => {
+  const day = String(date.getDate()).padStart(2, '0');
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const year = date.getFullYear();
+  return `${day}/${month}/${year}`;
+};
+
+const buildCarlosDashboardSnapshot = () => ({
+  moodTrendCategories: ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun'],
+  moodTrendSeries: [
+    { name: 'Humor médio', data: [6.1, 5.8, 5.2, 4.8, 4.5, 4.9], color: '#5eead4' },
+  ],
+  weeklyInteractionCategories: ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'],
+  weeklyInteractionSeries: [
+    { name: 'Interações', data: [2, 2, 2, 2, 2, 1, 2], color: '#818cf8' },
+  ],
+  interactionChannels: [
+    { name: 'Texto', value: 9, color: '#818cf8' },
+    { name: 'Áudio', value: 2, color: '#5eead4' },
+    { name: 'Notificação', value: 2, color: '#fbbf24' },
+  ],
+  moodDiaryAdherencePercent: 71,
+  clinicalThemeCategories: [
+    'Humor baixo',
+    'Motivação',
+    'Relacionamentos',
+    'Autocrítica',
+    'Rotina',
+  ],
+  clinicalThemeSeries: [
+    { name: 'Menções', data: [11, 9, 7, 6, 5], color: '#a78bfa' },
+  ],
+  lastUpdatedAt: new Date().toISOString(),
+});
+
+export const buildCarlosClinicalPayload = () => {
+  const sessionToday = daysAgoDate(0);
+  const session7d = daysAgoDate(7);
+  const session14d = daysAgoDate(14);
+  const session21d = daysAgoDate(21);
+  const chat1 = daysAgoDate(1);
+  const chat2 = daysAgoDate(2);
+
+  return {
+    dashboardSnapshot: buildCarlosDashboardSnapshot(),
+    sessionContext:
+      'Paciente: Carlos Amaro, 38 anos. Abordagem TCC com foco em humor deprimido, autocrítica e reativação comportamental. Meta atual: retomar rotina de exercícios 3x/semana e reduzir isolamento social nos fins de semana. Plano de cuidado acordado com o psicólogo Aluizio Vilar.',
+    sessionNotes: [
+      {
+        id: `session-${formatSessionDate(sessionToday).replace(/\//g, '-')}`,
+        label: `Sessão ${formatSessionDate(sessionToday)} (atual)`,
+        sessionDate: formatSessionDate(sessionToday),
+        content:
+          'Próxima sessão: revisar escala de ativação comportamental. Explorar padrão de autocrítica após conversas com família. Validar adesão ao diário de humor e ao experimento de caminhada matinal.',
+        isCurrent: true,
+      },
+      {
+        id: `session-${formatSessionDate(session7d).replace(/\//g, '-')}`,
+        label: `Sessão ${formatSessionDate(session7d)}`,
+        sessionDate: formatSessionDate(session7d),
+        agenticSummary:
+          'Humor estável com leve melhora após retomada de caminhadas. Isolamento no fim de semana mantido. Autocrítica presente em relatos familiares. Sem alertas de risco.',
+        content:
+          'Paciente relatou duas caminhadas curtas na semana. Manteve isolamento no domingo. Trabalhada reestruturação de pensamentos sobre expectativas familiares.',
+      },
+      {
+        id: `session-${formatSessionDate(session14d).replace(/\//g, '-')}`,
+        label: `Sessão ${formatSessionDate(session14d)}`,
+        sessionDate: formatSessionDate(session14d),
+        agenticSummary:
+          'Psicoeducação sobre ciclo humor–evitação. Paciente aceitou experimento de contato social semanal. Adesão ao diário em 5/7 dias.',
+        content:
+          'Mapeamento de atividades prazerosas. Definido experimento de um café com amigo por semana. Reforçado registro de humor à noite.',
+      },
+      {
+        id: `session-${formatSessionDate(session21d).replace(/\//g, '-')}`,
+        label: `Sessão ${formatSessionDate(session21d)}`,
+        sessionDate: formatSessionDate(session21d),
+        agenticSummary:
+          'Avaliação inicial: humor rebaixado há 6 semanas, fadiga e perda de interesse. Metas de ativação comportamental definidas.',
+        content:
+          'Avaliação inicial. Metas de ativação comportamental e diário de humor combinadas com o paciente.',
+      },
+    ],
+    sessionInsights: [
+      {
+        title: 'Indicadores-chave',
+        body: 'Engajamento +15% · Humor médio 4,9/10 · 5/7 dias com interação · Adesão ao diário 71% · 2 reforços de ativação comportamental',
+      },
+      {
+        title: 'Padrões detectados',
+        body: 'Humor mais baixo à noite · Autocrítica após contato familiar · Menos interações no fim de semana · Melhora leve após atividade física',
+      },
+      {
+        title: 'Alertas para supervisão',
+        body: 'Risco emocional baixo a moderado — sem linguagem de risco nas últimas 72h · Isolamento recorrente aos domingos · Monitorar persistência do humor rebaixado',
+      },
+      {
+        title: 'Ações recomendadas',
+        body: 'Revisar escala de ativação na abertura · Reforçar plano de caminhada 3x/semana · Explorar crenças sobre merecimento social · Checar segurança se humor ≤ 3/10 por 3 dias',
+      },
+    ],
+    psychologistSummary:
+      'Resumo agêntico (7 dias): 13 interações, humor médio 4,9/10, fadiga e autocrítica recorrentes com leve melhora após exercício. Risco baixo a moderado sem alertas de segurança. Adesão ao diário em 71%. Prioridades: ativação comportamental, contato social planejado e manejo da autocrítica.',
+    psychologistChatSeed: [
+      {
+        id: 'carlos-psy-1',
+        sender: 'user',
+        text: 'Consolidar interações do paciente Carlos Amaro nos últimos 7 dias.',
+        createdAt: atLocalTimeIso(sessionToday, 10, 0),
+      },
+      {
+        id: 'carlos-psy-2',
+        sender: 'agent',
+        text: 'Insight 1 — Engajamento: 13 interações na semana (+15%). Canais: texto (69%), áudio (15%), notificação (15%). Picos: manhã e noite.',
+        createdAt: atLocalTimeIso(sessionToday, 10, 1),
+      },
+      {
+        id: 'carlos-psy-3',
+        sender: 'agent',
+        text: 'Insight 2 — Humor: média 4,9/10 (↑ 0,4). Termos recorrentes: “cansado”, “sem vontade”, “me culpei”. Melhora relatada após caminhada.',
+        createdAt: atLocalTimeIso(sessionToday, 10, 2),
+      },
+      {
+        id: 'carlos-psy-4',
+        sender: 'user',
+        text: 'Há sinais de risco nas mensagens recentes?',
+        createdAt: atLocalTimeIso(sessionToday, 10, 5),
+      },
+      {
+        id: 'carlos-psy-5',
+        sender: 'agent',
+        text: 'Insight 3 — Risco: sem menções a autolesão ou ideação suicida. Risco emocional baixo a moderado. Recomenda-se checagem de segurança se humor ≤ 3/10 por 3 dias seguidos.',
+        createdAt: atLocalTimeIso(sessionToday, 10, 6),
+      },
+    ],
+    patientChatSeed: [
+      {
+        id: 'carlos-patient-1',
+        sender: 'user',
+        text: 'Acordei sem energia de novo e quase não saí do quarto.',
+        createdAt: atLocalTimeIso(chat1, 8, 30),
+      },
+      {
+        id: 'carlos-patient-2',
+        sender: 'agent',
+        text: 'Obrigado por compartilhar. O que você acha que mais dificultou levantar hoje — cansaço, falta de vontade ou algo que aconteceu ontem?',
+        createdAt: atLocalTimeIso(chat1, 8, 31),
+      },
+      {
+        id: 'carlos-patient-3',
+        sender: 'user',
+        text: 'Acho que foi a conversa com minha mãe. Fiquei me culpando depois.',
+        createdAt: atLocalTimeIso(chat1, 8, 33),
+      },
+      {
+        id: 'carlos-patient-4',
+        sender: 'agent',
+        text: 'Vamos anotar isso no seu plano. Que tal uma caminhada curta de 10 minutos hoje e registrar como você se sente depois?',
+        createdAt: atLocalTimeIso(chat1, 8, 34),
+      },
+      {
+        id: 'carlos-patient-5',
+        sender: 'user',
+        text: 'Consegui caminhar ontem e me senti um pouco melhor.',
+        createdAt: atLocalTimeIso(chat2, 19, 15),
+      },
+      {
+        id: 'carlos-patient-6',
+        sender: 'agent',
+        text: 'Que bom registrar essa melhora. O que foi diferente na caminhada em relação aos dias em que você ficou em casa?',
+        createdAt: atLocalTimeIso(chat2, 19, 16),
+      },
+    ],
+    patientSummary:
+      'Últimos 7 dias: 6 mensagens trocadas. Temas principais: humor baixo, autocrítica após contato familiar e reativação com caminhada. Agente reforçou registro de humor e atividade física leve. Risco emocional: baixo a moderado.',
+  };
+};
+
+/** Interações da semana corrente (weekday 0=Seg … 6=Dom) para gráficos dinâmicos. */
+export const DEMO_INTERACTION_SPECS_BY_EMAIL = {
+  'carlosamaro@gmail.com': [
+    { weekday: 0, hourUTC: 9, channel: 'text' },
+    { weekday: 0, hourUTC: 21, channel: 'text' },
+    { weekday: 1, hourUTC: 8, channel: 'text' },
+    { weekday: 1, hourUTC: 20, channel: 'audio' },
+    { weekday: 2, hourUTC: 10, channel: 'text' },
+    { weekday: 2, hourUTC: 22, channel: 'notification' },
+    { weekday: 3, hourUTC: 9, channel: 'text' },
+    { weekday: 3, hourUTC: 19, channel: 'text' },
+    { weekday: 4, hourUTC: 11, channel: 'text' },
+    { weekday: 4, hourUTC: 21, channel: 'audio' },
+    { weekday: 5, hourUTC: 10, channel: 'text' },
+    { weekday: 6, hourUTC: 18, channel: 'text' },
+    { weekday: 6, hourUTC: 20, channel: 'notification' },
+  ],
+};
+
+export const resolveDemoClinicalPayload = (email) => {
+  if (email === 'carlosamaro@gmail.com') {
+    return buildCarlosClinicalPayload();
+  }
+
+  return DEMO_CLINICAL_BY_EMAIL[email] ?? null;
+};

@@ -6,7 +6,10 @@
  */
 
 import { createClient } from '@supabase/supabase-js';
-import { DEMO_CLINICAL_BY_EMAIL } from './lib/demo-clinical-data.mjs';
+import {
+  DEMO_INTERACTION_SPECS_BY_EMAIL,
+  resolveDemoClinicalPayload,
+} from './lib/demo-clinical-data.mjs';
 
 const url = process.env.SUPABASE_URL;
 const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -200,6 +203,24 @@ const EMIR_PATIENTS = [
   ...DEMO_PATIENTS,
 ];
 
+const daysAgoIso = (daysAgo, hourUTC = 12) => {
+  const date = new Date();
+  date.setUTCDate(date.getUTCDate() - daysAgo);
+  date.setUTCHours(hourUTC, 0, 0, 0);
+  return date.toISOString();
+};
+
+const atCurrentWeekDayIso = (weekdayIndex, hourUTC = 12) => {
+  const now = new Date();
+  const day = now.getDay();
+  const todayWeekdayIndex = day === 0 ? 6 : day - 1;
+  const mondayOffset = day === 0 ? -6 : 1 - day;
+  const date = new Date(now);
+  date.setDate(date.getDate() + mondayOffset + weekdayIndex - todayWeekdayIndex);
+  date.setUTCHours(hourUTC, 0, 0, 0);
+  return date.toISOString();
+};
+
 const ALUIZIO_PATIENTS = [
   {
     fullName: 'Mauro Souza',
@@ -209,6 +230,15 @@ const ALUIZIO_PATIENTS = [
     lastConsultationAt: null,
     isDeleted: false,
     enabledSinceMonthsAgo: 0,
+  },
+  {
+    fullName: 'Carlos Amaro',
+    email: 'carlosamaro@gmail.com',
+    phone: '11988776655',
+    password: 'Data@123',
+    lastConsultationAt: daysAgoIso(4, 15),
+    isDeleted: false,
+    enabledSinceMonthsAgo: 2,
   },
 ];
 
@@ -490,8 +520,30 @@ const seedBillingForPsychologist = async (psychologistId, email, patients) => {
   }
 };
 
+const seedPatientInteractions = async (patientId, email) => {
+  const specs = DEMO_INTERACTION_SPECS_BY_EMAIL[email];
+  if (!specs?.length) {
+    return;
+  }
+
+  await admin.from('patient_interactions').delete().eq('patient_id', patientId);
+
+  const rows = specs.map(({ weekday, hourUTC, channel }) => ({
+    patient_id: patientId,
+    channel,
+    source: 'web',
+    mood_score: null,
+    created_at: atCurrentWeekDayIso(weekday, hourUTC),
+  }));
+
+  const { error } = await admin.from('patient_interactions').insert(rows);
+  if (error) {
+    throw new Error(`Patient interactions ${email}: ${error.message}`);
+  }
+};
+
 const upsertClinical = async (patientId, email) => {
-  const payload = DEMO_CLINICAL_BY_EMAIL[email];
+  const payload = resolveDemoClinicalPayload(email);
   if (!payload) {
     return;
   }
@@ -536,6 +588,7 @@ const seedPsychologistAccount = async (psychologist, patients) => {
 
     await linkPatient(psychologistId, patientId, demo);
     await upsertClinical(patientId, demo.email);
+    await seedPatientInteractions(patientId, demo.email);
 
     console.log(`  Patient: ${demo.fullName} (${demo.email})`);
   }
@@ -568,6 +621,12 @@ const main = async () => {
     ALUIZIO_PATIENTS[0].email,
     '/',
     ALUIZIO_PATIENTS[0].password
+  );
+  console.log(
+    'Login Carlos Amaro (patient, charts demo):',
+    ALUIZIO_PATIENTS[1].email,
+    '/',
+    ALUIZIO_PATIENTS[1].password
   );
   console.log('Login demo patient (Ana):', DEMO_PATIENTS[0].email, '/', DEMO_PATIENTS[0].password);
 };

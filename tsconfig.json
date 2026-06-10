@@ -24,7 +24,9 @@
       "@application/*": ["src/application/*"],
       "@infrastructure/*": ["src/infrastructure/*"],
       "@http/*": ["src/http/*"],
-      "@ai/*": ["src/ai/*"]
+      "@ai/*": ["src/ai/*"],
+      "@helpers": ["src/helpers/index.ts"],
+      "@helpers/*": ["src/helpers/*"]
     }
   },
   "include": ["src/**/*.ts"],

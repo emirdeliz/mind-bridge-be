@@ -1,3 +1,5 @@
+import type { PsychologistBillablePatient } from '@domain/billing.types.js';
+
 export type BillingMonthBounds = {
   billingMonth: string;
   monthStart: Date;
@@ -33,33 +35,117 @@ export const previousBillingMonth = (billingMonth: string): string => {
   return billingMonthFromDate(previous);
 };
 
-type BillableRelationship = {
+export const nextBillingMonth = (billingMonth: string): string => {
+  const { monthStart } = billingMonthBounds(billingMonth);
+  const next = new Date(monthStart);
+  next.setUTCMonth(next.getUTCMonth() + 1);
+  return billingMonthFromDate(next);
+};
+
+const BILLING_MONTH_PATTERN = /^\d{4}-\d{2}-01$/;
+
+export const normalizeBillingMonth = (value: string): string => {
+  const trimmed = value.trim();
+  if (!BILLING_MONTH_PATTERN.test(trimmed)) {
+    throw new Error('Invalid billing month format. Use YYYY-MM-01.');
+  }
+
+  return billingMonthBounds(trimmed).billingMonth;
+};
+
+export const isBillingMonthInFuture = (billingMonth: string): boolean => {
+  const { monthStart } = billingMonthBounds(billingMonth);
+  const current = billingMonthBounds(currentBillingMonth()).monthStart;
+  return monthStart > current;
+};
+
+export type BillableRelationship = {
   patientId: string;
+  fullName: string | null;
+  email: string | null;
   createdAt: string;
   disabledAt: string | null;
+  isDeleted: boolean;
+};
+
+const isBillableDuringMonth = (
+  relationship: BillableRelationship,
+  bounds: BillingMonthBounds
+): boolean => {
+  const enabledAt = new Date(relationship.createdAt);
+  const disabledAt = relationship.disabledAt
+    ? new Date(relationship.disabledAt)
+    : null;
+
+  return (
+    enabledAt < bounds.monthEndExclusive &&
+    (disabledAt === null || disabledAt > bounds.monthStart)
+  );
+};
+
+const wasDeactivatedDuringMonth = (
+  disabledAt: string | null,
+  bounds: BillingMonthBounds
+): boolean => {
+  if (!disabledAt) {
+    return false;
+  }
+
+  const deactivatedAt = new Date(disabledAt);
+  return (
+    deactivatedAt > bounds.monthStart &&
+    deactivatedAt < bounds.monthEndExclusive
+  );
+};
+
+const wasEnabledAtMonthEnd = (
+  disabledAt: string | null,
+  bounds: BillingMonthBounds
+): boolean =>
+  disabledAt === null || new Date(disabledAt) >= bounds.monthEndExclusive;
+
+const resolveIsCurrentlyEnabled = (
+  relationship: BillableRelationship,
+  bounds: BillingMonthBounds
+): boolean => {
+  const viewingCurrentMonth = bounds.monthEndExclusive > new Date();
+
+  if (viewingCurrentMonth) {
+    return !relationship.isDeleted;
+  }
+
+  return wasEnabledAtMonthEnd(relationship.disabledAt, bounds);
 };
 
 /** Patient-month: counts if the link was billable at any moment in the month. */
 export const countBillablePatientsForMonth = (
   relationships: BillableRelationship[],
   bounds: BillingMonthBounds
-): number => {
-  const billablePatientIds = new Set<string>();
+): number =>
+  listBillablePatientsForMonth(relationships, bounds).length;
 
-  for (const relationship of relationships) {
-    const enabledAt = new Date(relationship.createdAt);
-    const disabledAt = relationship.disabledAt
-      ? new Date(relationship.disabledAt)
-      : null;
+export const listBillablePatientsForMonth = (
+  relationships: BillableRelationship[],
+  bounds: BillingMonthBounds
+): PsychologistBillablePatient[] => {
+  const billablePatients = relationships
+    .filter((relationship) => isBillableDuringMonth(relationship, bounds))
+    .map((relationship) => ({
+      patientId: relationship.patientId,
+      fullName: relationship.fullName,
+      email: relationship.email,
+      enabledAt: relationship.createdAt,
+      disabledAt: relationship.disabledAt,
+      deactivatedDuringMonth: wasDeactivatedDuringMonth(
+        relationship.disabledAt,
+        bounds
+      ),
+      isCurrentlyEnabled: resolveIsCurrentlyEnabled(relationship, bounds),
+    }));
 
-    const overlapsMonth =
-      enabledAt < bounds.monthEndExclusive &&
-      (disabledAt === null || disabledAt > bounds.monthStart);
-
-    if (overlapsMonth) {
-      billablePatientIds.add(relationship.patientId);
-    }
-  }
-
-  return billablePatientIds.size;
+  return billablePatients.sort((left, right) => {
+    const leftName = left.fullName?.trim() ?? left.email ?? '';
+    const rightName = right.fullName?.trim() ?? right.email ?? '';
+    return leftName.localeCompare(rightName, undefined, { sensitivity: 'base' });
+  });
 };

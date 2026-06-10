@@ -1,8 +1,18 @@
 import { ForbiddenError, NotFoundError } from '@application/authorization.js';
 
+export class BadRequestError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'BadRequestError';
+  }
+}
+
 export const mapErrorToStatus = (
   error: unknown
 ): { statusCode: number; message: string } => {
+  if (error instanceof BadRequestError) {
+    return { statusCode: 400, message: error.message };
+  }
   if (error instanceof ForbiddenError) {
     return { statusCode: 403, message: error.message };
   }

@@ -3,42 +3,88 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import {
   billingMonthBounds,
   countBillablePatientsForMonth,
+  listBillablePatientsForMonth,
 } from '@domain/billing-month.js';
 import type {
   BillingPlatformPricing,
+  PsychologistBillablePatient,
   PsychologistBillingDiscount,
   PsychologistBillingMonthlyEntry,
 } from '@domain/billing.types.js';
+import { keysToCamel, listKeysToCamel, toSnakeRecord } from '@helpers';
 
-type PlatformPricingRow = {
-  price_per_patient_cents: number;
-  currency: string;
+type PatientProfileEmbed = {
+  id: string;
+  fullName: string | null;
+  email: string | null;
+  role: string;
 };
 
-type DiscountRow = {
-  discount_percent: number;
-  label: string | null;
+type CareRelationshipBillingRecord = {
+  patientId: string;
+  createdAt: string;
+  disabledAt: string | null;
+  isDeleted: boolean;
+  patient: PatientProfileEmbed | PatientProfileEmbed[] | null;
 };
 
-type MonthlyRow = {
-  billing_month: string;
-  enabled_patient_count: number;
-  unit_price_cents: number;
-  gross_amount_cents: number;
-  discount_percent: number;
-  discount_amount_cents: number;
-  net_amount_cents: number;
-  is_finalized: boolean;
+type CareRelationshipBilling = {
+  patientId: string;
+  createdAt: string;
+  disabledAt: string | null;
+  isDeleted: boolean;
+  fullName: string | null;
+  email: string | null;
 };
 
-type CareRelationshipBillingRow = {
-  patient_id: string;
-  created_at: string;
-  disabled_at: string | null;
+type MonthlyBillingRecord = PsychologistBillingMonthlyEntry & {
+  isFinalized: boolean;
+};
+
+type PatientIdRecord = {
+  patientId: string;
+};
+
+type PsychologistIdRecord = {
+  psychologistId: string;
 };
 
 const DEFAULT_PRICE_PER_PATIENT_CENTS = 7990;
 const DEFAULT_CURRENCY = 'BRL';
+
+const normalizePatientEmbed = (
+  patient: PatientProfileEmbed | PatientProfileEmbed[] | null
+): PatientProfileEmbed | null => {
+  if (!patient) {
+    return null;
+  }
+
+  if (Array.isArray(patient)) {
+    return patient[0] ?? null;
+  }
+
+  return patient;
+};
+
+const mapCareRelationshipBilling = (
+  row: unknown
+): CareRelationshipBilling | null => {
+  const record = keysToCamel<CareRelationshipBillingRecord>(row);
+  const patient = normalizePatientEmbed(record.patient);
+
+  if (!patient || patient.role !== 'patient') {
+    return null;
+  }
+
+  return {
+    patientId: record.patientId,
+    createdAt: record.createdAt,
+    disabledAt: record.disabledAt,
+    isDeleted: record.isDeleted,
+    fullName: patient.fullName,
+    email: patient.email,
+  };
+};
 
 export const getBillingPlatformPricing = async (
   admin: SupabaseClient
@@ -60,10 +106,10 @@ export const getBillingPlatformPricing = async (
     };
   }
 
-  const row = data as PlatformPricingRow;
+  const pricing = keysToCamel<BillingPlatformPricing>(data);
   return {
-    pricePerPatientCents: row.price_per_patient_cents,
-    currency: row.currency ?? DEFAULT_CURRENCY,
+    pricePerPatientCents: pricing.pricePerPatientCents,
+    currency: pricing.currency ?? DEFAULT_CURRENCY,
   };
 };
 
@@ -85,10 +131,10 @@ export const getPsychologistBillingDiscount = async (
     return null;
   }
 
-  const row = data as DiscountRow;
+  const discount = keysToCamel<PsychologistBillingDiscount>(data);
   return {
-    discountPercent: Number(row.discount_percent),
-    label: row.label,
+    discountPercent: Number(discount.discountPercent),
+    label: discount.label,
   };
 };
 
@@ -107,8 +153,8 @@ export const listEnabledPatientIdsForPsychologist = async (
     throw new Error(`Failed to list enabled patient ids: ${error.message}`);
   }
 
-  return (
-    (data as { patient_id: string }[] | null)?.map((row) => row.patient_id) ?? []
+  return listKeysToCamel<PatientIdRecord>(data ?? []).map(
+    (record) => record.patientId
   );
 };
 
@@ -133,10 +179,23 @@ export const countEnabledPatientsForPsychologist = async (
 export const listCareRelationshipsForBilling = async (
   admin: SupabaseClient,
   psychologistId: string
-): Promise<CareRelationshipBillingRow[]> => {
+): Promise<CareRelationshipBilling[]> => {
   const { data, error } = await admin
     .from('care_relationships')
-    .select('patient_id, created_at, disabled_at')
+    .select(
+      `
+      patient_id,
+      created_at,
+      disabled_at,
+      is_deleted,
+      patient:profiles!patient_id (
+        id,
+        full_name,
+        email,
+        role
+      )
+    `
+    )
     .eq('psychologist_id', psychologistId)
     .eq('status', 'active');
 
@@ -144,7 +203,9 @@ export const listCareRelationshipsForBilling = async (
     throw new Error(`Failed to load care relationships for billing: ${error.message}`);
   }
 
-  return (data as CareRelationshipBillingRow[] | null) ?? [];
+  return (data ?? [])
+    .map((row) => mapCareRelationshipBilling(row))
+    .filter((row): row is CareRelationshipBilling => row !== null);
 };
 
 export const countBillablePatientsForPsychologistMonth = async (
@@ -159,10 +220,37 @@ export const countBillablePatientsForPsychologistMonth = async (
   const bounds = billingMonthBounds(billingMonth);
 
   return countBillablePatientsForMonth(
-    relationships.map((row) => ({
-      patientId: row.patient_id,
-      createdAt: row.created_at,
-      disabledAt: row.disabled_at,
+    relationships.map((relationship) => ({
+      patientId: relationship.patientId,
+      fullName: relationship.fullName,
+      email: relationship.email,
+      createdAt: relationship.createdAt,
+      disabledAt: relationship.disabledAt,
+      isDeleted: relationship.isDeleted,
+    })),
+    bounds
+  );
+};
+
+export const listBillablePatientsForPsychologistMonth = async (
+  admin: SupabaseClient,
+  psychologistId: string,
+  billingMonth: string
+): Promise<PsychologistBillablePatient[]> => {
+  const relationships = await listCareRelationshipsForBilling(
+    admin,
+    psychologistId
+  );
+  const bounds = billingMonthBounds(billingMonth);
+
+  return listBillablePatientsForMonth(
+    relationships.map((relationship) => ({
+      patientId: relationship.patientId,
+      fullName: relationship.fullName,
+      email: relationship.email,
+      createdAt: relationship.createdAt,
+      disabledAt: relationship.disabledAt,
+      isDeleted: relationship.isDeleted,
     })),
     bounds
   );
@@ -182,9 +270,9 @@ export const listPsychologistIdsWithCareRelationships = async (
 
   return [
     ...new Set(
-      (data as { psychologist_id: string }[] | null)?.map(
-        (row) => row.psychologist_id
-      ) ?? []
+      listKeysToCamel<PsychologistIdRecord>(data ?? []).map(
+        (record) => record.psychologistId
+      )
     ),
   ];
 };
@@ -193,7 +281,7 @@ export const getPsychologistBillingMonthlyEntry = async (
   admin: SupabaseClient,
   psychologistId: string,
   billingMonth: string
-): Promise<(PsychologistBillingMonthlyEntry & { isFinalized: boolean }) | null> => {
+): Promise<MonthlyBillingRecord | null> => {
   const { data, error } = await admin
     .from('psychologist_billing_monthly')
     .select(
@@ -211,10 +299,10 @@ export const getPsychologistBillingMonthlyEntry = async (
     return null;
   }
 
-  const row = data as MonthlyRow;
+  const record = keysToCamel<MonthlyBillingRecord>(data);
   return {
-    ...mapMonthlyRow(row),
-    isFinalized: row.is_finalized,
+    ...record,
+    discountPercent: Number(record.discountPercent),
   };
 };
 
@@ -226,12 +314,12 @@ export const upsertPsychologistBillingDailySnapshot = async (
   patientIds: string[]
 ): Promise<void> => {
   const { error } = await admin.from('psychologist_billing_daily_snapshots').upsert(
-    {
-      psychologist_id: psychologistId,
-      snapshot_date: snapshotDate,
-      enabled_patient_count: enabledPatientCount,
-      patient_ids: patientIds,
-    },
+    toSnakeRecord({
+      psychologistId,
+      snapshotDate,
+      enabledPatientCount,
+      patientIds,
+    }),
     { onConflict: 'psychologist_id,snapshot_date' }
   );
 
@@ -239,16 +327,6 @@ export const upsertPsychologistBillingDailySnapshot = async (
     throw new Error(`Failed to upsert billing daily snapshot: ${error.message}`);
   }
 };
-
-const mapMonthlyRow = (row: MonthlyRow): PsychologistBillingMonthlyEntry => ({
-  billingMonth: row.billing_month,
-  enabledPatientCount: row.enabled_patient_count,
-  unitPriceCents: row.unit_price_cents,
-  grossAmountCents: row.gross_amount_cents,
-  discountPercent: Number(row.discount_percent),
-  discountAmountCents: row.discount_amount_cents,
-  netAmountCents: row.net_amount_cents,
-});
 
 export const listPsychologistBillingMonthly = async (
   admin: SupabaseClient,
@@ -268,7 +346,12 @@ export const listPsychologistBillingMonthly = async (
     throw new Error(`Failed to load billing history: ${error.message}`);
   }
 
-  return (data as MonthlyRow[] | null)?.map(mapMonthlyRow) ?? [];
+  return listKeysToCamel<PsychologistBillingMonthlyEntry>(data ?? []).map(
+    (entry) => ({
+      ...entry,
+      discountPercent: Number(entry.discountPercent),
+    })
+  );
 };
 
 export type UpsertMonthlyBillingPayload = {
@@ -298,18 +381,18 @@ export const upsertPsychologistBillingMonthly = async (
   }
 
   const { error } = await admin.from('psychologist_billing_monthly').upsert(
-    {
-      psychologist_id: psychologistId,
-      billing_month: payload.billingMonth,
-      enabled_patient_count: payload.enabledPatientCount,
-      unit_price_cents: payload.unitPriceCents,
-      gross_amount_cents: payload.grossAmountCents,
-      discount_percent: payload.discountPercent,
-      discount_amount_cents: payload.discountAmountCents,
-      net_amount_cents: payload.netAmountCents,
-      is_finalized: payload.isFinalized ?? existing?.isFinalized ?? false,
-      updated_at: new Date().toISOString(),
-    },
+    toSnakeRecord({
+      psychologistId,
+      billingMonth: payload.billingMonth,
+      enabledPatientCount: payload.enabledPatientCount,
+      unitPriceCents: payload.unitPriceCents,
+      grossAmountCents: payload.grossAmountCents,
+      discountPercent: payload.discountPercent,
+      discountAmountCents: payload.discountAmountCents,
+      netAmountCents: payload.netAmountCents,
+      isFinalized: payload.isFinalized ?? existing?.isFinalized ?? false,
+      updatedAt: new Date().toISOString(),
+    }),
     { onConflict: 'psychologist_id,billing_month' }
   );
 

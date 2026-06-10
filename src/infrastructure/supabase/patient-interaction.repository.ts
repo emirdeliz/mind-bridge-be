@@ -3,27 +3,8 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type {
   LogPatientInteractionPayload,
   PatientInteraction,
-  PatientInteractionChannel,
-  PatientInteractionSource,
 } from '@domain/patient-interaction.types.js';
-
-type PatientInteractionRow = {
-  id: string;
-  patient_id: string;
-  channel: PatientInteractionChannel;
-  source: PatientInteractionSource;
-  mood_score: number | null;
-  created_at: string;
-};
-
-const mapRow = (row: PatientInteractionRow): PatientInteraction => ({
-  id: row.id,
-  patientId: row.patient_id,
-  channel: row.channel,
-  source: row.source,
-  moodScore: row.mood_score,
-  createdAt: row.created_at,
-});
+import { keysToCamel, listKeysToCamel, toSnakeRecord } from '@helpers';
 
 export const logPatientInteraction = async (
   admin: SupabaseClient,
@@ -32,12 +13,14 @@ export const logPatientInteraction = async (
 ): Promise<PatientInteraction> => {
   const { data, error } = await admin
     .from('patient_interactions')
-    .insert({
-      patient_id: patientId,
-      channel: payload.channel,
-      source: payload.source ?? 'web',
-      mood_score: payload.moodScore ?? null,
-    })
+    .insert(
+      toSnakeRecord({
+        patientId,
+        channel: payload.channel,
+        source: payload.source ?? 'web',
+        moodScore: payload.moodScore ?? null,
+      })
+    )
     .select('*')
     .single();
 
@@ -45,7 +28,7 @@ export const logPatientInteraction = async (
     throw new Error(`Failed to log patient interaction: ${error.message}`);
   }
 
-  return mapRow(data as PatientInteractionRow);
+  return keysToCamel<PatientInteraction>(data);
 };
 
 export const listPatientInteractionsSince = async (
@@ -64,5 +47,5 @@ export const listPatientInteractionsSince = async (
     throw new Error(`Failed to list patient interactions: ${error.message}`);
   }
 
-  return ((data ?? []) as PatientInteractionRow[]).map(mapRow);
+  return listKeysToCamel<PatientInteraction>(data ?? []);
 };

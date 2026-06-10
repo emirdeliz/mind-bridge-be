@@ -7,18 +7,7 @@ import type {
   SessionInsight,
   SessionNoteEntry,
 } from '@domain/clinical-content.types.js';
-
-type ClinicalContentRow = {
-  patient_id: string;
-  dashboard_snapshot: DashboardSnapshot | null;
-  session_context: string | null;
-  session_notes: SessionNoteEntry[] | null;
-  session_insights: SessionInsight[] | null;
-  psychologist_summary: string | null;
-  psychologist_chat_seed: ClinicalChatMessage[] | null;
-  patient_chat_seed: ClinicalChatMessage[] | null;
-  patient_summary: string | null;
-};
+import { keysToCamel, toSnakeRecord } from '@helpers';
 
 const emptyDashboard = (): DashboardSnapshot => ({
   moodTrendCategories: [],
@@ -73,17 +62,17 @@ export const defaultClinicalContentPayload = (): ClinicalContentSeedPayload => (
 const hasCurrentSessionNote = (notes: SessionNoteEntry[]): boolean =>
   notes.some((entry) => entry.isCurrent === true);
 
-const mapRow = (row: ClinicalContentRow): PatientClinicalContent => ({
-  patientId: row.patient_id,
-  dashboardSnapshot: row.dashboard_snapshot ?? emptyDashboard(),
-  sessionContext: row.session_context,
-  sessionNotes: row.session_notes ?? [],
-  sessionInsights: row.session_insights ?? [],
-  psychologistSummary: row.psychologist_summary,
-  psychologistChatSeed: row.psychologist_chat_seed ?? [],
-  patientChatSeed: row.patient_chat_seed ?? [],
-  patientSummary: row.patient_summary,
-});
+const mapRow = (row: unknown): PatientClinicalContent => {
+  const record = keysToCamel<PatientClinicalContent>(row);
+  return {
+    ...record,
+    dashboardSnapshot: record.dashboardSnapshot ?? emptyDashboard(),
+    sessionNotes: record.sessionNotes ?? [],
+    sessionInsights: record.sessionInsights ?? [],
+    psychologistChatSeed: record.psychologistChatSeed ?? [],
+    patientChatSeed: record.patientChatSeed ?? [],
+  };
+};
 
 export const getPatientClinicalContent = async (
   client: SupabaseClient,
@@ -103,7 +92,7 @@ export const getPatientClinicalContent = async (
     return null;
   }
 
-  return mapRow(data as ClinicalContentRow);
+  return mapRow(data);
 };
 
 export const ensurePatientClinicalContent = async (
@@ -375,18 +364,18 @@ export const upsertPatientClinicalContent = async (
   payload: ClinicalContentSeedPayload
 ): Promise<void> => {
   const { error } = await admin.from('patient_clinical_content').upsert(
-    {
-      patient_id: patientId,
-      dashboard_snapshot: payload.dashboardSnapshot,
-      session_context: payload.sessionContext,
-      session_notes: payload.sessionNotes,
-      session_insights: payload.sessionInsights,
-      psychologist_summary: payload.psychologistSummary,
-      psychologist_chat_seed: payload.psychologistChatSeed,
-      patient_chat_seed: payload.patientChatSeed,
-      patient_summary: payload.patientSummary,
-      updated_at: new Date().toISOString(),
-    },
+    toSnakeRecord({
+      patientId,
+      dashboardSnapshot: payload.dashboardSnapshot,
+      sessionContext: payload.sessionContext,
+      sessionNotes: payload.sessionNotes,
+      sessionInsights: payload.sessionInsights,
+      psychologistSummary: payload.psychologistSummary,
+      psychologistChatSeed: payload.psychologistChatSeed,
+      patientChatSeed: payload.patientChatSeed,
+      patientSummary: payload.patientSummary,
+      updatedAt: new Date().toISOString(),
+    }),
     { onConflict: 'patient_id' }
   );
 

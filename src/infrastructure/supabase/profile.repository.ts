@@ -1,28 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-import type { AppLanguage, UserProfile, UserRole } from '@domain/types.js';
-
-type ProfileRow = {
-  id: string;
-  email: string;
-  role: UserRole;
-  full_name: string | null;
-  age: string | null;
-  address: string | null;
-  phone: string | null;
-  language: AppLanguage | null;
-};
-
-const mapRow = (row: ProfileRow): UserProfile => ({
-  id: row.id,
-  email: row.email,
-  role: row.role,
-  fullName: row.full_name,
-  age: row.age,
-  address: row.address,
-  phone: row.phone,
-  language: row.language,
-});
+import type { UserProfile } from '@domain/types.js';
+import { keysToCamel } from '@helpers';
 
 export const getProfileByUserId = async (
   client: SupabaseClient,
@@ -38,7 +17,7 @@ export const getProfileByUserId = async (
     throw new Error(`Failed to load profile: ${error.message}`);
   }
 
-  return data ? mapRow(data as ProfileRow) : null;
+  return data ? keysToCamel<UserProfile>(data) : null;
 };
 
 export const hasActiveCareRelationship = async (

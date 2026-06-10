@@ -6,20 +6,22 @@ import type {
   PsychologistPatientSaveBody,
 } from '@domain/patient.types.js';
 import type { AppLanguage } from '@domain/types.js';
+import { keysToCamel, toSnakeRecord } from '@helpers';
+
 import { recordCareBillingEvent } from './billing-events.repository.js';
 import { ensurePatientClinicalContent } from './clinical-content.repository.js';
 
 type PatientEmbed = {
   id: string;
-  full_name: string | null;
+  fullName: string | null;
   email: string | null;
   phone: string | null;
   role: string;
 };
 
-type CareRelationshipRow = {
-  is_deleted: boolean;
-  last_consultation_at: string | null;
+type CareRelationshipRecord = {
+  isDeleted: boolean;
+  lastConsultationAt: string | null;
   patient: PatientEmbed | PatientEmbed[] | null;
 };
 
@@ -36,24 +38,22 @@ const normalizePatient = (
 };
 
 const mapListRow = (
-  row: CareRelationshipRow | null | undefined
+  row: unknown
 ): PsychologistPatientListItem | null => {
-  if (!row) {
-    return null;
-  }
+  const record = keysToCamel<CareRelationshipRecord>(row);
+  const patient = normalizePatient(record.patient);
 
-  const patient = normalizePatient(row.patient);
   if (!patient || patient.role !== 'patient') {
     return null;
   }
 
   return {
     id: patient.id,
-    fullName: patient.full_name,
+    fullName: patient.fullName,
     email: patient.email,
     phone: patient.phone,
-    lastConsultationAt: row.last_consultation_at,
-    isDeleted: row.is_deleted,
+    lastConsultationAt: record.lastConsultationAt,
+    isDeleted: record.isDeleted,
   };
 };
 
@@ -97,7 +97,7 @@ export const listPatientsForPsychologist = async (
   const rows = Array.isArray(data) ? data : [];
 
   return rows
-    .map((row) => mapListRow(row as CareRelationshipRow))
+    .map((row) => mapListRow(row))
     .filter((row): row is PsychologistPatientListItem => row !== null);
 };
 
@@ -139,7 +139,7 @@ export const getPatientForPsychologist = async (
     return null;
   }
 
-  return mapListRow(data as CareRelationshipRow);
+  return mapListRow(data);
 };
 
 export const createPatientForPsychologist = async (
@@ -172,14 +172,16 @@ export const createPatientForPsychologist = async (
 
   const { error: profileError } = await admin
     .from('profiles')
-    .update({
-      full_name: body.fullName,
-      phone: body.phone ?? null,
-      age: body.age ?? null,
-      address: body.address ?? null,
-      language: body.language ?? 'pt',
-      updated_at: new Date().toISOString(),
-    })
+    .update(
+      toSnakeRecord({
+        fullName: body.fullName,
+        phone: body.phone ?? null,
+        age: body.age ?? null,
+        address: body.address ?? null,
+        language: body.language ?? 'pt',
+        updatedAt: new Date().toISOString(),
+      })
+    )
     .eq('id', patientId);
 
   if (profileError) {
@@ -189,14 +191,16 @@ export const createPatientForPsychologist = async (
   const enabledAt = new Date().toISOString();
   const { data: careData, error: careError } = await admin
     .from('care_relationships')
-    .insert({
-      psychologist_id: psychologistId,
-      patient_id: patientId,
-      status: 'active',
-      is_deleted: false,
-      disabled_at: null,
-      created_at: enabledAt,
-    })
+    .insert(
+      toSnakeRecord({
+        psychologistId,
+        patientId,
+        status: 'active',
+        isDeleted: false,
+        disabledAt: null,
+        createdAt: enabledAt,
+      })
+    )
     .select('id')
     .single();
 
@@ -206,8 +210,10 @@ export const createPatientForPsychologist = async (
     );
   }
 
+  const careRelationship = keysToCamel<{ id: string }>(careData);
+
   await recordCareBillingEvent(admin, {
-    careRelationshipId: careData.id,
+    careRelationshipId: careRelationship.id,
     psychologistId,
     patientId,
     eventType: 'enabled',
@@ -260,9 +266,9 @@ export const updatePatientForPsychologist = async (
   }
 
   const updatePayload: Record<string, unknown> = {
-    full_name: body.fullName,
+    fullName: body.fullName,
     phone: body.phone ?? null,
-    updated_at: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
   };
 
   if (body.age !== undefined) {
@@ -277,7 +283,7 @@ export const updatePatientForPsychologist = async (
 
   const { error: profileError } = await admin
     .from('profiles')
-    .update(updatePayload)
+    .update(toSnakeRecord(updatePayload))
     .eq('id', patientId)
     .eq('role', 'patient');
 
@@ -306,10 +312,12 @@ export const softDeletePatientForPsychologist = async (
   const disabledAt = new Date().toISOString();
   const { data, error } = await admin
     .from('care_relationships')
-    .update({
-      is_deleted: true,
-      disabled_at: disabledAt,
-    })
+    .update(
+      toSnakeRecord({
+        isDeleted: true,
+        disabledAt,
+      })
+    )
     .eq('psychologist_id', psychologistId)
     .eq('patient_id', patientId)
     .eq('is_deleted', false)
@@ -324,8 +332,10 @@ export const softDeletePatientForPsychologist = async (
     throw new NotFoundError('Patient not found');
   }
 
+  const careRelationship = keysToCamel<{ id: string }>(data);
+
   await recordCareBillingEvent(admin, {
-    careRelationshipId: data.id,
+    careRelationshipId: careRelationship.id,
     psychologistId,
     patientId,
     eventType: 'disabled',

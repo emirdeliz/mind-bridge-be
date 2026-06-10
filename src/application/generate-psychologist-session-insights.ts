@@ -13,9 +13,11 @@ import {
 import type {
   ClinicalChatMessage,
   DashboardSnapshot,
+  LikertCheckIn,
   SessionInsight,
 } from '@domain/clinical-content.types.js';
 import type { AppLanguage } from '@domain/types.js';
+import { formatLikertCheckInForContext } from './format-likert-check-in-context.js';
 
 export type GeneratePsychologistSessionInsightsInput = {
   dashboardSnapshot: DashboardSnapshot;
@@ -23,6 +25,7 @@ export type GeneratePsychologistSessionInsightsInput = {
   sessionContext: string;
   chatHistory: ClinicalChatMessage[];
   patientChatHistory: ClinicalChatMessage[];
+  likertCheckIn?: LikertCheckIn | null;
   language?: AppLanguage;
 };
 
@@ -135,6 +138,16 @@ const buildHeuristicPsychologistSessionInsights = (
   if (patientUserCount > 0) {
     indicators.push(
       `${patientUserCount} mensagem(ns) do paciente com o agente de IA`
+    );
+  }
+  const likertLine = formatLikertCheckInForContext(language, input.likertCheckIn);
+  if (likertLine) {
+    indicators.push(
+      likertLine
+        .split('\n')
+        .slice(1)
+        .map((line) => line.replace(/^- /, ''))
+        .join(' · ')
     );
   }
 

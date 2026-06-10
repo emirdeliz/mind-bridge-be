@@ -4,6 +4,7 @@ import type {
   SessionInsight,
 } from '@domain/clinical-content.types.js';
 import type { AppLanguage } from '@domain/types.js';
+import { formatLikertCheckInForContext } from '@application/format-likert-check-in-context.js';
 
 export const normalizeAppLanguage = (value: unknown): AppLanguage => {
   if (value === 'en' || value === 'es' || value === 'pt') {
@@ -24,6 +25,7 @@ type RetrievalContent = Pick<
   | 'psychologistSummary'
   | 'patientSummary'
   | 'sessionInsights'
+  | 'likertCheckIn'
 >;
 
 const averageMoodScore = (snapshot: DashboardSnapshot): number | null => {
@@ -69,6 +71,7 @@ export const buildPsychologistCopilotRetrievalContext = (
   const psychologistSummary = content.psychologistSummary?.trim() ?? '';
   const patientSummary = content.patientSummary?.trim() ?? '';
   const insights = formatInsights(content.sessionInsights ?? []);
+  const likertContext = formatLikertCheckInForContext(language, content.likertCheckIn);
 
   const labels: Record<
     AppLanguage,
@@ -139,6 +142,9 @@ export const buildPsychologistCopilotRetrievalContext = (
   }
   if (patientSummary) {
     lines.push(`${copy.patientSummary} ${patientSummary}`);
+  }
+  if (likertContext) {
+    lines.push(likertContext);
   }
   if (insights.length) {
     lines.push(copy.insightsTitle, ...insights);

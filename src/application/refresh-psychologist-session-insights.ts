@@ -40,6 +40,7 @@ export const refreshPsychologistSessionInsights = async (
     sessionContext: content.sessionContext ?? '',
     chatHistory: content.psychologistChatSeed,
     patientChatHistory: content.patientChatSeed,
+    likertCheckIn: content.likertCheckIn,
     language,
   });
 

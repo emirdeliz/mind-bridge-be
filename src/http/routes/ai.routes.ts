@@ -199,6 +199,7 @@ export const createAiRoutes =
             psychologistSummary: clinicalContent.psychologistSummary,
             patientSummary: clinicalContent.patientSummary,
             sessionInsights: clinicalContent.sessionInsights,
+            likertCheckIn: clinicalContent.likertCheckIn,
           }
         );
 

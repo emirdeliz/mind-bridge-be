@@ -49,13 +49,11 @@ const buildWeeklyDigest = (
   return `${groups.length} ${labels[language]}:\n${lines.join('\n')}`;
 };
 
-export const formatWeeklyPatientChatContext = (
-  history: ClinicalChatMessage[],
+export const formatInteractionGroupsBlocks = (
+  groups: ClinicalChatMessage[][],
   language: AppLanguage
-): { digest: string; blocks: string; conversationCount: number } => {
-  const groups = getInteractionGroupsFromLastWeek(history);
-
-  const blocks = groups
+): string =>
+  groups
     .map((messages, index) => {
       const firstUser = messages.find((message) => message.sender === 'user');
       const date = formatInteractionDate(firstUser, language);
@@ -74,9 +72,15 @@ export const formatWeeklyPatientChatContext = (
     })
     .join('\n\n');
 
+export const formatWeeklyPatientChatContext = (
+  history: ClinicalChatMessage[],
+  language: AppLanguage
+): { digest: string; blocks: string; conversationCount: number } => {
+  const groups = getInteractionGroupsFromLastWeek(history);
+
   return {
     digest: buildWeeklyDigest(groups, language),
-    blocks,
+    blocks: formatInteractionGroupsBlocks(groups, language),
     conversationCount: groups.length,
   };
 };

@@ -136,6 +136,7 @@ export const createAiRoutes =
         );
 
         const refreshedContent = await refreshPatientInteractionSummary(
+          env,
           admin,
           auth.userId,
           language

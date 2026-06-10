@@ -46,7 +46,12 @@ export const ensureClinicalInsightsOnRead = async (
   let content = await ensurePatientClinicalContent(admin, patientId);
 
   if (needsPatientInteractionSummaryRefresh(content)) {
-    content = await refreshPatientInteractionSummary(admin, patientId, language);
+    content = await refreshPatientInteractionSummary(
+      env,
+      admin,
+      patientId,
+      language
+    );
   }
 
   if (options.includePsychologistInsights) {

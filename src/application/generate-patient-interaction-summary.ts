@@ -1,13 +1,17 @@
+import { runPatientChatInteractionSummaryGraph } from '@ai/graphs/patient-chat-interaction-summary.graph.js';
+import type { Env } from '@config/env.js';
 import type { ClinicalChatMessage } from '@domain/clinical-content.types.js';
 import type { AppLanguage } from '@domain/types.js';
 
 import { splitChatIntoInteractions } from './patient-chat-interaction-groups.js';
 
-const MAX_SNIPPET_CHARS = 140;
 const MAX_INTERACTIONS_IN_SUMMARY = 8;
-const MAX_TOTAL_SUMMARY_CHARS = 900;
+const MAX_SUMMARY_ITEM_CHARS = 220;
+const MAX_FALLBACK_SNIPPET_CHARS = 100;
 
-const truncate = (text: string, maxChars = MAX_SNIPPET_CHARS): string => {
+const LIST_PREFIX_PATTERN = /^(?:[-•*]\s*|\d+[.)]\s*)/;
+
+const truncate = (text: string, maxChars: number): string => {
   const trimmed = text.trim();
   if (trimmed.length <= maxChars) {
     return trimmed;
@@ -15,21 +19,14 @@ const truncate = (text: string, maxChars = MAX_SNIPPET_CHARS): string => {
   return `${trimmed.slice(0, maxChars - 1).trimEnd()}…`;
 };
 
-const summarizeInteractionGroup = (
-  messages: ClinicalChatMessage[],
+const countUserMessages = (messages: ClinicalChatMessage[]): number =>
+  messages.filter((entry) => entry.sender === 'user').length;
+
+const formatInteractionLabel = (
   index: number,
+  userCount: number,
   language: AppLanguage
 ): string => {
-  const userMessages = messages
-    .filter((entry) => entry.sender === 'user')
-    .map((entry) => entry.text.trim())
-    .filter(Boolean);
-
-  if (!userMessages.length) {
-    return '';
-  }
-
-  const reports = truncate(userMessages.join(' '), 160);
   const labels: Record<AppLanguage, string> = {
     pt: `Conversa ${index}`,
     es: `Conversación ${index}`,
@@ -37,32 +34,71 @@ const summarizeInteractionGroup = (
   };
 
   const reportLabel: Record<AppLanguage, string> = {
-    pt: userMessages.length === 1 ? 'relato' : 'relatos',
-    es: userMessages.length === 1 ? 'relato' : 'relatos',
-    en: userMessages.length === 1 ? 'report' : 'reports',
+    pt: userCount === 1 ? 'relato' : 'relatos',
+    es: userCount === 1 ? 'relato' : 'relatos',
+    en: userCount === 1 ? 'report' : 'reports',
   };
 
-  return `${labels[language]} (${userMessages.length} ${reportLabel[language]}): ${reports}`;
+  return `${labels[language]} (${userCount} ${reportLabel[language]})`;
 };
 
-export const buildPatientInteractionSummary = (
-  chatHistory: ClinicalChatMessage[],
-  language: AppLanguage = 'pt'
-): string | null => {
-  const userMessages = chatHistory.filter((entry) => entry.sender === 'user');
-  const agentMessages = chatHistory.filter((entry) => entry.sender === 'agent');
-
-  if (!userMessages.length) {
-    return null;
+const formatInteractionItem = (
+  index: number,
+  group: ClinicalChatMessage[],
+  summary: string,
+  language: AppLanguage
+): string => {
+  const userCount = countUserMessages(group);
+  if (!userCount || !summary.trim()) {
+    return '';
   }
 
-  const interactionGroups = splitChatIntoInteractions(chatHistory).slice(
-    -MAX_INTERACTIONS_IN_SUMMARY
-  );
+  return `${formatInteractionLabel(index, userCount, language)}: ${truncate(summary, MAX_SUMMARY_ITEM_CHARS)}`;
+};
 
-  const interactionSummaries = interactionGroups
-    .map((group, index) => summarizeInteractionGroup(group, index + 1, language))
+const briefFallbackSummary = (messages: ClinicalChatMessage[]): string => {
+  const userText = messages
+    .filter((entry) => entry.sender === 'user')
+    .map((entry) => entry.text.trim())
+    .filter(Boolean)
+    .join(' ');
+
+  return truncate(userText, MAX_FALLBACK_SNIPPET_CHARS);
+};
+
+const parseAgenticSummaryLines = (
+  raw: string,
+  expectedCount: number
+): string[] => {
+  const lines = raw
+    .trim()
+    .split(/\r?\n+/)
+    .map((line) => line.trim().replace(LIST_PREFIX_PATTERN, '').trim())
     .filter(Boolean);
+
+  if (!lines.length) {
+    return [];
+  }
+
+  if (lines.length === expectedCount) {
+    return lines;
+  }
+
+  if (lines.length > expectedCount) {
+    return lines.slice(0, expectedCount);
+  }
+
+  return lines;
+};
+
+const assembleInteractionSummary = (
+  interactionGroups: ClinicalChatMessage[][],
+  interactionSummaries: string[],
+  chatHistory: ClinicalChatMessage[],
+  language: AppLanguage
+): string => {
+  const userMessages = chatHistory.filter((entry) => entry.sender === 'user');
+  const agentMessages = chatHistory.filter((entry) => entry.sender === 'agent');
 
   const templates: Record<
     AppLanguage,
@@ -97,12 +133,103 @@ export const buildPatientInteractionSummary = (
   };
 
   const template = templates[language] ?? templates.pt;
-  const summary = template({
+  return template({
     conversationCount: interactionGroups.length,
     userCount: userMessages.length,
     agentCount: agentMessages.length,
     interactionSummaries,
   });
-
-  return truncate(summary, MAX_TOTAL_SUMMARY_CHARS);
 };
+
+export const buildHeuristicPatientInteractionSummary = (
+  chatHistory: ClinicalChatMessage[],
+  language: AppLanguage = 'pt'
+): string | null => {
+  const userMessages = chatHistory.filter((entry) => entry.sender === 'user');
+  if (!userMessages.length) {
+    return null;
+  }
+
+  const interactionGroups = splitChatIntoInteractions(chatHistory).slice(
+    -MAX_INTERACTIONS_IN_SUMMARY
+  );
+
+  const interactionSummaries = interactionGroups
+    .map((group, index) =>
+      formatInteractionItem(
+        index + 1,
+        group,
+        briefFallbackSummary(group),
+        language
+      )
+    )
+    .filter(Boolean);
+
+  return assembleInteractionSummary(
+    interactionGroups,
+    interactionSummaries,
+    chatHistory,
+    language
+  );
+};
+
+export const generatePatientInteractionSummary = async (
+  env: Env,
+  chatHistory: ClinicalChatMessage[],
+  language: AppLanguage = 'pt',
+  sessionContext = ''
+): Promise<string | null> => {
+  const userMessages = chatHistory.filter((entry) => entry.sender === 'user');
+  if (!userMessages.length) {
+    return null;
+  }
+
+  const interactionGroups = splitChatIntoInteractions(chatHistory).slice(
+    -MAX_INTERACTIONS_IN_SUMMARY
+  );
+
+  if (!interactionGroups.length) {
+    return null;
+  }
+
+  try {
+    const raw = await runPatientChatInteractionSummaryGraph(env, {
+      interactionGroups,
+      sessionContext,
+      language,
+    });
+    const summaryLines = parseAgenticSummaryLines(
+      raw,
+      interactionGroups.length
+    );
+
+    const interactionSummaries = interactionGroups
+      .map((group, index) => {
+        const agenticSummary =
+          summaryLines[index] ?? briefFallbackSummary(group);
+        return formatInteractionItem(
+          index + 1,
+          group,
+          agenticSummary,
+          language
+        );
+      })
+      .filter(Boolean);
+
+    if (!interactionSummaries.length) {
+      return buildHeuristicPatientInteractionSummary(chatHistory, language);
+    }
+
+    return assembleInteractionSummary(
+      interactionGroups,
+      interactionSummaries,
+      chatHistory,
+      language
+    );
+  } catch {
+    return buildHeuristicPatientInteractionSummary(chatHistory, language);
+  }
+};
+
+/** @deprecated Use generatePatientInteractionSummary */
+export const buildPatientInteractionSummary = buildHeuristicPatientInteractionSummary;

@@ -6,7 +6,10 @@ import { applyAgenticPatternsInsight } from './apply-agentic-patterns-insight.js
 import { applyAgenticRecommendedActionsInsight } from './apply-agentic-recommended-actions-insight.js';
 import { generateDetectedPatternsInsight } from './generate-detected-patterns-insight.js';
 import { generateRecommendedActionsInsight } from './generate-recommended-actions-insight.js';
-import { buildPatientInteractionSummary } from './generate-patient-interaction-summary.js';
+import {
+  buildHeuristicPatientInteractionSummary,
+  generatePatientInteractionSummary,
+} from './generate-patient-interaction-summary.js';
 import type {
   ClinicalChatMessage,
   DashboardSnapshot,
@@ -100,7 +103,7 @@ const buildHeuristicPsychologistSessionInsights = (
   const adherence = input.dashboardSnapshot.moodDiaryAdherencePercent;
   const titles = INSIGHT_TITLES[language] ?? INSIGHT_TITLES.pt;
 
-  const interactionsSummary = buildPatientInteractionSummary(
+  const interactionsSummary = buildHeuristicPatientInteractionSummary(
     input.patientChatHistory,
     language
   );
@@ -114,7 +117,7 @@ const buildHeuristicPsychologistSessionInsights = (
     summaryParts.push(latestPsychologistMessage);
   }
 
-  const psychologistSummary = summaryParts.join(' ').slice(0, 900);
+  const psychologistSummary = summaryParts.join('\n');
 
   const indicators: string[] = [];
   if (moodAverage !== null) {
@@ -193,11 +196,13 @@ export const generatePsychologistSessionInsights = async (
   input: GeneratePsychologistSessionInsightsInput
 ): Promise<PsychologistSessionInsightsResult | null> => {
   const language = input.language ?? 'pt';
-  const interactionsSummary = buildPatientInteractionSummary(
-    input.patientChatHistory,
-    language
-  );
-  const [agenticPatterns, agenticActions] = await Promise.all([
+  const [interactionsSummary, agenticPatterns, agenticActions] = await Promise.all([
+    generatePatientInteractionSummary(
+      env,
+      input.patientChatHistory,
+      language,
+      input.sessionContext
+    ),
     generateDetectedPatternsInsight(
       env,
       input.patientChatHistory,
@@ -212,6 +217,7 @@ export const generatePsychologistSessionInsights = async (
       input.sessionConsiderations
     ),
   ]);
+
 
   const heuristic = buildHeuristicPsychologistSessionInsights(input);
   if (!heuristic) {

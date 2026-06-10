@@ -39,12 +39,29 @@ const envSchema = Joi.object({
     .valid('development', 'production', 'test')
     .default('development'),
   PORT: Joi.number().port().default(4000),
-  CORS_ORIGIN: Joi.string().uri().default('http://localhost:3000'),
+  CORS_ORIGIN: Joi.string().uri().default('http://localhost:3001'),
   SUPABASE_URL: Joi.string().uri().required(),
   SUPABASE_ANON_KEY: Joi.string().required(),
   SUPABASE_SERVICE_ROLE_KEY: Joi.string().required(),
+  LLM_PROVIDER: Joi.string()
+    .valid('gemini', 'ollama', 'openrouter')
+    .default('gemini'),
+  GOOGLE_GENERATIVE_AI_API_KEY: Joi.when('LLM_PROVIDER', {
+    is: 'gemini',
+    then: Joi.string().min(1).required(),
+    otherwise: Joi.string().allow('').optional(),
+  }),
+  GEMINI_CHAT_MODEL: Joi.string().default('gemini-2.0-flash'),
+  OPENROUTER_API_KEY: Joi.when('LLM_PROVIDER', {
+    is: 'openrouter',
+    then: Joi.string().min(1).required(),
+    otherwise: Joi.string().allow('').optional(),
+  }),
+  OPENROUTER_CHAT_MODEL: Joi.string().default(
+    'google/gemma-2-9b-it:free'
+  ),
   OLLAMA_BASE_URL: Joi.string().uri().default('http://127.0.0.1:11434'),
-  OLLAMA_CHAT_MODEL: Joi.string().default('llama3.2'),
+  OLLAMA_CHAT_MODEL: Joi.string().default('gemma4'),
   OLLAMA_EMBEDDING_MODEL: Joi.string().default('nomic-embed-text'),
 }).unknown(true);
 
@@ -55,6 +72,11 @@ export type Env = {
   SUPABASE_URL: string;
   SUPABASE_ANON_KEY: string;
   SUPABASE_SERVICE_ROLE_KEY: string;
+  LLM_PROVIDER: 'gemini' | 'ollama' | 'openrouter';
+  GOOGLE_GENERATIVE_AI_API_KEY: string;
+  GEMINI_CHAT_MODEL: string;
+  OPENROUTER_API_KEY: string;
+  OPENROUTER_CHAT_MODEL: string;
   OLLAMA_BASE_URL: string;
   OLLAMA_CHAT_MODEL: string;
   OLLAMA_EMBEDDING_MODEL: string;
@@ -70,7 +92,7 @@ export const loadEnv = (): Env => {
 
   if (error) {
     throw new Error(
-      `Invalid environment: ${error.message}. Ensure mind-bridge-be/.env exists (copy from .env.example, run npm run supabase:env).`
+      `Invalid environment: ${error.message}. Copy mind-bridge-be/.env.example to .env and set Supabase + LLM keys.`
     );
   }
 

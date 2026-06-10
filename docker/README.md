@@ -28,13 +28,15 @@ Na primeira execução o CLI baixa imagens; pode levar alguns minutos.
 
 ## Aplicar o schema Mind Bridge
 
-Com os containers rodando:
+Com os containers rodando e `SUPABASE_URL=http://127.0.0.1:54321` no `.env`:
 
 ```bash
 npm run supabase:reset
 ```
 
-Isso recria o banco local e executa todas as migrations em `supabase/migrations/` (schema inicial, `is_deleted` e `last_consultation_at` em `care_relationships`).
+Isso recria o banco local e executa todas as migrations em `supabase/migrations/`.
+
+**Se o `.env` apontar para Supabase Cloud** (`*.supabase.co`), `supabase:reset` executa apenas o seed idempotente — use `npx supabase db push` para migrations no projeto remoto.
 
 ## Conectar a API ao Supabase local
 

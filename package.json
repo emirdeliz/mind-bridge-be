@@ -13,7 +13,10 @@
     "supabase:start": "supabase start",
     "supabase:stop": "supabase stop",
     "supabase:status": "supabase status",
-    "supabase:reset": "supabase db reset && npm run supabase:env && npm run seed:local",
+    "supabase:reset": "bash scripts/supabase-reset.sh",
+    "supabase:push:cloud": "bash scripts/supabase-push-cloud.sh",
+    "supabase:reset:cloud": "bash scripts/supabase-reset-cloud.sh",
+    "seed:cloud": "bash scripts/seed-cloud.sh",
     "supabase:env": "bash scripts/supabase-env.sh",
     "seed:local": "node --env-file=.env scripts/seed-local-dev.mjs",
     "seed:demo-patients": "npm run seed:local",
@@ -27,8 +30,10 @@
   "dependencies": {
     "@fastify/cors": "^10.0.1",
     "@langchain/core": "^0.3.42",
+    "@langchain/google-genai": "^0.2.18",
     "@langchain/langgraph": "^0.2.74",
     "@langchain/ollama": "^0.2.0",
+    "@langchain/openai": "^0.4.9",
     "@supabase/supabase-js": "^2.49.1",
     "fastify": "^5.2.1",
     "joi": "^17.13.3"

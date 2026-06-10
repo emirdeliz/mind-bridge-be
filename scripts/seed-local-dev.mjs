@@ -20,11 +20,80 @@ const admin = createClient(url, serviceKey, {
   auth: { autoRefreshToken: false, persistSession: false },
 });
 
+const isCloudSupabaseUrl = (value) =>
+  typeof value === 'string' && value.includes('supabase.co');
+
 const isInvalidJwtError = (message) =>
   typeof message === 'string' &&
   (message.includes('invalid JWT') ||
     message.includes('signature is invalid') ||
     message.includes('unable to parse or verify signature'));
+
+const isUserAlreadyRegisteredError = (message) =>
+  typeof message === 'string' &&
+  (message.includes('already been registered') ||
+    message.includes('already registered') ||
+    message.includes('User already registered'));
+
+const findAuthUserByEmail = async (email) => {
+  const normalized = email.trim().toLowerCase();
+  let page = 1;
+  const perPage = 1000;
+
+  while (true) {
+    const { data, error } = await admin.auth.admin.listUsers({ page, perPage });
+    if (error) {
+      throw error;
+    }
+
+    const found = data.users.find(
+      (user) => user.email?.trim().toLowerCase() === normalized
+    );
+    if (found) {
+      return found;
+    }
+
+    if (data.users.length < perPage) {
+      break;
+    }
+    page += 1;
+  }
+
+  return null;
+};
+
+const isMissingSchemaError = (error) => {
+  const message = error?.message ?? '';
+  const code = error?.code ?? '';
+  return (
+    code === 'PGRST205' ||
+    message.includes('schema cache') ||
+    message.includes("Could not find the table 'public.profiles'")
+  );
+};
+
+const assertDatabaseSchema = async () => {
+  const { error } = await admin.from('profiles').select('id').limit(1);
+
+  if (!error) {
+    return;
+  }
+
+  if (isMissingSchemaError(error)) {
+    console.error('Tabela public.profiles não existe no Supabase.');
+    if (isCloudSupabaseUrl(url)) {
+      console.error('Aplique as migrations no Cloud antes do seed:');
+      console.error('  npm run supabase:push:cloud');
+      console.error('ou use o fluxo completo:');
+      console.error('  yarn seed:cloud');
+    } else {
+      console.error('Execute: npm run supabase:reset');
+    }
+    process.exit(1);
+  }
+
+  throw new Error(`Schema check failed: ${error.message}`);
+};
 
 const assertServiceRoleKey = async () => {
   const { error } = await admin.auth.admin.listUsers({ page: 1, perPage: 1 });
@@ -33,11 +102,13 @@ const assertServiceRoleKey = async () => {
   }
 
   if (isInvalidJwtError(error.message)) {
-    console.error(
-      'SUPABASE_SERVICE_ROLE_KEY no .env não confere com o Supabase local (JWT inválido).'
-    );
-    console.error('Com o stack rodando, execute: npm run supabase:env');
-    console.error('Depois: npm run seed:local   (ou npm run supabase:reset)');
+    console.error('SUPABASE_SERVICE_ROLE_KEY no .env não confere com SUPABASE_URL (JWT inválido).');
+    if (!isCloudSupabaseUrl(url)) {
+      console.error('Supabase local: com o stack rodando, execute: npm run supabase:env');
+    } else {
+      console.error('Supabase Cloud: copie a service_role key em Project Settings → API.');
+    }
+    console.error('Depois: npm run seed:local');
     process.exit(1);
   }
 
@@ -147,6 +218,25 @@ const PSYCHOLOGIST_ACCOUNTS = [
   { psychologist: ALUIZIO_PSYCHOLOGIST, patients: ALUIZIO_PATIENTS },
 ];
 
+const upsertProfile = async ({ userId, email, role, fullName, phone }) => {
+  const { error } = await admin.from('profiles').upsert(
+    {
+      id: userId,
+      email,
+      role,
+      full_name: fullName,
+      phone,
+      language: 'pt',
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: 'id' }
+  );
+
+  if (error) {
+    throw new Error(`Profile ${email}: ${error.message}`);
+  }
+};
+
 const ensureAuthUser = async ({ email, password, role, fullName, phone }) => {
   const { data: existingProfile } = await admin
     .from('profiles')
@@ -164,31 +254,27 @@ const ensureAuthUser = async ({ email, password, role, fullName, phone }) => {
       user_metadata: { role, phone },
     });
 
-    if (authError) {
-      if (isInvalidJwtError(authError.message)) {
-        console.error(
-          'SUPABASE_SERVICE_ROLE_KEY no .env não confere com o Supabase local (JWT inválido).'
-        );
-        console.error('Com o stack rodando, execute: npm run supabase:env');
-        console.error('Depois: npm run seed:local   (ou npm run supabase:reset)');
-        process.exit(1);
+    if (!authError) {
+      userId = authData.user.id;
+    } else if (isInvalidJwtError(authError.message)) {
+      console.error('SUPABASE_SERVICE_ROLE_KEY no .env não confere com SUPABASE_URL (JWT inválido).');
+      if (!isCloudSupabaseUrl(url)) {
+        console.error('Supabase local: execute npm run supabase:env');
       }
+      process.exit(1);
+    } else if (isUserAlreadyRegisteredError(authError.message)) {
+      const existingAuthUser = await findAuthUserByEmail(email);
+      if (!existingAuthUser) {
+        throw new Error(`${email}: ${authError.message}`);
+      }
+      userId = existingAuthUser.id;
+      console.log(`  Reusing existing auth user: ${email}`);
+    } else {
       throw new Error(`${email}: ${authError.message}`);
     }
-
-    userId = authData.user.id;
   }
 
-  await admin
-    .from('profiles')
-    .update({
-      full_name: fullName,
-      phone,
-      language: 'pt',
-      updated_at: new Date().toISOString(),
-    })
-    .eq('id', userId);
-
+  await upsertProfile({ userId, email, role, fullName, phone });
   return userId;
 };
 
@@ -458,8 +544,10 @@ const seedPsychologistAccount = async (psychologist, patients) => {
 };
 
 const main = async () => {
-  console.log('Seeding local dev data…');
+  const target = isCloudSupabaseUrl(url) ? 'Supabase Cloud' : 'Supabase local';
+  console.log(`Seeding demo data (${target})…`);
   await assertServiceRoleKey();
+  await assertDatabaseSchema();
 
   for (const account of PSYCHOLOGIST_ACCOUNTS) {
     await seedPsychologistAccount(account.psychologist, account.patients);

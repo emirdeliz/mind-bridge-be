@@ -2,6 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 
 import { NotFoundError } from '@application/authorization.js';
 import type {
+  PatientSelfRegisterBody,
   PsychologistPatientListItem,
   PsychologistPatientSaveBody,
 } from '@domain/patient.types.js';
@@ -10,6 +11,10 @@ import { keysToCamel, toSnakeRecord } from '@helpers';
 
 import { recordCareBillingEvent } from './billing-events.repository.js';
 import { ensurePatientClinicalContent } from './clinical-content.repository.js';
+import {
+  InvalidInviteCodeError,
+  resolvePsychologistIdByInviteCode,
+} from './invite-code.repository.js';
 
 type PatientEmbed = {
   id: string;
@@ -142,6 +147,148 @@ export const getPatientForPsychologist = async (
   return mapListRow(data);
 };
 
+export const linkPatientToPsychologist = async (
+  admin: SupabaseClient,
+  psychologistId: string,
+  patientId: string
+): Promise<void> => {
+  const { data: existingLink, error: existingError } = await admin
+    .from('care_relationships')
+    .select('id, is_deleted')
+    .eq('psychologist_id', psychologistId)
+    .eq('patient_id', patientId)
+    .maybeSingle();
+
+  if (existingError) {
+    throw new Error(`Failed to check care relationship: ${existingError.message}`);
+  }
+
+  if (existingLink) {
+    if (existingLink.is_deleted) {
+      const enabledAt = new Date().toISOString();
+      const { error: restoreError } = await admin
+        .from('care_relationships')
+        .update({
+          is_deleted: false,
+          disabled_at: null,
+          status: 'active',
+        })
+        .eq('id', existingLink.id);
+
+      if (restoreError) {
+        throw new Error(`Failed to restore care relationship: ${restoreError.message}`);
+      }
+
+      await recordCareBillingEvent(admin, {
+        careRelationshipId: existingLink.id as string,
+        psychologistId,
+        patientId,
+        eventType: 'enabled',
+        occurredAt: enabledAt,
+      });
+    }
+
+    await ensurePatientClinicalContent(admin, patientId);
+    return;
+  }
+
+  const enabledAt = new Date().toISOString();
+  const { data: careData, error: careError } = await admin
+    .from('care_relationships')
+    .insert(
+      toSnakeRecord({
+        psychologistId,
+        patientId,
+        status: 'active',
+        isDeleted: false,
+        disabledAt: null,
+        createdAt: enabledAt,
+      })
+    )
+    .select('id')
+    .single();
+
+  if (careError || !careData) {
+    throw new Error(
+      careError?.message ?? 'Failed to create care relationship'
+    );
+  }
+
+  const careRelationship = keysToCamel<{ id: string }>(careData);
+
+  await recordCareBillingEvent(admin, {
+    careRelationshipId: careRelationship.id,
+    psychologistId,
+    patientId,
+    eventType: 'enabled',
+    occurredAt: enabledAt,
+  });
+
+  await ensurePatientClinicalContent(admin, patientId);
+};
+
+export { InvalidInviteCodeError };
+
+export const registerPatientWithInviteCode = async (
+  admin: SupabaseClient,
+  body: PatientSelfRegisterBody
+): Promise<void> => {
+  const email = body.email.trim();
+  const password = body.password.trim();
+  const phone = body.phone.replace(/\D/g, '');
+  const fullName = body.fullName.trim();
+  const psychologistId = await resolvePsychologistIdByInviteCode(
+    admin,
+    body.inviteCode
+  );
+
+  if (!email || !password || !fullName) {
+    throw new Error('Email, password and full name are required');
+  }
+
+  if (phone.length < 10 || phone.length > 11) {
+    throw new Error('Invalid phone number');
+  }
+
+  const { data: authData, error: authError } =
+    await admin.auth.admin.createUser({
+      email,
+      password,
+      email_confirm: true,
+      user_metadata: { role: 'patient', phone },
+    });
+
+  if (authError || !authData.user) {
+    throw new Error(authError?.message ?? 'Failed to create patient account');
+  }
+
+  const patientId = authData.user.id;
+
+  const { error: profileError } = await admin
+    .from('profiles')
+    .update(
+      toSnakeRecord({
+        fullName,
+        phone,
+        language: body.language ?? 'pt',
+        updatedAt: new Date().toISOString(),
+      })
+    )
+    .eq('id', patientId);
+
+  if (profileError) {
+    await admin.auth.admin.deleteUser(patientId);
+    throw new Error(`Failed to update patient profile: ${profileError.message}`);
+  }
+
+  try {
+    await linkPatientToPsychologist(admin, psychologistId, patientId);
+  } catch (error) {
+    await admin.auth.admin.deleteUser(patientId);
+    throw error;
+  }
+};
+
 export const createPatientForPsychologist = async (
   admin: SupabaseClient,
   psychologistId: string,
@@ -188,39 +335,7 @@ export const createPatientForPsychologist = async (
     throw new Error(`Failed to update patient profile: ${profileError.message}`);
   }
 
-  const enabledAt = new Date().toISOString();
-  const { data: careData, error: careError } = await admin
-    .from('care_relationships')
-    .insert(
-      toSnakeRecord({
-        psychologistId,
-        patientId,
-        status: 'active',
-        isDeleted: false,
-        disabledAt: null,
-        createdAt: enabledAt,
-      })
-    )
-    .select('id')
-    .single();
-
-  if (careError || !careData) {
-    throw new Error(
-      careError?.message ?? 'Failed to create care relationship'
-    );
-  }
-
-  const careRelationship = keysToCamel<{ id: string }>(careData);
-
-  await recordCareBillingEvent(admin, {
-    careRelationshipId: careRelationship.id,
-    psychologistId,
-    patientId,
-    eventType: 'enabled',
-    occurredAt: enabledAt,
-  });
-
-  await ensurePatientClinicalContent(admin, patientId);
+  await linkPatientToPsychologist(admin, psychologistId, patientId);
 
   const created = await getPatientForPsychologist(
     admin,

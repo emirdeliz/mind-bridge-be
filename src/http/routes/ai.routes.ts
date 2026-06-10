@@ -20,7 +20,7 @@ import {
   getInteractionScopedHistory,
   getPatientChatInteractionClosingReply,
   isAgentInteractionEndReply,
-  resolvePatientChatInteractionWithTopicCheck,
+  resolvePatientChatInteraction,
   shouldClosePatientChatInteraction,
 } from '@ai/prompts/patient-chat-session.js';
 import { runPsychologistCopilotGraph } from '@ai/graphs/psychologist-copilot.graph.js';
@@ -72,11 +72,7 @@ export const createAiRoutes =
         const language = normalizeAppLanguage(body.language);
         const chatHistory = clinicalContent.patientChatSeed ?? [];
         const { interactionId, isNewInteraction } =
-          await resolvePatientChatInteractionWithTopicCheck(
-            env,
-            chatHistory,
-            body.message
-          );
+          resolvePatientChatInteraction(chatHistory);
         const interactionHistory = getInteractionScopedHistory(
           chatHistory,
           interactionId,
@@ -131,7 +127,7 @@ export const createAiRoutes =
           currentSnapshot: content.dashboardSnapshot,
           userMessage: body.message,
           chatHistory: content.patientChatSeed,
-          language: normalizeAppLanguage(body.language),
+          language,
         });
         await updatePatientDashboardSnapshot(
           admin,
@@ -142,7 +138,13 @@ export const createAiRoutes =
         const refreshedContent = await refreshPatientInteractionSummary(
           admin,
           auth.userId,
-          normalizeAppLanguage(body.language)
+          language
+        );
+        const withInsights = await refreshPsychologistSessionInsights(
+          env,
+          admin,
+          auth.userId,
+          language
         );
 
         return {
@@ -150,6 +152,8 @@ export const createAiRoutes =
           messages: persistedMessages,
           patientId: auth.userId,
           patientSummary: refreshedContent.patientSummary,
+          psychologistSummary: withInsights.psychologistSummary,
+          sessionInsights: withInsights.sessionInsights,
         };
       }
     );

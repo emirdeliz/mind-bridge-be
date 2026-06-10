@@ -4,6 +4,7 @@ import {
   assertPatientSelf,
   assertPsychologistPatientAccess,
 } from '@application/authorization.js';
+import { ensureClinicalInsightsOnRead } from '@application/ensure-clinical-insights.js';
 import { endPsychologistSession } from '@application/end-psychologist-session.js';
 import { refreshPsychologistSessionInsights } from '@application/refresh-psychologist-session-insights.js';
 import { enrichDashboardSnapshotWithPatientActivity } from '@application/enrich-dashboard-snapshot.js';
@@ -17,10 +18,7 @@ import {
 } from '@http/schemas/clinical-content.schemas.js';
 import { patientIdParamsSchema } from '@http/schemas/patient.schemas.js';
 import { createAdminSupabaseClient } from '@infrastructure/supabase/client.js';
-import {
-  ensurePatientClinicalContent,
-  updatePsychologistPatientClinicalSession,
-} from '@infrastructure/supabase/clinical-content.repository.js';
+import { updatePsychologistPatientClinicalSession } from '@infrastructure/supabase/clinical-content.repository.js';
 
 export const createClinicalContentRoutes =
   (env: Env): FastifyPluginAsync =>
@@ -29,10 +27,18 @@ export const createClinicalContentRoutes =
 
     app.get('/patient/clinical-content', async (request) => {
       const auth = request.auth!;
+      const language = normalizeAppLanguage(
+        (request.query as { language?: AppLanguage }).language
+      );
 
       assertPatientSelf(auth, auth.userId);
 
-      const content = await ensurePatientClinicalContent(admin, auth.userId);
+      const content = await ensureClinicalInsightsOnRead(
+        env,
+        admin,
+        auth.userId,
+        language
+      );
       return { content };
     });
 
@@ -46,7 +52,16 @@ export const createClinicalContentRoutes =
 
         await assertPsychologistPatientAccess(supabase, auth, patientId);
 
-        const content = await ensurePatientClinicalContent(admin, patientId);
+        const language = normalizeAppLanguage(
+          (request.query as { language?: AppLanguage }).language
+        );
+        const content = await ensureClinicalInsightsOnRead(
+          env,
+          admin,
+          patientId,
+          language,
+          { includePsychologistInsights: true }
+        );
         const enriched = {
           ...content,
           dashboardSnapshot: await enrichDashboardSnapshotWithPatientActivity(

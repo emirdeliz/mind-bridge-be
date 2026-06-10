@@ -1,6 +1,5 @@
 import { randomUUID } from 'node:crypto';
 
-import type { Env } from '@config/env.js';
 import type { ClinicalChatMessage } from '@domain/clinical-content.types.js';
 import type { AppLanguage } from '@domain/types.js';
 
@@ -8,12 +7,11 @@ import {
   countAgentQuestionsInChat,
   isPatientChatClosingMessage,
 } from './patient-chat-interaction.js';
-import {
-  classifyPatientTopicShift,
-  detectExplicitPatientTopicChange,
-} from './patient-chat-topic.js';
 
 export const PATIENT_CHAT_MAX_QUESTIONS_PER_INTERACTION = 5;
+
+/** Gap between patient messages that starts a new interaction. */
+export const PATIENT_CHAT_NEW_INTERACTION_GAP_MS = 5 * 60 * 1000;
 
 const LEGACY_INTERACTION_ID = 'legacy';
 
@@ -62,6 +60,37 @@ export const isPatientChatFarewellReply = (text: string): boolean => {
   }
 
   return FAREWELL_PATTERNS.some((pattern) => pattern.test(normalized));
+};
+
+export const getLastPatientMessage = (
+  messages: ClinicalChatMessage[]
+): ClinicalChatMessage | undefined => {
+  for (let index = messages.length - 1; index >= 0; index -= 1) {
+    const message = messages[index];
+    if (message?.sender === 'user') {
+      return message;
+    }
+  }
+  return undefined;
+};
+
+/** True when the patient waited longer than the gap since their last message. */
+export const hasPatientResponseGapExceeded = (
+  history: ClinicalChatMessage[],
+  nowMs: number = Date.now(),
+  gapMs: number = PATIENT_CHAT_NEW_INTERACTION_GAP_MS
+): boolean => {
+  const lastPatientMessage = getLastPatientMessage(history);
+  if (!lastPatientMessage?.createdAt) {
+    return false;
+  }
+
+  const lastPatientAt = Date.parse(lastPatientMessage.createdAt);
+  if (Number.isNaN(lastPatientAt)) {
+    return false;
+  }
+
+  return nowMs - lastPatientAt > gapMs;
 };
 
 export const getLastInteractionId = (
@@ -115,9 +144,13 @@ export type ResolvedPatientChatInteraction = {
 
 export const resolvePatientChatInteraction = (
   history: ClinicalChatMessage[],
-  userMessage?: string
+  nowMs: number = Date.now()
 ): ResolvedPatientChatInteraction => {
   if (!history.length) {
+    return { interactionId: randomUUID(), isNewInteraction: true };
+  }
+
+  if (hasPatientResponseGapExceeded(history, nowMs)) {
     return { interactionId: randomUUID(), isNewInteraction: true };
   }
 
@@ -126,12 +159,6 @@ export const resolvePatientChatInteraction = (
   if (lastInteractionId) {
     const scope = getMessagesInInteraction(history, lastInteractionId);
     if (!isInteractionComplete(scope)) {
-      if (
-        userMessage &&
-        detectExplicitPatientTopicChange(userMessage, scope)
-      ) {
-        return { interactionId: randomUUID(), isNewInteraction: true };
-      }
       return { interactionId: lastInteractionId, isNewInteraction: false };
     }
     return { interactionId: randomUUID(), isNewInteraction: true };
@@ -140,13 +167,6 @@ export const resolvePatientChatInteraction = (
   const questionCount = countAgentQuestionsInChat(history);
   const last = history.at(-1);
   if (!last) {
-    return { interactionId: randomUUID(), isNewInteraction: true };
-  }
-
-  if (
-    userMessage &&
-    detectExplicitPatientTopicChange(userMessage, history)
-  ) {
     return { interactionId: randomUUID(), isNewInteraction: true };
   }
 
@@ -162,34 +182,6 @@ export const resolvePatientChatInteraction = (
   }
 
   return { interactionId: LEGACY_INTERACTION_ID, isNewInteraction: false };
-};
-
-export const resolvePatientChatInteractionWithTopicCheck = async (
-  env: Env,
-  history: ClinicalChatMessage[],
-  userMessage: string
-): Promise<ResolvedPatientChatInteraction> => {
-  const initial = resolvePatientChatInteraction(history, userMessage);
-  if (initial.isNewInteraction) {
-    return initial;
-  }
-
-  const scope = getInteractionScopedHistory(
-    history,
-    initial.interactionId,
-    false
-  );
-
-  if (detectExplicitPatientTopicChange(userMessage, scope)) {
-    return { interactionId: randomUUID(), isNewInteraction: true };
-  }
-
-  const isNewTopic = await classifyPatientTopicShift(env, userMessage, scope);
-  if (isNewTopic) {
-    return { interactionId: randomUUID(), isNewInteraction: true };
-  }
-
-  return initial;
 };
 
 export const getInteractionScopedHistory = (

@@ -238,7 +238,7 @@ export const updatePatientInteractionSummary = async (
     sessionContext: content.sessionContext,
     sessionNotes: content.sessionNotes,
     sessionInsights: content.sessionInsights,
-    psychologistSummary: content.psychologistSummary,
+    psychologistSummary: patientSummary,
     psychologistChatSeed: content.psychologistChatSeed,
     patientChatSeed: content.patientChatSeed,
     patientSummary,

@@ -29,16 +29,6 @@ export const createPatientChatModel = (env: Env) =>
     think: false,
   });
 
-/** YES/NO topic-shift check before patient chat. */
-export const createPatientTopicClassifierModel = (env: Env) =>
-  new ChatOllama({
-    baseUrl: env.OLLAMA_BASE_URL,
-    model: env.OLLAMA_CHAT_MODEL,
-    temperature: 0,
-    numPredict: 8,
-    think: false,
-  });
-
 /** Structured JSON output for dashboard analytics after session end. */
 export const createDashboardAnalyticsModel = (env: Env) =>
   new ChatOllama({
@@ -46,4 +36,14 @@ export const createDashboardAnalyticsModel = (env: Env) =>
     model: env.OLLAMA_CHAT_MODEL,
     temperature: 0.1,
     numPredict: 512,
+  });
+
+/** Weekly cross-conversation pattern detection for psychologist insights. */
+export const createPatientChatPatternsModel = (env: Env) =>
+  new ChatOllama({
+    baseUrl: env.OLLAMA_BASE_URL,
+    model: env.OLLAMA_CHAT_MODEL,
+    temperature: 0.12,
+    numPredict: 512,
+    think: false,
   });

@@ -16,6 +16,7 @@ const PsychologistSessionInsightsAnnotation = Annotation.Root({
   sessionConsiderations: Annotation<string>,
   sessionContext: Annotation<string>,
   chatHistory: Annotation<ClinicalChatMessage[]>,
+  patientChatHistory: Annotation<ClinicalChatMessage[]>,
   responseLanguage: Annotation<string>,
   rawResponse: Annotation<string>,
 });
@@ -35,6 +36,7 @@ const createGenerateNode =
         sessionConsiderations: state.sessionConsiderations,
         sessionContext: state.sessionContext,
         chatHistory: state.chatHistory,
+        patientChatHistory: state.patientChatHistory,
       })
     );
     const human = new HumanMessage(
@@ -65,6 +67,7 @@ export const runPsychologistSessionInsightsGraph = async (
     sessionConsiderations: string;
     sessionContext: string;
     chatHistory: ClinicalChatMessage[];
+    patientChatHistory: ClinicalChatMessage[];
     language?: AppLanguage;
   }
 ): Promise<string> => {
@@ -74,6 +77,7 @@ export const runPsychologistSessionInsightsGraph = async (
     sessionConsiderations: input.sessionConsiderations,
     sessionContext: input.sessionContext,
     chatHistory: input.chatHistory,
+    patientChatHistory: input.patientChatHistory,
     responseLanguage: input.language ?? 'pt',
     rawResponse: '',
   });

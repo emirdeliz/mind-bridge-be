@@ -24,6 +24,6 @@ export interface PatientSelfRegisterBody {
   password: string;
   phone: string;
   fullName: string;
-  inviteCode: string;
+  inviteCode?: string;
   language?: AppLanguage | null;
 }

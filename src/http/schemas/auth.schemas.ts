@@ -14,6 +14,6 @@ export const registerPatientBodySchema = Joi.object({
       return value;
     }),
   fullName: Joi.string().trim().min(1).max(200).required(),
-  inviteCode: Joi.string().trim().min(4).max(32).required(),
+  inviteCode: Joi.string().trim().min(4).max(32).allow('', null).optional(),
   language: Joi.string().valid('en', 'es', 'pt').optional(),
 });

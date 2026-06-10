@@ -8,6 +8,7 @@ import { createAiRoutes } from '@http/routes/ai.routes.js';
 import { createAuthRoutes } from '@http/routes/auth.routes.js';
 import { createPsychologistInviteCodeRoutes } from '@http/routes/psychologist-invite-code.routes.js';
 import { createClinicalContentRoutes } from '@http/routes/clinical-content.routes.js';
+import { createPatientInviteCodeRoutes } from '@http/routes/patient-invite-code.routes.js';
 import { createPatientInteractionRoutes } from '@http/routes/patient-interactions.routes.js';
 import { createPsychologistBillingRoutes } from '@http/routes/psychologist-billing.routes.js';
 import { createPsychologistPatientsRoutes } from '@http/routes/psychologist-patients.routes.js';
@@ -38,6 +39,7 @@ export const buildServer = async (env: Env) => {
   await app.register(createPsychologistPatientsRoutes(env));
   await app.register(createPsychologistInviteCodeRoutes(env));
   await app.register(createPsychologistBillingRoutes(env));
+  await app.register(createPatientInviteCodeRoutes(env));
   await app.register(createPatientInteractionRoutes(env));
   await app.register(createClinicalContentRoutes(env));
 

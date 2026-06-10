@@ -237,10 +237,7 @@ export const registerPatientWithInviteCode = async (
   const password = body.password.trim();
   const phone = body.phone.replace(/\D/g, '');
   const fullName = body.fullName.trim();
-  const psychologistId = await resolvePsychologistIdByInviteCode(
-    admin,
-    body.inviteCode
-  );
+  const inviteCode = body.inviteCode?.trim();
 
   if (!email || !password || !fullName) {
     throw new Error('Email, password and full name are required');
@@ -282,11 +279,31 @@ export const registerPatientWithInviteCode = async (
   }
 
   try {
-    await linkPatientToPsychologist(admin, psychologistId, patientId);
+    if (inviteCode) {
+      const psychologistId = await resolvePsychologistIdByInviteCode(
+        admin,
+        inviteCode
+      );
+      await linkPatientToPsychologist(admin, psychologistId, patientId);
+    } else {
+      await ensurePatientClinicalContent(admin, patientId);
+    }
   } catch (error) {
     await admin.auth.admin.deleteUser(patientId);
     throw error;
   }
+};
+
+export const linkPatientWithInviteCode = async (
+  admin: SupabaseClient,
+  patientId: string,
+  inviteCode: string
+): Promise<void> => {
+  const psychologistId = await resolvePsychologistIdByInviteCode(
+    admin,
+    inviteCode
+  );
+  await linkPatientToPsychologist(admin, psychologistId, patientId);
 };
 
 export const createPatientForPsychologist = async (

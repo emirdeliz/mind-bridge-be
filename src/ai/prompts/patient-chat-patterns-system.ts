@@ -24,7 +24,7 @@ export const buildPatientChatPatternsSystemPrompt = (
       'Busque recorrências emocionais, cognitivas, comportamentais, gatilhos e contextos entre conversas.',
       'Se houver apenas uma conversa na semana, descreva padrões emergentes nela e o que monitorar.',
       'Use linguagem clínica objetiva, sem diagnóstico definitivo.',
-      'Seja MUITO conciso: no máximo 2 frases curtas, texto corrido (sem listas).',
+      'Seja MUITO conciso: 2 a 3 itens curtos, um por linha (sem numeração nem marcadores).',
       `Contexto do psicólogo (apoio):\n${sessionContext.trim() || '(não informado)'}`,
       digest ? `Panorama semanal:\n${digest}` : '',
       `Detalhes das conversas (última semana):\n${blocks || '(sem conversas na última semana)'}`,
@@ -35,7 +35,7 @@ export const buildPatientChatPatternsSystemPrompt = (
       'OBLIGATORIO: sintetiza patrones que cruzan VARIAS conversaciones de la semana — no describas solo la más reciente.',
       'Busca recurrencias emocionales, cognitivas, conductuales, disparadores y contextos entre conversaciones.',
       'Lenguaje clínico objetivo, sin diagnóstico definitivo.',
-      'Sé MUY conciso: máximo 2 frases cortas, texto continuo (sin listas).',
+      'Sé MUY conciso: 2 a 3 ítems cortos, uno por línea (sin numeración ni viñetas).',
       `Contexto del psicólogo:\n${sessionContext.trim() || '(no informado)'}`,
       digest ? `Panorama semanal:\n${digest}` : '',
       `Detalles de las conversaciones (última semana):\n${blocks || '(sin conversaciones en la última semana)'}`,
@@ -46,7 +46,7 @@ export const buildPatientChatPatternsSystemPrompt = (
       'REQUIRED: synthesize patterns across MULTIPLE conversations this week — do not describe only the latest one.',
       'Look for recurring emotional, cognitive, behavioral themes, triggers and contexts across conversations.',
       'Use objective clinical language, no definitive diagnosis.',
-      'Be VERY concise: at most 2 short sentences, plain prose (no lists).',
+      'Be VERY concise: 2 to 3 short items, one per line (no numbering or bullets).',
       `Psychologist context:\n${sessionContext.trim() || '(not provided)'}`,
       digest ? `Weekly overview:\n${digest}` : '',
       `Conversation details (last week):\n${blocks || '(no conversations in the last week)'}`,
@@ -62,9 +62,9 @@ export const buildPatientChatPatternsHumanPrompt = (
   const language = normalizeAppLanguage(languageInput);
 
   const blocks: Record<AppLanguage, string> = {
-    pt: 'Resuma em no máximo 2 frases curtas os padrões de TODAS as conversas da semana. Sem introdução. Retorne somente o texto.',
-    es: 'Resume en máximo 2 frases cortas los patrones de TODAS las conversaciones de la semana. Sin introducción. Devuelve solo el texto.',
-    en: 'Summarize in at most 2 short sentences the patterns from ALL conversations this week. No introduction. Return only the text.',
+    pt: 'Liste 2 a 3 padrões bem curtos de TODAS as conversas da semana. Um por linha. Retorne somente o texto.',
+    es: 'Lista 2 a 3 patrones muy cortos de TODAS las conversaciones de la semana. Uno por línea. Devuelve solo el texto.',
+    en: 'List 2 to 3 very short patterns from ALL conversations this week. One per line. Return only the text.',
   };
 
   return blocks[language];

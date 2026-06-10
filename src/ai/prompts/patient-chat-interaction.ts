@@ -100,37 +100,104 @@ export const sanitizePatientChatResponse = (text: string): string => {
   return cleaned;
 };
 
+const PATIENT_CHAT_MAX_SENTENCES = 2;
+
+const splitSentences = (text: string): string[] =>
+  text.match(/[^.!?]+[.!?]+|[^.!?]+$/g)?.map((part) => part.trim()).filter(Boolean) ??
+  [text];
+
+/** Keeps at most two short sentences — no mid-sentence cut. */
+export const compactPatientChatResponse = (
+  text: string,
+  maxSentences = PATIENT_CHAT_MAX_SENTENCES
+): string => {
+  const normalized = text
+    .split('\n')
+    .map((line) => line.replace(/^[\s\-*•\d.)]+/, '').trim())
+    .filter(Boolean)
+    .join(' ')
+    .replace(/\s+/g, ' ')
+    .replace(/…+/g, '')
+    .replace(/\.{3,}/g, '')
+    .trim();
+
+  if (!normalized) {
+    return '';
+  }
+
+  return splitSentences(normalized).slice(0, maxSentences).join(' ').trim();
+};
+
 export const finalizePatientChatResponse = (text: string): string =>
-  sanitizePatientChatResponse(text);
+  compactPatientChatResponse(sanitizePatientChatResponse(text));
 
 const FALLBACK_REPLIES: Record<AppLanguage, string> = {
-  pt: 'Compreendo. O que você sente agora, além do que me contou?',
-  es: 'Comprendo. ¿Qué siente ahora, además de lo que me contó?',
-  en: 'I understand. What do you feel right now, besides what you shared?',
+  pt: 'Entendo. O que você sente agora?',
+  es: 'Entiendo. ¿Qué siente ahora?',
+  en: 'I understand. What do you feel right now?',
 };
 
 export const buildPatientChatBrevityGuidance = (language: AppLanguage): string => {
   const blocks: Record<AppLanguage, string> = {
     pt: [
-      'RESPOSTAS RESUMIDAS (obrigatório):',
-      '- Escreva no máximo 2 a 3 frases curtas por mensagem.',
-      '- Estrutura ideal: breve acolhimento (1 frase) + UMA pergunta objetiva — ou só acolhimento se já houver informação suficiente.',
-      '- Sem listas, sem parágrafos longos, sem repetir o relato do paciente.',
-      '- Não existe limite de caracteres na resposta; seja conciso por escolha, não por corte.',
+      'TAMANHO DA RESPOSTA (obrigatório — prioridade máxima):',
+      '- NO MÁXIMO 2 frases curtas. Ideal: 1 frase só.',
+      '- Formato padrão: "Entendo." + UMA pergunta curta — ou só a pergunta.',
+      '- Cada frase com no máximo 12 palavras.',
+      '- PROIBIDO: parágrafos, listas, repetir o relato, validações longas.',
+      'Exemplo RUIM: "Compreendo que compartilhar isso deve ser difícil; quando você pensa nessa situação com os colegas, o que sente no corpo neste momento?"',
+      'Exemplo BOM: "Entendo. O que você sente agora ao pensar nos colegas?"',
     ].join('\n'),
     es: [
-      'RESPUESTAS BREVES (obligatorio):',
-      '- Escribe como máximo 2 a 3 frases cortas por mensaje.',
-      '- Estructura ideal: breve contención (1 frase) + UNA pregunta objetiva — o solo contención si ya hay información suficiente.',
-      '- Sin listas, sin párrafos largos, sin repetir el relato del paciente.',
-      '- No hay límite de caracteres en la respuesta; sé conciso por elección, no por recorte.',
+      'TAMAÑO DE LA RESPUESTA (obligatorio — máxima prioridad):',
+      '- COMO MÁXIMO 2 frases cortas. Ideal: 1 sola frase.',
+      '- Formato estándar: "Entiendo." + UNA pregunta corta — o solo la pregunta.',
+      '- Cada frase con como máximo 12 palabras.',
+      '- PROHIBIDO: párrafos, listas, repetir el relato, validaciones largas.',
+      'Ejemplo MALO: "Comprendo que compartir esto debe ser difícil; cuando piensa en esa situación con los colegas, ¿qué siente en el cuerpo en este momento?"',
+      'Ejemplo BUENO: "Entiendo. ¿Qué siente ahora al pensar en los colegas?"',
     ].join('\n'),
     en: [
-      'BRIEF REPLIES (required):',
-      '- Write at most 2 to 3 short sentences per message.',
-      '- Ideal structure: brief acknowledgment (1 sentence) + ONE objective question — or acknowledgment only if there is enough information.',
-      '- No lists, no long paragraphs, do not repeat the patient report.',
-      '- There is no character limit on the reply; stay concise by choice, not by truncation.',
+      'REPLY LENGTH (required — top priority):',
+      '- AT MOST 2 short sentences. Ideal: 1 sentence only.',
+      '- Default format: "I understand." + ONE short question — or just the question.',
+      '- Each sentence at most 12 words.',
+      '- FORBIDDEN: paragraphs, lists, repeating the report, long validations.',
+      'BAD example: "I understand that sharing this must be hard; when you think about that situation with colleagues, what do you feel in your body right now?"',
+      'GOOD example: "I understand. What do you feel right now when you think about your colleagues?"',
+    ].join('\n'),
+  };
+
+  return blocks[language] ?? blocks.pt;
+};
+
+export const buildPatientChatSimplicityGuidance = (
+  language: AppLanguage
+): string => {
+  const blocks: Record<AppLanguage, string> = {
+    pt: [
+      'LINGUAGEM SIMPLES (obrigatório):',
+      '- Palavras do dia a dia. Frases diretas.',
+      '- PROIBIDO: termos clínicos, siglas, frases compostas longas, conectores em excesso (além disso, nesse sentido, por outro lado).',
+      '- PROIBIDO começar com: "Agradeço por compartilhar", "Compreendo que isso deve ser", "Entendo como deve ser difícil".',
+      '- Prefira: Entendo. / O que você sente? / O que passa na sua cabeça agora?',
+      '- Uma ideia por frase. Sem explicações.',
+    ].join('\n'),
+    es: [
+      'LENGUAJE SIMPLE (obligatorio):',
+      '- Palabras cotidianas. Frases directas.',
+      '- PROHIBIDO: términos clínicos, siglas, frases compuestas largas, conectores en exceso.',
+      '- PROHIBIDO empezar con: "Agradezco que comparta", "Comprendo que esto debe ser", "Entiendo lo difícil que es".',
+      '- Prefiere: Entiendo. / ¿Qué siente? / ¿Qué pasa por su cabeza ahora?',
+      '- Una idea por frase. Sin explicaciones.',
+    ].join('\n'),
+    en: [
+      'SIMPLE LANGUAGE (required):',
+      '- Everyday words. Direct sentences.',
+      '- FORBIDDEN: clinical terms, acronyms, long compound sentences, excess connectors.',
+      '- FORBIDDEN openings: "Thank you for sharing", "I understand this must be", "I can imagine how hard".',
+      '- Prefer: I understand. / What do you feel? / What goes through your mind right now?',
+      '- One idea per sentence. No explanations.',
     ].join('\n'),
   };
 
@@ -219,7 +286,7 @@ export const buildAntiRepetitionGuidance = (
   const blocks: Record<AppLanguage, string> = {
     pt: [
       'ANTI-REPETIÇÃO (obrigatório):',
-      'Perguntas que você já fez nesta conversa:',
+      'Perguntas que você já fez nesta interação:',
       listedQuestions,
       '- PROIBIDO repetir ou reformular com pouca mudança qualquer pergunta acima.',
       '- PROIBIDO fazer perguntas muito similares (mesmo tema, mesmo momento, mesma pessoa, mesma sensação).',
@@ -230,7 +297,7 @@ export const buildAntiRepetitionGuidance = (
     ].join('\n'),
     es: [
       'ANTI-REPETICIÓN (obligatorio):',
-      'Preguntas que ya hiciste en esta conversación:',
+      'Preguntas que ya hiciste en esta interacción:',
       listedQuestions,
       '- PROHIBIDO repetir o reformular con poco cambio cualquier pregunta anterior.',
       '- PROHIBIDO hacer preguntas muy similares (mismo tema, mismo momento, misma persona, misma sensación).',
@@ -241,7 +308,7 @@ export const buildAntiRepetitionGuidance = (
     ].join('\n'),
     en: [
       'ANTI-REPETITION (required):',
-      'Questions you already asked in this conversation:',
+      'Questions you already asked in this interaction:',
       listedQuestions,
       '- FORBIDDEN to repeat or lightly rephrase any question above.',
       '- FORBIDDEN to ask very similar questions (same theme, moment, person, or sensation).',
@@ -257,50 +324,65 @@ export const buildAntiRepetitionGuidance = (
 
 export const buildPatientChatPacingGuidance = (
   language: AppLanguage,
-  questionCount: number
+  questionCount: number,
+  maxQuestionsPerInteraction = 5
 ): string => {
+  const questionsRemaining = Math.max(
+    0,
+    maxQuestionsPerInteraction - questionCount
+  );
+
   const blocks: Record<AppLanguage, string[]> = {
     pt: [
-      'RITMO DA CONVERSA (sem limite fixo de perguntas):',
-      '- Cada resposta do agente deve ser curta (2–3 frases no máximo).',
-      '- Continue perguntando enquanto fizer sentido para entender a experiência do paciente.',
-      '- Priorize SINTETIZAR: uma pergunta bem formulada vale mais que várias perguntas pequenas seguidas.',
-      '- Evite fadiga: não repita o que o paciente já disse; não transforme a conversa em interrogatório.',
+      `RITMO DA CONVERSA (máximo ${maxQuestionsPerInteraction} perguntas por interação):`,
+      `- Perguntas já feitas nesta interação: ${questionCount} de ${maxQuestionsPerInteraction}.`,
+      questionsRemaining > 0
+        ? `- Restam ${questionsRemaining} pergunta(s) nesta interação — use com parcimônia.`
+        : '- Limite atingido: encerre com acolhimento breve, SEM nova pergunta.',
+      '- Cada resposta: no máximo 2 frases curtas (ideal: 1 frase + 1 pergunta).',
+      '- Priorize UMA pergunta bem formulada; evite interrogatório.',
       '- Evite perguntas muito similares às anteriores: mude o ângulo a cada nova pergunta.',
-      '- Prefira perguntas que conectem situação concreta + tema do contexto em uma única frase.',
       questionCount === 0
-        ? 'Primeira pergunta: valide o relato e peça UM momento ou situação específica.'
-        : questionCount <= 2
-          ? 'Aprofunde com UMA pergunta nova e sintética sobre detalhe ainda não esclarecido.'
-          : 'Já houve várias trocas: sintetize o que entendeu e faça UMA pergunta objetiva que una os pontos em aberto — ou encerre com acolhimento se já houver informação suficiente.',
+        ? 'Primeira pergunta: valide o relato e peça UM detalhe concreto.'
+        : questionsRemaining === 1
+          ? 'ÚLTIMA pergunta desta interação: faça UMA pergunta objetiva e essencial.'
+          : questionCount <= 2
+            ? 'Aprofunde com UMA pergunta nova sobre detalhe ainda não esclarecido.'
+            : 'Já houve várias trocas: faça UMA pergunta que una os pontos em aberto ou encerre se já houver informação suficiente.',
     ],
     es: [
-      'RITMO DE LA CONVERSACIÓN (sin límite fijo de preguntas):',
-      '- Cada respuesta del agente debe ser breve (2–3 frases como máximo).',
-      '- Sigue preguntando mientras tenga sentido para comprender la experiencia del paciente.',
-      '- Prioriza SINTETIZAR: una pregunta bien formulada vale más que varias preguntas pequeñas seguidas.',
-      '- Evita fatiga: no repitas lo que el paciente ya dijo; no conviertas la charla en interrogatorio.',
-      '- Evita preguntas muy similares a las anteriores: cambia el ángulo en cada nueva pregunta.',
-      '- Prefiere preguntas que conecten situación concreta + tema del contexto en una sola frase.',
+      `RITMO DE LA CONVERSACIÓN (máximo ${maxQuestionsPerInteraction} preguntas por interacción):`,
+      `- Preguntas ya hechas en esta interacción: ${questionCount} de ${maxQuestionsPerInteraction}.`,
+      questionsRemaining > 0
+        ? `- Quedan ${questionsRemaining} pregunta(s) en esta interacción — úselas con moderación.`
+        : '- Límite alcanzado: cierre con contención breve, SIN nueva pregunta.',
+      '- Cada respuesta: como máximo 2 frases cortas (ideal: 1 frase + 1 pregunta).',
+      '- Priorice UNA pregunta bien formulada; evite interrogatorio.',
+      '- Evite preguntas muy similares a las anteriores: cambie el ángulo en cada nueva pregunta.',
       questionCount === 0
-        ? 'Primera pregunta: valide el relato y pida UN momento o situación específica.'
-        : questionCount <= 2
-          ? 'Profundiza con UNA pregunta nueva y sintética sobre un detalle aún no aclarado.'
-          : 'Ya hubo varios intercambios: sintetiza lo comprendido y haz UNA pregunta objetiva que una los puntos abiertos — o cierra con contención si ya hay información suficiente.',
+        ? 'Primera pregunta: valide el relato y pida UN detalle concreto.'
+        : questionsRemaining === 1
+          ? 'ÚLTIMA pregunta de esta interacción: haga UNA pregunta objetiva y esencial.'
+          : questionCount <= 2
+            ? 'Profundice con UNA pregunta nueva sobre un detalle aún no aclarado.'
+            : 'Ya hubo varios intercambios: haga UNA pregunta que una los puntos abiertos o cierre si ya hay información suficiente.',
     ],
     en: [
-      'CONVERSATION PACING (no fixed question limit):',
-      '- Each agent reply must be brief (2–3 sentences at most).',
-      '- Keep asking while it makes sense to understand the patient experience.',
-      '- Prioritize SYNTHESIS: one well-formed question beats several small questions in a row.',
-      '- Avoid fatigue: do not repeat what the patient already said; do not turn the chat into an interrogation.',
+      `CONVERSATION PACING (max ${maxQuestionsPerInteraction} questions per interaction):`,
+      `- Questions already asked in this interaction: ${questionCount} of ${maxQuestionsPerInteraction}.`,
+      questionsRemaining > 0
+        ? `- ${questionsRemaining} question(s) left in this interaction — use them sparingly.`
+        : '- Limit reached: close warmly in one short sentence, with NO new question.',
+      '- Each reply: at most 2 short sentences (ideal: 1 sentence + 1 question).',
+      '- Prioritize ONE well-formed question; avoid interrogation.',
       '- Avoid questions very similar to prior ones: change the angle with each new question.',
-      '- Prefer questions that connect a concrete situation + context theme in a single sentence.',
       questionCount === 0
-        ? 'First question: validate the report and ask for ONE specific moment or situation.'
-        : questionCount <= 2
-          ? 'Deepen with ONE new, synthesized question about a detail still not clear.'
-          : 'Several exchanges already: briefly synthesize what you understand and ask ONE objective question tying open points — or close warmly if there is enough information.',
+        ? 'First question: validate the report and ask for ONE concrete detail.'
+        : questionsRemaining === 1
+          ? 'LAST question in this interaction: ask ONE essential, objective question.'
+          : questionCount <= 2
+            ? 'Deepen with ONE new question about a detail still not clear.'
+            : 'Several exchanges already: ask ONE question tying open points or close if there is enough information.',
     ],
   };
 

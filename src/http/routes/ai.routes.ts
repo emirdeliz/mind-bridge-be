@@ -15,6 +15,13 @@ import {
   ForbiddenError,
 } from '@application/authorization.js';
 import { runPatientChatGraph } from '@ai/graphs/patient-chat.graph.js';
+import { countAgentQuestionsInChat } from '@ai/prompts/patient-chat-interaction.js';
+import {
+  getInteractionScopedHistory,
+  getPatientChatInteractionClosingReply,
+  resolvePatientChatInteraction,
+  shouldClosePatientChatInteraction,
+} from '@ai/prompts/patient-chat-session.js';
 import { runPsychologistCopilotGraph } from '@ai/graphs/psychologist-copilot.graph.js';
 import { validateBody } from '@http/middleware/validate.js';
 import {
@@ -61,14 +68,26 @@ export const createAiRoutes =
         );
         const psychologistContext =
           clinicalContent.sessionContext?.trim() || body.careContext?.trim() || '';
+        const language = normalizeAppLanguage(body.language);
+        const chatHistory = clinicalContent.patientChatSeed ?? [];
+        const { interactionId, isNewInteraction } =
+          resolvePatientChatInteraction(chatHistory);
+        const interactionHistory = getInteractionScopedHistory(
+          chatHistory,
+          interactionId,
+          isNewInteraction
+        );
+        const questionCount = countAgentQuestionsInChat(interactionHistory);
 
-        const reply = await runPatientChatGraph(env, {
-          patientId: auth.userId,
-          userMessage: body.message,
-          psychologistContext,
-          chatHistory: clinicalContent.patientChatSeed ?? [],
-          language: normalizeAppLanguage(body.language),
-        });
+        const reply = shouldClosePatientChatInteraction(questionCount)
+          ? getPatientChatInteractionClosingReply(language)
+          : await runPatientChatGraph(env, {
+              patientId: auth.userId,
+              userMessage: body.message,
+              psychologistContext,
+              chatHistory: interactionHistory,
+              language,
+            });
 
         const exchangedAt = new Date().toISOString();
         const persistedMessages: ClinicalChatMessage[] = [
@@ -77,12 +96,15 @@ export const createAiRoutes =
             sender: 'user',
             text: body.message,
             createdAt: exchangedAt,
+            interactionId,
+            isInteractionStart: isNewInteraction,
           },
           {
             id: randomUUID(),
             sender: 'agent',
             text: reply,
             createdAt: new Date().toISOString(),
+            interactionId,
           },
         ];
 
@@ -116,6 +138,7 @@ export const createAiRoutes =
 
         return {
           message: reply,
+          messages: persistedMessages,
           patientId: auth.userId,
           patientSummary: refreshedContent.patientSummary,
         };

@@ -1,10 +1,12 @@
 import type { ClinicalChatMessage } from '@domain/clinical-content.types.js';
 import type { AppLanguage } from '@domain/types.js';
 
+import { PATIENT_CHAT_MAX_QUESTIONS_PER_INTERACTION } from './patient-chat-session.js';
 import { buildContextFocusBlock } from './patient-chat-context-focus.js';
 import {
   buildPatientChatBrevityGuidance,
   buildPatientChatPacingGuidance,
+  buildPatientChatSimplicityGuidance,
   buildPresentMomentGuidance,
 } from './patient-chat-interaction.js';
 import { normalizeAppLanguage } from './psychologist-copilot-system.js';
@@ -117,17 +119,22 @@ export const buildPatientChatSystemPrompt = (
     context.psychologistContext,
     questionCount
   );
-  const pacingGuidance = buildPatientChatPacingGuidance(language, questionCount);
+  const pacingGuidance = buildPatientChatPacingGuidance(
+    language,
+    questionCount,
+    PATIENT_CHAT_MAX_QUESTIONS_PER_INTERACTION
+  );
   const presentMomentGuidance = buildPresentMomentGuidance(language);
   const brevityGuidance = buildPatientChatBrevityGuidance(language);
+  const simplicityGuidance = buildPatientChatSimplicityGuidance(language);
 
   const blocks: Record<AppLanguage, string[]> = {
     pt: [
-      'Você acompanha o paciente entre sessões com o psicólogo, com tom profissional e vocabulário simples.',
-      'Seja empático, sem diagnóstico, sem jargão técnico e sem substituir o psicólogo.',
-      'Responda de forma resumida: poucas frases curtas, linguagem simples e direta.',
-      'Na maioria das respostas, termine com UMA pergunta sintética e específica. Se já houver informação suficiente, encerre com acolhimento breve sem nova pergunta.',
+      'REGRA PRINCIPAL: resposta com NO MÁXIMO 2 frases curtas, linguagem simples como em uma conversa de WhatsApp.',
+      'Você acompanha o paciente entre sessões. Tom acolhedor, sem diagnóstico, sem jargão e sem substituir o psicólogo.',
+      'Na maioria das respostas: "Entendo." + UMA pergunta curta e específica.',
       brevityGuidance,
+      simplicityGuidance,
       professionalToneRules.pt,
       presentMomentGuidance,
       pacingGuidance,
@@ -135,14 +142,14 @@ export const buildPatientChatSystemPrompt = (
       hasContext ? focusBlock : '',
       `Histórico recente:\n${history}`,
       'PROIBIDO: raciocínio interno, análise, "Thinking Process", listas numeradas ou blocos de raciocínio. Envie SOMENTE a mensagem final ao paciente.',
-      'Lembrete: agora, sintetize, mude o ângulo a cada pergunta, evite perguntas similares, linguagem simples.',
+      'Lembrete final: 1–2 frases curtas, palavras simples, uma pergunta, sem repetir o paciente.',
     ],
     es: [
-      'Acompañas al paciente entre sesiones con el psicólogo, con tono profesional y vocabulario simple.',
-      'Sé empático, sin diagnóstico, sin jerga técnica y sin reemplazar al psicólogo.',
-      'Responde de forma breve: pocas frases cortas, lenguaje simple y directo.',
-      'En la mayoría de las respuestas, termina con UNA pregunta sintética y específica. Si ya hay información suficiente, cierra con contención breve sin nueva pregunta.',
+      'REGLA PRINCIPAL: respuesta con COMO MÁXIMO 2 frases cortas, lenguaje simple como en un chat.',
+      'Acompañas al paciente entre sesiones. Tono cercano, sin diagnóstico, sin jerga y sin reemplazar al psicólogo.',
+      'En la mayoría de las respuestas: "Entiendo." + UNA pregunta corta y específica.',
       brevityGuidance,
+      simplicityGuidance,
       professionalToneRules.es,
       presentMomentGuidance,
       pacingGuidance,
@@ -150,14 +157,14 @@ export const buildPatientChatSystemPrompt = (
       hasContext ? focusBlock : '',
       `Historial reciente:\n${history}`,
       'PROHIBIDO: razonamiento interno, análisis, "Thinking Process", listas numeradas o bloques de razonamiento. Envía SOLO el mensaje final al paciente.',
-      'Recordatorio: ahora, sintetiza, cambia el ángulo en cada pregunta, evita preguntas similares, lenguaje simple.',
+      'Recordatorio final: 1–2 frases cortas, palabras simples, una pregunta, sin repetir al paciente.',
     ],
     en: [
-      'You accompany the patient between sessions with the psychologist, with a professional tone and simple vocabulary.',
-      'Be empathetic, without diagnosis, without technical jargon, and without replacing the psychologist.',
-      'Reply briefly: a few short sentences, simple and direct language.',
-      'In most replies, end with ONE synthesized, specific question. If there is already enough information, close warmly in one short sentence without a new question.',
+      'MAIN RULE: reply with AT MOST 2 short sentences, simple language like a chat message.',
+      'You accompany the patient between sessions. Warm tone, no diagnosis, no jargon, do not replace the psychologist.',
+      'In most replies: "I understand." + ONE short, specific question.',
       brevityGuidance,
+      simplicityGuidance,
       professionalToneRules.en,
       presentMomentGuidance,
       pacingGuidance,
@@ -165,7 +172,7 @@ export const buildPatientChatSystemPrompt = (
       hasContext ? focusBlock : '',
       `Recent history:\n${history}`,
       'FORBIDDEN: internal reasoning, analysis, "Thinking Process", numbered lists, or reasoning blocks. Send ONLY the final message to the patient.',
-      'Reminder: right now, synthesize, change angle each question, avoid similar questions, simple language.',
+      'Final reminder: 1–2 short sentences, simple words, one question, do not repeat the patient.',
     ],
   };
 

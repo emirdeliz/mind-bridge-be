@@ -3,6 +3,10 @@ export type ClinicalChatMessage = {
   sender: 'user' | 'agent';
   text: string;
   createdAt: string;
+  /** Groups messages from one patient-initiated topic until the agent closes the exchange. */
+  interactionId?: string;
+  /** True on the first user message of an interaction (shows a divider in the UI). */
+  isInteractionStart?: boolean;
 };
 
 export type SessionNoteEntry = {

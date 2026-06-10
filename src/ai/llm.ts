@@ -19,13 +19,13 @@ export const createPsychologistCopilotModel = (env: Env) =>
     think: false,
   });
 
-/** Patient ↔ AI chat — no post-processing character cap; generous token budget. */
+/** Patient ↔ AI chat — brief replies; sentence cap applied in post-processing. */
 export const createPatientChatModel = (env: Env) =>
   new ChatOllama({
     baseUrl: env.OLLAMA_BASE_URL,
     model: env.OLLAMA_CHAT_MODEL,
-    temperature: 0.2,
-    numPredict: 2048,
+    temperature: 0.15,
+    numPredict: 256,
     think: false,
   });
 

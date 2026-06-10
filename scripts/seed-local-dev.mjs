@@ -104,6 +104,8 @@ const DEMO_PATIENTS = [
     lastConsultationAt: '2026-03-10T09:00:00.000Z',
     isDeleted: true,
     enabledSinceMonthsAgo: 3,
+    /** Disabled at the start of the current month — still billable this month (patient-month). */
+    disabledSinceMonthsAgo: 0,
   },
 ];
 
@@ -178,6 +180,52 @@ const linkedAtFromMonthsAgo = (monthsAgo = 0) => {
   return date.toISOString();
 };
 
+const resolveDisabledAt = (demo) => {
+  if (!demo.isDeleted) {
+    return null;
+  }
+
+  return linkedAtFromMonthsAgo(demo.disabledSinceMonthsAgo ?? 0);
+};
+
+const seedCareBillingEvents = async (
+  careRelationshipId,
+  psychologistId,
+  patientId,
+  enabledAt,
+  disabledAt
+) => {
+  await admin
+    .from('care_relationship_billing_events')
+    .delete()
+    .eq('care_relationship_id', careRelationshipId);
+
+  const events = [
+    {
+      care_relationship_id: careRelationshipId,
+      psychologist_id: psychologistId,
+      patient_id: patientId,
+      event_type: 'enabled',
+      occurred_at: enabledAt,
+    },
+  ];
+
+  if (disabledAt) {
+    events.push({
+      care_relationship_id: careRelationshipId,
+      psychologist_id: psychologistId,
+      patient_id: patientId,
+      event_type: 'disabled',
+      occurred_at: disabledAt,
+    });
+  }
+
+  const { error } = await admin.from('care_relationship_billing_events').insert(events);
+  if (error) {
+    throw new Error(`Billing events ${careRelationshipId}: ${error.message}`);
+  }
+};
+
 const linkPatient = async (psychologistId, patientId, demo) => {
   const { data: existingCare } = await admin
     .from('care_relationships')
@@ -187,6 +235,7 @@ const linkPatient = async (psychologistId, patientId, demo) => {
     .maybeSingle();
 
   const linkedAt = linkedAtFromMonthsAgo(demo.enabledSinceMonthsAgo ?? 0);
+  const disabledAt = resolveDisabledAt(demo);
   const carePayload = {
     psychologist_id: psychologistId,
     patient_id: patientId,
@@ -194,16 +243,38 @@ const linkPatient = async (psychologistId, patientId, demo) => {
     is_deleted: demo.isDeleted,
     last_consultation_at: demo.lastConsultationAt,
     created_at: linkedAt,
+    disabled_at: disabledAt,
   };
 
+  let careRelationshipId = existingCare?.id;
+
   if (!existingCare) {
-    const { error: careError } = await admin.from('care_relationships').insert(carePayload);
+    const { data: insertedCare, error: careError } = await admin
+      .from('care_relationships')
+      .insert(carePayload)
+      .select('id')
+      .single();
     if (careError) {
       throw new Error(`Care link ${demo.email}: ${careError.message}`);
     }
+    careRelationshipId = insertedCare.id;
   } else {
-    await admin.from('care_relationships').update(carePayload).eq('id', existingCare.id);
+    const { error: careError } = await admin
+      .from('care_relationships')
+      .update(carePayload)
+      .eq('id', existingCare.id);
+    if (careError) {
+      throw new Error(`Care link ${demo.email}: ${careError.message}`);
+    }
   }
+
+  await seedCareBillingEvents(
+    careRelationshipId,
+    psychologistId,
+    patientId,
+    linkedAt,
+    disabledAt
+  );
 };
 
 const PLATFORM_PRICE_CENTS = 7990;
@@ -219,11 +290,34 @@ const BILLING_DISCOUNTS_BY_EMAIL = {
   },
 };
 
-const countEnabledPatientsForMonth = (patients, monthOffset) =>
-  patients.filter(
-    (patient) =>
-      !patient.isDeleted && (patient.enabledSinceMonthsAgo ?? 0) >= monthOffset
-  ).length;
+const billingMonthBoundsFromOffset = (monthOffset) => {
+  const monthStart = new Date(linkedAtFromMonthsAgo(monthOffset));
+  const monthEndExclusive = new Date(monthStart);
+  monthEndExclusive.setUTCMonth(monthEndExclusive.getUTCMonth() + 1);
+  return { monthStart, monthEndExclusive };
+};
+
+const countBillablePatientsForMonth = (patients, monthOffset) => {
+  const { monthStart, monthEndExclusive } = billingMonthBoundsFromOffset(monthOffset);
+  const billableEmails = new Set();
+
+  for (const patient of patients) {
+    const enabledAt = new Date(linkedAtFromMonthsAgo(patient.enabledSinceMonthsAgo ?? 0));
+    const disabledAt = patient.isDeleted
+      ? new Date(linkedAtFromMonthsAgo(patient.disabledSinceMonthsAgo ?? 0))
+      : null;
+
+    const overlapsMonth =
+      enabledAt < monthEndExclusive &&
+      (disabledAt === null || disabledAt > monthStart);
+
+    if (overlapsMonth) {
+      billableEmails.add(patient.email);
+    }
+  }
+
+  return billableEmails.size;
+};
 
 const seedBillingForPsychologist = async (psychologistId, email, patients) => {
   await admin.from('billing_platform_pricing').upsert(
@@ -260,7 +354,7 @@ const seedBillingForPsychologist = async (psychologistId, email, patients) => {
     monthDate.setUTCDate(1);
     monthDate.setUTCMonth(monthDate.getUTCMonth() - offset);
     const billingMonth = `${monthDate.getUTCFullYear()}-${String(monthDate.getUTCMonth() + 1).padStart(2, '0')}-01`;
-    const patientCount = countEnabledPatientsForMonth(patients, offset);
+    const patientCount = countBillablePatientsForMonth(patients, offset);
     const grossAmountCents = patientCount * PLATFORM_PRICE_CENTS;
     const discountPercent = discount?.discount_percent ?? 0;
     const discountAmountCents = Math.round(grossAmountCents * (discountPercent / 100));
@@ -278,6 +372,7 @@ const seedBillingForPsychologist = async (psychologistId, email, patients) => {
           discount_percent: discountPercent,
           discount_amount_cents: discountAmountCents,
           net_amount_cents: netAmountCents,
+          is_finalized: offset > 0,
           updated_at: new Date().toISOString(),
         },
         { onConflict: 'psychologist_id,billing_month' }

@@ -6,6 +6,7 @@ import type {
   PsychologistPatientSaveBody,
 } from '@domain/patient.types.js';
 import type { AppLanguage } from '@domain/types.js';
+import { recordCareBillingEvent } from './billing-events.repository.js';
 import { ensurePatientClinicalContent } from './clinical-content.repository.js';
 
 type PatientEmbed = {
@@ -185,18 +186,33 @@ export const createPatientForPsychologist = async (
     throw new Error(`Failed to update patient profile: ${profileError.message}`);
   }
 
-  const { error: careError } = await admin.from('care_relationships').insert({
-    psychologist_id: psychologistId,
-    patient_id: patientId,
-    status: 'active',
-    is_deleted: false,
-  });
+  const enabledAt = new Date().toISOString();
+  const { data: careData, error: careError } = await admin
+    .from('care_relationships')
+    .insert({
+      psychologist_id: psychologistId,
+      patient_id: patientId,
+      status: 'active',
+      is_deleted: false,
+      disabled_at: null,
+      created_at: enabledAt,
+    })
+    .select('id')
+    .single();
 
-  if (careError) {
+  if (careError || !careData) {
     throw new Error(
-      `Failed to create care relationship: ${careError.message}`
+      careError?.message ?? 'Failed to create care relationship'
     );
   }
+
+  await recordCareBillingEvent(admin, {
+    careRelationshipId: careData.id,
+    psychologistId,
+    patientId,
+    eventType: 'enabled',
+    occurredAt: enabledAt,
+  });
 
   await ensurePatientClinicalContent(admin, patientId);
 
@@ -287,9 +303,13 @@ export const softDeletePatientForPsychologist = async (
   psychologistId: string,
   patientId: string
 ): Promise<void> => {
+  const disabledAt = new Date().toISOString();
   const { data, error } = await admin
     .from('care_relationships')
-    .update({ is_deleted: true })
+    .update({
+      is_deleted: true,
+      disabled_at: disabledAt,
+    })
     .eq('psychologist_id', psychologistId)
     .eq('patient_id', patientId)
     .eq('is_deleted', false)
@@ -303,4 +323,12 @@ export const softDeletePatientForPsychologist = async (
   if (!data) {
     throw new NotFoundError('Patient not found');
   }
+
+  await recordCareBillingEvent(admin, {
+    careRelationshipId: data.id,
+    psychologistId,
+    patientId,
+    eventType: 'disabled',
+    occurredAt: disabledAt,
+  });
 };

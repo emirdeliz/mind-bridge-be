@@ -1,0 +1,51 @@
+---
+description: Atomic components use boolean layout props, not className
+globs:
+  - src/ui/atoms/**/*
+  - src/ui/molecules/**/*
+  - src/ui/organisms/**/*
+  - src/ui/templates/**/*
+  - src/ui/components/**/*
+alwaysApply: false
+---
+
+# Atomic Design — no `className` prop
+
+## Rule
+
+- Do **not** expose or pass `className` to components in `atoms`, `molecules`, or `organisms`.
+- Do **not** pass `className` from `templates` or `components` into atomic components.
+- Style atomic components with **boolean props** that map to predefined Tailwind classes (e.g. `mt4` → `mt-4`, `gap4` → `gap-4`).
+- If a new style is needed, add a boolean (or enum) prop on the atom/molecule and implement the class map inside that layer.
+
+## Spacing scale
+
+Use numeric suffix = Tailwind spacing token:
+
+| Prop   | Class  |
+|--------|--------|
+| `mt1`  | `mt-1` |
+| `mt4`  | `mt-4` |
+| `gap4` | `gap-4` |
+| `px4`  | `px-4` |
+
+Shared builders live in `src/ui/atoms/shared/spacingClasses.ts`.
+
+## Examples
+
+```tsx
+// ✅
+<Flex col wFull mt6 gap4 px4 py8 minHScreen mxAuto>
+  <Card padding="lg" shadow="md">...</Card>
+</Flex>
+<RouteLink href="/" active>Login</RouteLink>
+
+// ❌
+<Flex className="mt-6 gap-4">
+<RouteLink href="/" className="mb-nav-link-active" />
+```
+
+## Templates
+
+- Prefer composing `@atoms` / `@molecules` with boolean props.
+- Domain-specific layout wrappers belong in `templates` or `components`; extend atomic APIs instead of leaking `className`.

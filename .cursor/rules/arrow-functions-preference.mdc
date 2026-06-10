@@ -1,0 +1,38 @@
+---
+description: Preferir arrow functions em TypeScript/TSX (funções nomeadas e exports).
+globs: "**/*.{ts,tsx}"
+alwaysApply: false
+---
+
+# Arrow functions (preferência)
+
+Ao escrever ou alterar código em `.ts` / `.tsx`, **preferir arrow functions** a declarações `function` para funções nomeadas, helpers e handlers.
+
+## O que usar
+
+- **Helpers / utilitários**: `const foo = (a: string) => { … };` ou retorno implícito `const foo = (a: string) => value;`
+- **Async**: `const load = async () => { … };`
+- **Export nomeado**: `export const buildX = async (…) => { … };` em vez de `export async function buildX(…) { … }`
+- **API route default**: `const handler = async (req, res) => { … }; export default handler;` em vez de `export default async function handler(…) { … }`
+- **Type guards**: `const isFoo = (x: unknown): x is Foo => { … };`
+
+## Exceções (manter `function` quando fizer sentido)
+
+- **Generators** (`function*`) — não têm equivalente arrow direto.
+- **Métodos de classe** em `class` — `method() { }` é o padrão; não forçar arrow no corpo da classe salvo convenção já existente no arquivo.
+
+## Exemplos
+
+```typescript
+// Preferir
+const sum = (a: number, b: number) => a + b;
+export const getItems = async () => { … };
+
+// Evitar para o mesmo estilo
+function sum(a: number, b: number) {
+  return a + b;
+}
+export async function getItems() { … }
+```
+
+Ao rever diffs, converter `function` → `const … = …` quando não cair numa exceção acima.

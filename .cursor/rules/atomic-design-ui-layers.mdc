@@ -1,0 +1,57 @@
+---
+description: Generic atoms/molecules/organisms; project domain in templates
+globs:
+  - src/ui/atoms/**/*
+  - src/ui/molecules/**/*
+  - src/ui/organisms/**/*
+  - src/ui/templates/**/*
+alwaysApply: false
+---
+
+# Atomic Design — generic vs. domain boundary
+
+## Principle
+
+- **`src/ui/atoms`**, **`src/ui/molecules`**, and **`src/ui/organisms`**: only **generic, reusable** components, with no direct coupling to the product/domain (registrations, Supabase, business routes, `cst_*` / `pl_*` / `kg_*` tables, Entelgy-specific brands, or flows).
+- **`src/ui/templates`**: layout/UI blocks **tied to the project domain** (e.g., assessment dashboards, Upcode, KG, per-resource CRUD forms, domain i18n keys). They may import `@services`, `@api`, `@constants`, and domain types.
+
+## What counts as “generic” (atoms / molecules / organisms)
+
+- Visual controls, form patterns, tables, modals, cards, and lists that could exist in **any** React app using the same design system.
+- Domain-agnostic props: `label`, `options`, `onSubmit`, `columns`, `children`, and already-mapped data in a neutral format.
+- Do not expose `className`; use boolean spacing/layout props (see `atomic-no-classname-props.mdc`).
+
+## What counts as “project/domain” (templates)
+
+- Names or props that reference system entities: `workload`, `plAudit`, `KgCode`, `Sdlc`, `RhCoworker`, etc.
+- Calls to hooks/API (`useKgCode`, `useAuditLogs`, `supabase.from(...)`), table constants, or domain-specific copy tied to a module.
+- Feature folders (e.g., `templates/UpcodeAudit/`, `templates/DashboardAssessmentCharts/`).
+
+## Examples
+
+```tsx
+// ❌ Avoid in @atoms — coupled to Upcode/auditing
+export const AuditResultPill = ({ result }: { result: string }) => { ... }
+
+// ✅ Prefer in @atoms — generic
+export const StatusTonePill = ({ tone, label }: { tone: 'success' | 'danger'; label: string }) => { ... }
+
+// ✅ Domain in @templates
+export const AuditResultPill = ({ result, label }: { result: string; label: string }) => { ... } // usa auditResultTone de @services
+```
+
+```tsx
+// ❌ Avoid in @molecules — direct DTO/domain import
+import type { PlAuditLogRow } from '@services';
+
+// ✅ Use in @templates, or make a generic molecule with locally/generically typed props
+```
+
+## Organization
+
+- New UI that is **reusable in any screen**: create it in `atoms` / `molecules` / `organisms` and export it from the corresponding `index.ts`.
+- New UI that is **domain-specific / Supabase-integrated / business copy**: create a folder in `templates/` (or `ui/components/` for composed pages, following the existing pattern) and export it from `templates/index.ts` when global discoverability makes sense.
+
+## `src/ui/components`
+
+- Keep it for **full pages and complete features** (final composition + route); it does not replace `templates`. If a block is presentation-only but already domain-specific, prefer `templates` before promoting it to `components` unnecessarily.

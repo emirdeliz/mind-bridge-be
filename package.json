@@ -16,7 +16,10 @@
     "supabase:reset": "supabase db reset && npm run supabase:env && npm run seed:local",
     "supabase:env": "bash scripts/supabase-env.sh",
     "seed:local": "node --env-file=.env scripts/seed-local-dev.mjs",
-    "seed:demo-patients": "npm run seed:local"
+    "seed:demo-patients": "npm run seed:local",
+    "billing:snapshot": "tsx --env-file=.env scripts/run-billing-jobs.ts snapshot",
+    "billing:finalize": "tsx --env-file=.env scripts/run-billing-jobs.ts finalize",
+    "billing:jobs": "tsx --env-file=.env scripts/run-billing-jobs.ts all"
   },
   "engines": {
     "node": ">=20"

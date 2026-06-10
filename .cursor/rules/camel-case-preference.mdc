@@ -1,0 +1,21 @@
+---
+description: Prefer camelCase names in TypeScript and React files
+globs: **/*.{ts,tsx}
+alwaysApply: false
+---
+
+# Camel Case Preference
+
+- Prefer `camelCase` for variables, params, props, local state, and helper names.
+- Prefer `PascalCase` only for React components, types, interfaces, and classes.
+- Avoid introducing new `snake_case` names in app code when a `camelCase` name works.
+- Keep `snake_case` only when preserving external contracts, such as backend payload fields, database columns, RPC params, or established URL/query keys.
+- When an external contract uses `snake_case`, map it at the boundary and keep the rest of the component logic in `camelCase`.
+
+```tsx
+// Avoid in component code
+const workload_id = row.workload_id;
+
+// Prefer
+const workloadId = row.workload_id;
+```

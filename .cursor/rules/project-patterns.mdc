@@ -1,0 +1,39 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+
+
+# Architecture Pattern
+
+## Core Structure
+- Follow modular layered architecture: DTOs → API → Services → UI → Pages
+- Each resource follows identical folder structure pattern
+
+## File Organization
+- DTOs: `src/api/dto/[resource-name]/[ResourceName]Dto.ts`
+- API: `src/api/integration/[ResourceName]/[ResourceName]Api.ts`
+- Services: `src/services/[resource-name]/hooks/use[ResourceName].ts`
+- Pages: `src/pages/[category]/[resource-name]/index.tsx`
+- Always update corresponding index.ts files for exports
+
+## Naming & Style
+- Comments/docs: en-US
+- Code identifiers: English (camelCase for variables/methods, PascalCase for types/components)
+- Database tables: snake_case (`resource_name`)
+- DTOs follow pattern: `[ResourceName]ViewDto`, `[ResourceName]SaveOrUpdateDto`, `[ResourceName]DeleteDto`
+- API methods follow pattern: `get[ResourceName]sApi`, `saveOrEdit[ResourceName]Api`, `delete[ResourceName]Api`
+
+## API & Data Handling
+- Use Supabase for all database operations
+- Always convert between camelCase (frontend) and snake_case (backend)
+- Implement pagination, sorting, and filtering consistently
+- Use hooks with useCallback for API interaction
+- Maintain separation between business logic and UI
+
+## Implementation Consistency
+- Reuse existing patterns for all new features
+- Follow existing project component patterns
+- Use existing utility functions for common operations (keysToCamel, keysToSnake)
+- Keep all CRUD operations consistent across resources

@@ -1,0 +1,54 @@
+---
+description: Use pt-BR as the canonical language for all i18n translations
+globs:
+  - src/ui/system/i18n/**/*
+  - src/ui/components/**/*
+  - src/ui/templates/**/*
+alwaysApply: true
+---
+
+# i18n — pt-BR First
+
+## Default language
+
+- Application default language is **pt-BR** (`language: 'pt'` → `dictionaries/pt_br.json`).
+- Do not change the default to `en` unless explicitly requested.
+
+## Canonical dictionary
+
+- Treat **`src/ui/system/i18n/dictionaries/pt_br.json`** as the source of truth for copy and wording.
+- When adding or updating UI text, write the **pt-BR** string first, then mirror it in `en.json` and `es.json`.
+
+## Translation keys
+
+- Keys must be **UPPERCASE_SNAKE_CASE** (e.g. `LOGIN_WITH_PASSWORD`).
+- Keep the same keys across `pt_br.json`, `en.json`, and `es.json`.
+- Never ship a new key in only one dictionary; update all three files.
+
+## UI implementation
+
+- Do not hardcode user-facing strings in pages, templates, or components.
+- Use `useI18n()` and `t('KEY')` from `@i18n`.
+- For dynamic text, use `translateTemplate` from `@i18n` with `{{param}}` placeholders.
+
+## Fallback order
+
+- Translation lookup fallback: current language → **pt** → en → key.
+
+## Examples
+
+```tsx
+// ❌ Avoid
+<button>Salvar perfil</button>
+
+// ✅ Prefer
+const { t } = useI18n();
+<button>{t("SAVE_PROFILE")}</button>
+```
+
+```json
+// ✅ pt_br.json (authoritative copy)
+{
+  "SAVE_PROFILE": "Salvar perfil"
+}
+```

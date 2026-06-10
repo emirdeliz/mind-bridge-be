@@ -1,0 +1,22 @@
+---
+description: Camelize Supabase query results in TypeScript and React files
+globs: **/*.{ts,tsx}
+alwaysApply: false
+---
+
+# Supabase Camel Case
+
+- When reading data from Supabase, do not expose raw `snake_case` rows to services or UI.
+- For list queries, return `listKeysToCamel<T>(response.data || [])`.
+- For single-object responses, return `keysToCamel<T>(response.data)` when appropriate.
+- Keep `snake_case` only inside the Supabase query itself, table names, selected columns, filters, and other database contracts.
+- Prefer converting at the API/integration boundary so hooks, services, and UI consume `camelCase`.
+
+```ts
+// Good
+const response = await supabase.from(DB_TABLES.PL_STREAMS).select('id, project_id, created_at');
+return {
+  ...response,
+  data: listKeysToCamel<PlStreamDto>(response.data || []),
+};
+```

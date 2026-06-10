@@ -1,0 +1,29 @@
+---
+description: Enforce TypeScript and prefer path aliases
+globs:
+  - src/**/*.ts
+  - src/**/*.tsx
+alwaysApply: false
+---
+
+# TypeScript And Aliases
+
+- All application code must be written in TypeScript (`.ts` / `.tsx`).
+- Avoid creating new JavaScript source files (`.js` / `.jsx`) in `src`.
+- Use one path alias per module root in `tsconfig.json` (e.g. `@api`, `@services`). Do not add duplicate entries such as `@api` and `@api/*` for the same root.
+- Import from each layer's `index.ts` barrel (`@api`, `@services`, `@components`, `@templates`, `@i18n`, `@atoms`, etc.), not from deep file paths under those folders.
+- Avoid deep relative paths like `../../../` when a barrel alias exists.
+- Within the same package (e.g. `services/ai/hooks` importing `services/ai/agentGuardrails`), prefer relative imports to avoid circular dependencies through the barrel.
+
+## Example
+
+```ts
+// ✅
+import { useAuth } from "@services";
+import type { UserRole } from "@api";
+import { AppShell } from "@templates";
+
+// ❌ deep path under an aliased root
+import { useAuth } from "@services/auth/hooks/useAuth";
+import type { UserRole } from "@api/dto/auth/AuthDto";
+```

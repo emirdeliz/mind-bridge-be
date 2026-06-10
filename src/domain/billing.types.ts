@@ -19,7 +19,10 @@ export type PsychologistBillingMonthlyEntry = {
 };
 
 export type PsychologistBillingSummary = {
+  /** Billable patients for the current month (patient-month rule). */
   enabledPatientCount: number;
+  /** Patients currently active and not soft-deleted. */
+  currentlyEnabledPatientCount: number;
   unitPriceCents: number;
   currency: string;
   grossAmountCents: number;

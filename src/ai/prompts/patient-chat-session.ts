@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
+import type { Env } from '@config/env.js';
 import type { ClinicalChatMessage } from '@domain/clinical-content.types.js';
 import type { AppLanguage } from '@domain/types.js';
 
@@ -7,12 +8,61 @@ import {
   countAgentQuestionsInChat,
   isPatientChatClosingMessage,
 } from './patient-chat-interaction.js';
+import {
+  classifyPatientTopicShift,
+  detectExplicitPatientTopicChange,
+} from './patient-chat-topic.js';
 
 export const PATIENT_CHAT_MAX_QUESTIONS_PER_INTERACTION = 5;
 
 const LEGACY_INTERACTION_ID = 'legacy';
 
 const endsWithQuestion = (text: string): boolean => text.trim().endsWith('?');
+
+const INTERACTION_CLOSING_REPLIES: Record<AppLanguage, string> = {
+  pt: 'Obrigado por conversar. Quando quiser retomar, é só escrever.',
+  es: 'Gracias por conversar. Cuando quiera retomar, solo escriba.',
+  en: 'Thank you for talking. Whenever you want to continue, just write again.',
+};
+
+const FAREWELL_PATTERNS: RegExp[] = [
+  /\bobrigad[oa] por conversar\b/i,
+  /\bquando quiser retomar\b/i,
+  /\bé só escrever\b/i,
+  /\bpermaneço à disposição\b/i,
+  /\bagradeço por compartilhar\b/i,
+  /\bgracias por conversar\b/i,
+  /\bcuando quiera retomar\b/i,
+  /\bsolo escriba\b/i,
+  /\bthank you for talking\b/i,
+  /\bwhenever you want to continue\b/i,
+  /\bjust write again\b/i,
+  /\bi remain available\b/i,
+  /\bthank you for sharing\b/i,
+];
+
+export const isPatientChatFarewellReply = (text: string): boolean => {
+  const normalized = text.trim();
+  if (!normalized) {
+    return false;
+  }
+
+  if (isPatientChatClosingMessage(normalized)) {
+    return true;
+  }
+
+  if (
+    Object.values(INTERACTION_CLOSING_REPLIES).some((reply) => reply === normalized)
+  ) {
+    return true;
+  }
+
+  if (endsWithQuestion(normalized)) {
+    return false;
+  }
+
+  return FAREWELL_PATTERNS.some((pattern) => pattern.test(normalized));
+};
 
 export const getLastInteractionId = (
   messages: ClinicalChatMessage[]
@@ -42,7 +92,7 @@ const isInteractionComplete = (scope: ClinicalChatMessage[]): boolean => {
     return false;
   }
 
-  if (isPatientChatClosingMessage(last.text)) {
+  if (last.sender === 'agent' && isPatientChatFarewellReply(last.text)) {
     return true;
   }
 
@@ -64,7 +114,8 @@ export type ResolvedPatientChatInteraction = {
 };
 
 export const resolvePatientChatInteraction = (
-  history: ClinicalChatMessage[]
+  history: ClinicalChatMessage[],
+  userMessage?: string
 ): ResolvedPatientChatInteraction => {
   if (!history.length) {
     return { interactionId: randomUUID(), isNewInteraction: true };
@@ -75,6 +126,12 @@ export const resolvePatientChatInteraction = (
   if (lastInteractionId) {
     const scope = getMessagesInInteraction(history, lastInteractionId);
     if (!isInteractionComplete(scope)) {
+      if (
+        userMessage &&
+        detectExplicitPatientTopicChange(userMessage, scope)
+      ) {
+        return { interactionId: randomUUID(), isNewInteraction: true };
+      }
       return { interactionId: lastInteractionId, isNewInteraction: false };
     }
     return { interactionId: randomUUID(), isNewInteraction: true };
@@ -83,6 +140,13 @@ export const resolvePatientChatInteraction = (
   const questionCount = countAgentQuestionsInChat(history);
   const last = history.at(-1);
   if (!last) {
+    return { interactionId: randomUUID(), isNewInteraction: true };
+  }
+
+  if (
+    userMessage &&
+    detectExplicitPatientTopicChange(userMessage, history)
+  ) {
     return { interactionId: randomUUID(), isNewInteraction: true };
   }
 
@@ -98,6 +162,34 @@ export const resolvePatientChatInteraction = (
   }
 
   return { interactionId: LEGACY_INTERACTION_ID, isNewInteraction: false };
+};
+
+export const resolvePatientChatInteractionWithTopicCheck = async (
+  env: Env,
+  history: ClinicalChatMessage[],
+  userMessage: string
+): Promise<ResolvedPatientChatInteraction> => {
+  const initial = resolvePatientChatInteraction(history, userMessage);
+  if (initial.isNewInteraction) {
+    return initial;
+  }
+
+  const scope = getInteractionScopedHistory(
+    history,
+    initial.interactionId,
+    false
+  );
+
+  if (detectExplicitPatientTopicChange(userMessage, scope)) {
+    return { interactionId: randomUUID(), isNewInteraction: true };
+  }
+
+  const isNewTopic = await classifyPatientTopicShift(env, userMessage, scope);
+  if (isNewTopic) {
+    return { interactionId: randomUUID(), isNewInteraction: true };
+  }
+
+  return initial;
 };
 
 export const getInteractionScopedHistory = (
@@ -123,13 +215,12 @@ export const shouldClosePatientChatInteraction = (
   questionCount: number
 ): boolean => questionCount >= PATIENT_CHAT_MAX_QUESTIONS_PER_INTERACTION;
 
-const INTERACTION_CLOSING_REPLIES: Record<AppLanguage, string> = {
-  pt: 'Obrigado por conversar. Quando quiser retomar, é só escrever.',
-  es: 'Gracias por conversar. Cuando quiera retomar, solo escriba.',
-  en: 'Thank you for talking. Whenever you want to continue, just write again.',
-};
-
 export const getPatientChatInteractionClosingReply = (
   language: AppLanguage
 ): string =>
   INTERACTION_CLOSING_REPLIES[language] ?? INTERACTION_CLOSING_REPLIES.pt;
+
+export const isAgentInteractionEndReply = (
+  reply: string,
+  forcedClosing: boolean
+): boolean => forcedClosing || isPatientChatFarewellReply(reply);

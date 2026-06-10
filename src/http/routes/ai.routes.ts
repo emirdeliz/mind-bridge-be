@@ -19,7 +19,8 @@ import { countAgentQuestionsInChat } from '@ai/prompts/patient-chat-interaction.
 import {
   getInteractionScopedHistory,
   getPatientChatInteractionClosingReply,
-  resolvePatientChatInteraction,
+  isAgentInteractionEndReply,
+  resolvePatientChatInteractionWithTopicCheck,
   shouldClosePatientChatInteraction,
 } from '@ai/prompts/patient-chat-session.js';
 import { runPsychologistCopilotGraph } from '@ai/graphs/psychologist-copilot.graph.js';
@@ -71,15 +72,20 @@ export const createAiRoutes =
         const language = normalizeAppLanguage(body.language);
         const chatHistory = clinicalContent.patientChatSeed ?? [];
         const { interactionId, isNewInteraction } =
-          resolvePatientChatInteraction(chatHistory);
+          await resolvePatientChatInteractionWithTopicCheck(
+            env,
+            chatHistory,
+            body.message
+          );
         const interactionHistory = getInteractionScopedHistory(
           chatHistory,
           interactionId,
           isNewInteraction
         );
         const questionCount = countAgentQuestionsInChat(interactionHistory);
+        const forcedClosing = shouldClosePatientChatInteraction(questionCount);
 
-        const reply = shouldClosePatientChatInteraction(questionCount)
+        const reply = forcedClosing
           ? getPatientChatInteractionClosingReply(language)
           : await runPatientChatGraph(env, {
               patientId: auth.userId,
@@ -88,6 +94,8 @@ export const createAiRoutes =
               chatHistory: interactionHistory,
               language,
             });
+
+        const isInteractionEnd = isAgentInteractionEndReply(reply, forcedClosing);
 
         const exchangedAt = new Date().toISOString();
         const persistedMessages: ClinicalChatMessage[] = [
@@ -105,6 +113,7 @@ export const createAiRoutes =
             text: reply,
             createdAt: new Date().toISOString(),
             interactionId,
+            isInteractionEnd,
           },
         ];
 

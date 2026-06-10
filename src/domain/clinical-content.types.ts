@@ -7,6 +7,8 @@ export type ClinicalChatMessage = {
   interactionId?: string;
   /** True on the first user message of an interaction (shows a divider in the UI). */
   isInteractionStart?: boolean;
+  /** True when the agent closes the interaction with a farewell (shows a divider after). */
+  isInteractionEnd?: boolean;
 };
 
 export type SessionNoteEntry = {

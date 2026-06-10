@@ -348,7 +348,7 @@ export const buildPatientChatPacingGuidance = (
           ? 'ÚLTIMA pergunta desta interação: faça UMA pergunta objetiva e essencial.'
           : questionCount <= 2
             ? 'Aprofunde com UMA pergunta nova sobre detalhe ainda não esclarecido.'
-            : 'Já houve várias trocas: faça UMA pergunta que una os pontos em aberto ou encerre se já houver informação suficiente.',
+            : 'Já houve várias trocas: faça UMA pergunta que una os pontos em aberto ou encerre com: "Obrigado por conversar. Quando quiser retomar, é só escrever." (sem pergunta).',
     ],
     es: [
       `RITMO DE LA CONVERSACIÓN (máximo ${maxQuestionsPerInteraction} preguntas por interacción):`,
@@ -365,7 +365,7 @@ export const buildPatientChatPacingGuidance = (
           ? 'ÚLTIMA pregunta de esta interacción: haga UNA pregunta objetiva y esencial.'
           : questionCount <= 2
             ? 'Profundice con UNA pregunta nueva sobre un detalle aún no aclarado.'
-            : 'Ya hubo varios intercambios: haga UNA pregunta que una los puntos abiertos o cierre si ya hay información suficiente.',
+            : 'Ya hubo varios intercambios: haga UNA pregunta que una los puntos abiertos o cierre con: "Gracias por conversar. Cuando quiera retomar, solo escriba." (sin pregunta).',
     ],
     en: [
       `CONVERSATION PACING (max ${maxQuestionsPerInteraction} questions per interaction):`,
@@ -382,7 +382,7 @@ export const buildPatientChatPacingGuidance = (
           ? 'LAST question in this interaction: ask ONE essential, objective question.'
           : questionCount <= 2
             ? 'Deepen with ONE new question about a detail still not clear.'
-            : 'Several exchanges already: ask ONE question tying open points or close if there is enough information.',
+            : 'Several exchanges already: ask ONE question tying open points or close with: "Thank you for talking. Whenever you want to continue, just write again." (no question).',
     ],
   };
 

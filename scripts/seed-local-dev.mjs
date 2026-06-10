@@ -58,22 +58,7 @@ const EMIR_PSYCHOLOGIST = {
   password: 'Data@123',
 };
 
-const EMIR_PATIENTS = [
-  {
-    fullName: 'José Carlos',
-    email: 'josecarlos@gmail.com',
-    phone: '43423213213',
-    password: 'Data@123',
-    lastConsultationAt: null,
-    isDeleted: false,
-  },
-];
-
-const PSYCHOLOGIST_ACCOUNTS = [
-  { psychologist: DEMO_PSYCHOLOGIST, patients: null },
-  { psychologist: EMIR_PSYCHOLOGIST, patients: EMIR_PATIENTS },
-];
-
+/** Months ago (0 = current month) when the patient started counting for billing. */
 const DEMO_PATIENTS = [
   {
     fullName: 'Ana M.',
@@ -82,6 +67,7 @@ const DEMO_PATIENTS = [
     password: 'demo123456',
     lastConsultationAt: '2026-05-28T14:00:00.000Z',
     isDeleted: false,
+    enabledSinceMonthsAgo: 5,
   },
   {
     fullName: 'Bruno Costa',
@@ -90,6 +76,7 @@ const DEMO_PATIENTS = [
     password: 'demo123456',
     lastConsultationAt: '2026-05-20T10:30:00.000Z',
     isDeleted: false,
+    enabledSinceMonthsAgo: 2,
   },
   {
     fullName: 'Carla Mendes',
@@ -98,6 +85,7 @@ const DEMO_PATIENTS = [
     password: 'demo123456',
     lastConsultationAt: '2026-04-15T16:00:00.000Z',
     isDeleted: false,
+    enabledSinceMonthsAgo: 4,
   },
   {
     fullName: 'Diego Ribeiro',
@@ -106,6 +94,7 @@ const DEMO_PATIENTS = [
     password: 'demo123456',
     lastConsultationAt: null,
     isDeleted: false,
+    enabledSinceMonthsAgo: 1,
   },
   {
     fullName: 'Elisa Ferreira',
@@ -114,7 +103,26 @@ const DEMO_PATIENTS = [
     password: 'demo123456',
     lastConsultationAt: '2026-03-10T09:00:00.000Z',
     isDeleted: true,
+    enabledSinceMonthsAgo: 3,
   },
+];
+
+const EMIR_PATIENTS = [
+  {
+    fullName: 'José Carlos',
+    email: 'josecarlos@gmail.com',
+    phone: '43423213213',
+    password: 'Data@123',
+    lastConsultationAt: null,
+    isDeleted: false,
+    enabledSinceMonthsAgo: 0,
+  },
+  ...DEMO_PATIENTS,
+];
+
+const PSYCHOLOGIST_ACCOUNTS = [
+  { psychologist: DEMO_PSYCHOLOGIST, patients: [] },
+  { psychologist: EMIR_PSYCHOLOGIST, patients: EMIR_PATIENTS },
 ];
 
 const ensureAuthUser = async ({ email, password, role, fullName, phone }) => {
@@ -162,6 +170,14 @@ const ensureAuthUser = async ({ email, password, role, fullName, phone }) => {
   return userId;
 };
 
+const linkedAtFromMonthsAgo = (monthsAgo = 0) => {
+  const date = new Date();
+  date.setUTCDate(1);
+  date.setUTCHours(12, 0, 0, 0);
+  date.setUTCMonth(date.getUTCMonth() - monthsAgo);
+  return date.toISOString();
+};
+
 const linkPatient = async (psychologistId, patientId, demo) => {
   const { data: existingCare } = await admin
     .from('care_relationships')
@@ -170,12 +186,14 @@ const linkPatient = async (psychologistId, patientId, demo) => {
     .eq('patient_id', patientId)
     .maybeSingle();
 
+  const linkedAt = linkedAtFromMonthsAgo(demo.enabledSinceMonthsAgo ?? 0);
   const carePayload = {
     psychologist_id: psychologistId,
     patient_id: patientId,
     status: 'active',
     is_deleted: demo.isDeleted,
     last_consultation_at: demo.lastConsultationAt,
+    created_at: linkedAt,
   };
 
   if (!existingCare) {
@@ -185,6 +203,89 @@ const linkPatient = async (psychologistId, patientId, demo) => {
     }
   } else {
     await admin.from('care_relationships').update(carePayload).eq('id', existingCare.id);
+  }
+};
+
+const PLATFORM_PRICE_CENTS = 7990;
+
+const BILLING_DISCOUNTS_BY_EMAIL = {
+  'psicologo.demo@mindbridge.local': {
+    discount_percent: 10,
+    label: 'Desconto early adopter',
+  },
+  'emirdeliz@gmail.com': {
+    discount_percent: 15,
+    label: 'Desconto parceiro fundador',
+  },
+};
+
+const countEnabledPatientsForMonth = (patients, monthOffset) =>
+  patients.filter(
+    (patient) =>
+      !patient.isDeleted && (patient.enabledSinceMonthsAgo ?? 0) >= monthOffset
+  ).length;
+
+const seedBillingForPsychologist = async (psychologistId, email, patients) => {
+  await admin.from('billing_platform_pricing').upsert(
+    {
+      id: 'default',
+      price_per_patient_cents: PLATFORM_PRICE_CENTS,
+      currency: 'BRL',
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: 'id' }
+  );
+
+  const discount = BILLING_DISCOUNTS_BY_EMAIL[email];
+  if (discount) {
+    const { error: discountError } = await admin
+      .from('psychologist_billing_discounts')
+      .upsert(
+        {
+          psychologist_id: psychologistId,
+          discount_percent: discount.discount_percent,
+          label: discount.label,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: 'psychologist_id' }
+      );
+    if (discountError) {
+      throw new Error(`Billing discount ${email}: ${discountError.message}`);
+    }
+  }
+
+  const monthsBack = 5;
+  for (let offset = monthsBack; offset >= 0; offset -= 1) {
+    const monthDate = new Date();
+    monthDate.setUTCDate(1);
+    monthDate.setUTCMonth(monthDate.getUTCMonth() - offset);
+    const billingMonth = `${monthDate.getUTCFullYear()}-${String(monthDate.getUTCMonth() + 1).padStart(2, '0')}-01`;
+    const patientCount = countEnabledPatientsForMonth(patients, offset);
+    const grossAmountCents = patientCount * PLATFORM_PRICE_CENTS;
+    const discountPercent = discount?.discount_percent ?? 0;
+    const discountAmountCents = Math.round(grossAmountCents * (discountPercent / 100));
+    const netAmountCents = grossAmountCents - discountAmountCents;
+
+    const { error: monthlyError } = await admin
+      .from('psychologist_billing_monthly')
+      .upsert(
+        {
+          psychologist_id: psychologistId,
+          billing_month: billingMonth,
+          enabled_patient_count: patientCount,
+          unit_price_cents: PLATFORM_PRICE_CENTS,
+          gross_amount_cents: grossAmountCents,
+          discount_percent: discountPercent,
+          discount_amount_cents: discountAmountCents,
+          net_amount_cents: netAmountCents,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: 'psychologist_id,billing_month' }
+      );
+
+    if (monthlyError) {
+      throw new Error(`Billing monthly ${email} ${billingMonth}: ${monthlyError.message}`);
+    }
   }
 };
 
@@ -237,13 +338,13 @@ const seedPsychologistAccount = async (psychologist, patients) => {
 
     console.log(`  Patient: ${demo.fullName} (${demo.email})`);
   }
+
+  await seedBillingForPsychologist(psychologistId, psychologist.email, patients);
 };
 
 const main = async () => {
   console.log('Seeding local dev data…');
   await assertServiceRoleKey();
-
-  PSYCHOLOGIST_ACCOUNTS[0].patients = DEMO_PATIENTS;
 
   for (const account of PSYCHOLOGIST_ACCOUNTS) {
     await seedPsychologistAccount(account.psychologist, account.patients);
@@ -251,9 +352,9 @@ const main = async () => {
 
   console.log('Done.');
   console.log('Login demo psychologist:', DEMO_PSYCHOLOGIST.email, '/', DEMO_PSYCHOLOGIST.password);
-  console.log('Login demo patient (Ana):', DEMO_PATIENTS[0].email, '/', DEMO_PATIENTS[0].password);
   console.log('Login Emir (psychologist):', EMIR_PSYCHOLOGIST.email, '/', EMIR_PSYCHOLOGIST.password);
   console.log('Login José Carlos (patient):', EMIR_PATIENTS[0].email, '/', EMIR_PATIENTS[0].password);
+  console.log('Login demo patient (Ana):', DEMO_PATIENTS[0].email, '/', DEMO_PATIENTS[0].password);
 };
 
 main().catch((err) => {

@@ -7,6 +7,7 @@ import { registerAuthHook } from '@http/plugins/auth.js';
 import { createAiRoutes } from '@http/routes/ai.routes.js';
 import { createClinicalContentRoutes } from '@http/routes/clinical-content.routes.js';
 import { createPatientInteractionRoutes } from '@http/routes/patient-interactions.routes.js';
+import { createPsychologistBillingRoutes } from '@http/routes/psychologist-billing.routes.js';
 import { createPsychologistPatientsRoutes } from '@http/routes/psychologist-patients.routes.js';
 import { healthRoutes } from '@http/routes/health.routes.js';
 import { meRoutes } from '@http/routes/me.routes.js';
@@ -32,6 +33,7 @@ export const buildServer = async (env: Env) => {
   await app.register(meRoutes);
   await app.register(createAiRoutes(env));
   await app.register(createPsychologistPatientsRoutes(env));
+  await app.register(createPsychologistBillingRoutes(env));
   await app.register(createPatientInteractionRoutes(env));
   await app.register(createClinicalContentRoutes(env));
 

@@ -109,6 +109,34 @@ const FALLBACK_REPLIES: Record<AppLanguage, string> = {
   en: 'I understand. What do you feel right now, besides what you shared?',
 };
 
+export const buildPatientChatBrevityGuidance = (language: AppLanguage): string => {
+  const blocks: Record<AppLanguage, string> = {
+    pt: [
+      'RESPOSTAS RESUMIDAS (obrigatório):',
+      '- Escreva no máximo 2 a 3 frases curtas por mensagem.',
+      '- Estrutura ideal: breve acolhimento (1 frase) + UMA pergunta objetiva — ou só acolhimento se já houver informação suficiente.',
+      '- Sem listas, sem parágrafos longos, sem repetir o relato do paciente.',
+      '- Não existe limite de caracteres na resposta; seja conciso por escolha, não por corte.',
+    ].join('\n'),
+    es: [
+      'RESPUESTAS BREVES (obligatorio):',
+      '- Escribe como máximo 2 a 3 frases cortas por mensaje.',
+      '- Estructura ideal: breve contención (1 frase) + UNA pregunta objetiva — o solo contención si ya hay información suficiente.',
+      '- Sin listas, sin párrafos largos, sin repetir el relato del paciente.',
+      '- No hay límite de caracteres en la respuesta; sé conciso por elección, no por recorte.',
+    ].join('\n'),
+    en: [
+      'BRIEF REPLIES (required):',
+      '- Write at most 2 to 3 short sentences per message.',
+      '- Ideal structure: brief acknowledgment (1 sentence) + ONE objective question — or acknowledgment only if there is enough information.',
+      '- No lists, no long paragraphs, do not repeat the patient report.',
+      '- There is no character limit on the reply; stay concise by choice, not by truncation.',
+    ].join('\n'),
+  };
+
+  return blocks[language] ?? blocks.pt;
+};
+
 export const buildPresentMomentGuidance = (language: AppLanguage): string => {
   const blocks: Record<AppLanguage, string> = {
     pt: [
@@ -234,6 +262,7 @@ export const buildPatientChatPacingGuidance = (
   const blocks: Record<AppLanguage, string[]> = {
     pt: [
       'RITMO DA CONVERSA (sem limite fixo de perguntas):',
+      '- Cada resposta do agente deve ser curta (2–3 frases no máximo).',
       '- Continue perguntando enquanto fizer sentido para entender a experiência do paciente.',
       '- Priorize SINTETIZAR: uma pergunta bem formulada vale mais que várias perguntas pequenas seguidas.',
       '- Evite fadiga: não repita o que o paciente já disse; não transforme a conversa em interrogatório.',
@@ -247,6 +276,7 @@ export const buildPatientChatPacingGuidance = (
     ],
     es: [
       'RITMO DE LA CONVERSACIÓN (sin límite fijo de preguntas):',
+      '- Cada respuesta del agente debe ser breve (2–3 frases como máximo).',
       '- Sigue preguntando mientras tenga sentido para comprender la experiencia del paciente.',
       '- Prioriza SINTETIZAR: una pregunta bien formulada vale más que varias preguntas pequeñas seguidas.',
       '- Evita fatiga: no repitas lo que el paciente ya dijo; no conviertas la charla en interrogatorio.',
@@ -260,6 +290,7 @@ export const buildPatientChatPacingGuidance = (
     ],
     en: [
       'CONVERSATION PACING (no fixed question limit):',
+      '- Each agent reply must be brief (2–3 sentences at most).',
       '- Keep asking while it makes sense to understand the patient experience.',
       '- Prioritize SYNTHESIS: one well-formed question beats several small questions in a row.',
       '- Avoid fatigue: do not repeat what the patient already said; do not turn the chat into an interrogation.',

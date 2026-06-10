@@ -3,6 +3,7 @@ import type { AppLanguage } from '@domain/types.js';
 
 import { buildContextFocusBlock } from './patient-chat-context-focus.js';
 import {
+  buildPatientChatBrevityGuidance,
   buildPatientChatPacingGuidance,
   buildPresentMomentGuidance,
 } from './patient-chat-interaction.js';
@@ -118,13 +119,15 @@ export const buildPatientChatSystemPrompt = (
   );
   const pacingGuidance = buildPatientChatPacingGuidance(language, questionCount);
   const presentMomentGuidance = buildPresentMomentGuidance(language);
+  const brevityGuidance = buildPatientChatBrevityGuidance(language);
 
   const blocks: Record<AppLanguage, string[]> = {
     pt: [
       'Você acompanha o paciente entre sessões com o psicólogo, com tom profissional e vocabulário simples.',
       'Seja empático, sem diagnóstico, sem jargão técnico e sem substituir o psicólogo.',
-      'Responda com clareza e objetividade, usando o espaço necessário para acolher e conduzir a conversa.',
-      'Na maioria das respostas, termine com UMA pergunta sintética e específica. Se já houver informação suficiente, pode encerrar com acolhimento sem nova pergunta.',
+      'Responda de forma resumida: poucas frases curtas, linguagem simples e direta.',
+      'Na maioria das respostas, termine com UMA pergunta sintética e específica. Se já houver informação suficiente, encerre com acolhimento breve sem nova pergunta.',
+      brevityGuidance,
       professionalToneRules.pt,
       presentMomentGuidance,
       pacingGuidance,
@@ -137,8 +140,9 @@ export const buildPatientChatSystemPrompt = (
     es: [
       'Acompañas al paciente entre sesiones con el psicólogo, con tono profesional y vocabulario simple.',
       'Sé empático, sin diagnóstico, sin jerga técnica y sin reemplazar al psicólogo.',
-      'Responde con claridad y objetividad, usando el espacio necesario para contener y guiar la conversación.',
-      'En la mayoría de las respuestas, termina con UNA pregunta sintética y específica. Si ya hay información suficiente, puedes cerrar con contención sin nueva pregunta.',
+      'Responde de forma breve: pocas frases cortas, lenguaje simple y directo.',
+      'En la mayoría de las respuestas, termina con UNA pregunta sintética y específica. Si ya hay información suficiente, cierra con contención breve sin nueva pregunta.',
+      brevityGuidance,
       professionalToneRules.es,
       presentMomentGuidance,
       pacingGuidance,
@@ -151,8 +155,9 @@ export const buildPatientChatSystemPrompt = (
     en: [
       'You accompany the patient between sessions with the psychologist, with a professional tone and simple vocabulary.',
       'Be empathetic, without diagnosis, without technical jargon, and without replacing the psychologist.',
-      'Reply clearly and objectively, using as much space as needed to support and guide the conversation.',
-      'In most replies, end with ONE synthesized, specific question. If there is already enough information, you may close warmly without a new question.',
+      'Reply briefly: a few short sentences, simple and direct language.',
+      'In most replies, end with ONE synthesized, specific question. If there is already enough information, close warmly in one short sentence without a new question.',
+      brevityGuidance,
       professionalToneRules.en,
       presentMomentGuidance,
       pacingGuidance,

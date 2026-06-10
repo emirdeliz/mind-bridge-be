@@ -3,6 +3,7 @@ import type { AppLanguage } from '@domain/types.js';
 
 import {
   buildAntiRepetitionGuidance,
+  buildPatientChatBrevityGuidance,
   buildPresentMomentGuidance,
   extractRecentAgentQuestions,
 } from './patient-chat-interaction.js';
@@ -174,6 +175,7 @@ export const buildPatientChatHumanPrompt = (
       focusHint ? `Tema do psicólogo para conectar: ${focusHint}` : '',
       stepHints.pt,
       'Monte UMA pergunta sintética, com palavras simples. Não use termos clínicos do contexto.',
+      buildPatientChatBrevityGuidance('pt'),
     ],
     es: [
       `Mensaje actual del paciente: "${userMessage}"`,
@@ -187,6 +189,7 @@ export const buildPatientChatHumanPrompt = (
       focusHint ? `Tema del psicólogo para conectar: ${focusHint}` : '',
       stepHints.es,
       'Formula UNA pregunta sintética, con palabras simples. No uses términos clínicos del contexto.',
+      buildPatientChatBrevityGuidance('es'),
     ],
     en: [
       `Current patient message: "${userMessage}"`,
@@ -200,6 +203,7 @@ export const buildPatientChatHumanPrompt = (
       focusHint ? `Psychologist theme to connect: ${focusHint}` : '',
       stepHints.en,
       'Build ONE synthesized question with simple words. Do not use clinical terms from the context.',
+      buildPatientChatBrevityGuidance('en'),
     ],
   };
 

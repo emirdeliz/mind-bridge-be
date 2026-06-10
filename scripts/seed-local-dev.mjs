@@ -58,6 +58,13 @@ const EMIR_PSYCHOLOGIST = {
   password: 'Data@123',
 };
 
+const ALUIZIO_PSYCHOLOGIST = {
+  fullName: 'Aluizio Vilar',
+  email: 'aluizio.vilar@gmail.com',
+  phone: null,
+  password: 'Data@123',
+};
+
 /** Months ago (0 = current month) when the patient started counting for billing. */
 const DEMO_PATIENTS = [
   {
@@ -122,9 +129,22 @@ const EMIR_PATIENTS = [
   ...DEMO_PATIENTS,
 ];
 
+const ALUIZIO_PATIENTS = [
+  {
+    fullName: 'Mauro Souza',
+    email: 'maurosouza@gmail.com',
+    phone: null,
+    password: 'Data@123',
+    lastConsultationAt: null,
+    isDeleted: false,
+    enabledSinceMonthsAgo: 0,
+  },
+];
+
 const PSYCHOLOGIST_ACCOUNTS = [
   { psychologist: DEMO_PSYCHOLOGIST, patients: [] },
   { psychologist: EMIR_PSYCHOLOGIST, patients: EMIR_PATIENTS },
+  { psychologist: ALUIZIO_PSYCHOLOGIST, patients: ALUIZIO_PATIENTS },
 ];
 
 const ensureAuthUser = async ({ email, password, role, fullName, phone }) => {
@@ -448,7 +468,19 @@ const main = async () => {
   console.log('Done.');
   console.log('Login demo psychologist:', DEMO_PSYCHOLOGIST.email, '/', DEMO_PSYCHOLOGIST.password);
   console.log('Login Emir (psychologist):', EMIR_PSYCHOLOGIST.email, '/', EMIR_PSYCHOLOGIST.password);
+  console.log(
+    'Login Aluizio (psychologist):',
+    ALUIZIO_PSYCHOLOGIST.email,
+    '/',
+    ALUIZIO_PSYCHOLOGIST.password
+  );
   console.log('Login José Carlos (patient):', EMIR_PATIENTS[0].email, '/', EMIR_PATIENTS[0].password);
+  console.log(
+    'Login Mauro Souza (patient):',
+    ALUIZIO_PATIENTS[0].email,
+    '/',
+    ALUIZIO_PATIENTS[0].password
+  );
   console.log('Login demo patient (Ana):', DEMO_PATIENTS[0].email, '/', DEMO_PATIENTS[0].password);
 };
 

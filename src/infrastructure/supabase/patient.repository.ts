@@ -474,3 +474,38 @@ export const softDeletePatientForPsychologist = async (
     occurredAt: disabledAt,
   });
 };
+
+export const restorePatientForPsychologist = async (
+  admin: SupabaseClient,
+  psychologistId: string,
+  patientId: string
+): Promise<PsychologistPatientListItem> => {
+  const existing = await getPatientForPsychologist(
+    admin,
+    psychologistId,
+    patientId,
+    { includeDeleted: true }
+  );
+
+  if (!existing) {
+    throw new NotFoundError('Patient not found');
+  }
+
+  if (!existing.isDeleted) {
+    return existing;
+  }
+
+  await linkPatientToPsychologist(admin, psychologistId, patientId);
+
+  const restored = await getPatientForPsychologist(
+    admin,
+    psychologistId,
+    patientId
+  );
+
+  if (!restored) {
+    throw new Error('Patient restored but could not be loaded');
+  }
+
+  return restored;
+};

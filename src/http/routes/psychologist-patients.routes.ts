@@ -18,6 +18,7 @@ import { createAdminSupabaseClient } from '@infrastructure/supabase/client.js';
 import {
   createPatientForPsychologist,
   listPatientsForPsychologist,
+  restorePatientForPsychologist,
   softDeletePatientForPsychologist,
   updatePatientForPsychologist,
 } from '@infrastructure/supabase/patient.repository.js';
@@ -98,6 +99,31 @@ export const createPsychologistPatientsRoutes =
             auth.userId,
             patientId,
             body
+          );
+          return { patient };
+        } catch (error) {
+          if (error instanceof NotFoundError) {
+            return reply.status(404).send({ error: error.message });
+          }
+          throw error;
+        }
+      }
+    );
+
+    app.post(
+      '/psychologist/patients/:patientId/restore',
+      { preHandler: validateParams(patientIdParamsSchema) },
+      async (request, reply) => {
+        const auth = request.auth!;
+        assertPsychologist(auth);
+
+        const { patientId } = request.params as { patientId: string };
+
+        try {
+          const patient = await restorePatientForPsychologist(
+            admin,
+            auth.userId,
+            patientId
           );
           return { patient };
         } catch (error) {

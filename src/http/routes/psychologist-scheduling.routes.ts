@@ -1,6 +1,7 @@
 import type { FastifyPluginAsync } from 'fastify';
 
 import { assertPsychologist, NotFoundError } from '@application/authorization.js';
+import { BadRequestError } from '@http/errors.js';
 import { getPsychologistSchedulingWeek } from '@application/get-psychologist-scheduling.js';
 import { movePsychologistAppointment } from '@application/move-psychologist-appointment.js';
 import { updatePsychologistSchedulingSettings } from '@application/update-psychologist-scheduling-settings.js';
@@ -15,6 +16,7 @@ import {
   createAppointmentBodySchema,
   moveAppointmentBodySchema,
   schedulingWeekQuerySchema,
+  updatePersonalCommitmentBodySchema,
   updateSchedulingSettingsBodySchema,
 } from '@http/schemas/scheduling.schemas.js';
 import { createAdminSupabaseClient } from '@infrastructure/supabase/client.js';
@@ -22,7 +24,9 @@ import { getPatientForPsychologist } from '@infrastructure/supabase/patient.repo
 import {
   createAppointment,
   deleteAppointment,
+  getAppointmentById,
   getSchedulingSettings,
+  updatePersonalCommitment,
 } from '@infrastructure/supabase/scheduling.repository.js';
 
 export const createPsychologistSchedulingRoutes =
@@ -122,6 +126,42 @@ export const createPsychologistSchedulingRoutes =
           startsAt: body.startsAt,
           durationMinutes,
           notes: body.notes,
+        });
+
+        return { appointment };
+      }
+    );
+
+    app.patch(
+      '/psychologist/scheduling/appointments/:appointmentId',
+      {
+        preHandler: [
+          validateParams(appointmentIdParamsSchema),
+          validateBody(updatePersonalCommitmentBodySchema),
+        ],
+      },
+      async (request, reply) => {
+        const auth = request.auth!;
+        assertPsychologist(auth);
+        const { appointmentId } = request.params as { appointmentId: string };
+        const body = request.body as {
+          startsAt: string;
+          durationMinutes: number;
+          personalDescription: string;
+        };
+
+        const existing = await getAppointmentById(admin, auth.userId, appointmentId);
+        if (!existing) {
+          return reply.status(404).send({ error: 'Appointment not found' });
+        }
+        if (!existing.isPersonalCommitment) {
+          throw new BadRequestError('Only personal commitments can be updated with this endpoint');
+        }
+
+        const appointment = await updatePersonalCommitment(admin, auth.userId, appointmentId, {
+          startsAt: body.startsAt,
+          durationMinutes: body.durationMinutes,
+          notes: body.personalDescription,
         });
 
         return { appointment };

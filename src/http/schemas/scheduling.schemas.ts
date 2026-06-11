@@ -46,6 +46,12 @@ export const createAppointmentBodySchema = Joi.object({
   }),
 }).unknown(false);
 
+export const updatePersonalCommitmentBodySchema = Joi.object({
+  startsAt: Joi.string().isoDate().required(),
+  durationMinutes: Joi.number().integer().min(1).required(),
+  personalDescription: Joi.string().trim().min(1).max(2000).required(),
+}).unknown(false);
+
 export const moveAppointmentBodySchema = Joi.object({
   startsAt: Joi.string().isoDate().required(),
   weekStart: Joi.string().isoDate().required(),

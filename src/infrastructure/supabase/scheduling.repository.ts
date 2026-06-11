@@ -219,6 +219,39 @@ export const createAppointment = async (
   return mapAppointment(data);
 };
 
+export const updatePersonalCommitment = async (
+  admin: SupabaseClient,
+  psychologistId: string,
+  appointmentId: string,
+  input: {
+    startsAt: string;
+    durationMinutes: number;
+    notes: string;
+  }
+): Promise<PsychologistAppointment> => {
+  const { data, error } = await admin
+    .from('psychologist_appointments')
+    .update(
+      toSnakeRecord({
+        startsAt: input.startsAt,
+        durationMinutes: input.durationMinutes,
+        notes: input.notes.trim(),
+        updatedAt: new Date().toISOString(),
+      })
+    )
+    .eq('id', appointmentId)
+    .eq('psychologist_id', psychologistId)
+    .eq('is_personal_commitment', true)
+    .select(appointmentSelect)
+    .single();
+
+  if (error || !data) {
+    throw new Error(error?.message ?? 'Failed to update personal commitment');
+  }
+
+  return mapAppointment(data);
+};
+
 export const updateAppointmentStart = async (
   admin: SupabaseClient,
   psychologistId: string,

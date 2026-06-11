@@ -17,6 +17,25 @@ const mapPayment = (row: unknown): PatientSessionPayment => {
   };
 };
 
+export const listAllPatientSessionPayments = async (
+  admin: SupabaseClient,
+  psychologistId: string
+): Promise<PatientSessionPayment[]> => {
+  const { data, error } = await admin
+    .from('patient_session_payments')
+    .select(
+      'id, psychologist_id, patient_id, billing_month, amount_cents, paid_at, notes'
+    )
+    .eq('psychologist_id', psychologistId)
+    .order('billing_month', { ascending: true });
+
+  if (error) {
+    throw new Error(`Failed to list patient payments: ${error.message}`);
+  }
+
+  return (data ?? []).map(mapPayment);
+};
+
 export const listPatientSessionPaymentsForMonth = async (
   admin: SupabaseClient,
   psychologistId: string,

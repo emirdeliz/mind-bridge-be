@@ -13,6 +13,8 @@ export type PatientPaymentRow = {
   fullName: string | null;
   email: string | null;
   isCompliant: boolean;
+  isBillableInSelectedMonth: boolean;
+  unpaidBillingMonths: string[];
   payment: PatientSessionPayment | null;
 };
 

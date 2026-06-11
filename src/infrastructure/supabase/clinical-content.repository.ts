@@ -3,6 +3,8 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type {
   ClinicalChatMessage,
   DashboardSnapshot,
+  LikertCheckIn,
+  LikertDimensionId,
   PatientClinicalContent,
   SessionInsight,
   SessionNoteEntry,
@@ -57,6 +59,7 @@ export const defaultClinicalContentPayload = (): ClinicalContentSeedPayload => (
   psychologistChatSeed: [],
   patientChatSeed: [],
   patientSummary: null,
+  likertCheckIn: null,
 });
 
 const hasCurrentSessionNote = (notes: SessionNoteEntry[]): boolean =>
@@ -71,6 +74,7 @@ const mapRow = (row: unknown): PatientClinicalContent => {
     sessionInsights: record.sessionInsights ?? [],
     psychologistChatSeed: record.psychologistChatSeed ?? [],
     patientChatSeed: record.patientChatSeed ?? [],
+    likertCheckIn: record.likertCheckIn ?? null,
   };
 };
 
@@ -129,8 +133,10 @@ export const ensurePatientClinicalContent = async (
 
 export type ClinicalContentSeedPayload = Omit<
   PatientClinicalContent,
-  'patientId'
->;
+  'patientId' | 'likertCheckIn'
+> & {
+  likertCheckIn?: LikertCheckIn | null;
+};
 
 export type UpdateClinicalSessionPayload = {
   sessionContext?: string | null;
@@ -363,6 +369,12 @@ export const upsertPatientClinicalContent = async (
   patientId: string,
   payload: ClinicalContentSeedPayload
 ): Promise<void> => {
+  const existing = await getPatientClinicalContent(admin, patientId);
+  const likertCheckIn =
+    payload.likertCheckIn !== undefined
+      ? payload.likertCheckIn
+      : (existing?.likertCheckIn ?? null);
+
   const { error } = await admin.from('patient_clinical_content').upsert(
     toSnakeRecord({
       patientId,
@@ -374,6 +386,7 @@ export const upsertPatientClinicalContent = async (
       psychologistChatSeed: payload.psychologistChatSeed,
       patientChatSeed: payload.patientChatSeed,
       patientSummary: payload.patientSummary,
+      likertCheckIn,
       updatedAt: new Date().toISOString(),
     }),
     { onConflict: 'patient_id' }
@@ -382,4 +395,32 @@ export const upsertPatientClinicalContent = async (
   if (error) {
     throw new Error(`Failed to upsert clinical content: ${error.message}`);
   }
+};
+
+export const updatePatientLikertCheckIn = async (
+  admin: SupabaseClient,
+  patientId: string,
+  scores: Partial<Record<LikertDimensionId, number>>
+): Promise<PatientClinicalContent> => {
+  const content = await ensurePatientClinicalContent(admin, patientId);
+  const likertCheckIn: LikertCheckIn = {
+    scores,
+    updatedAt: new Date().toISOString(),
+  };
+
+  const nextPayload: ClinicalContentSeedPayload = {
+    dashboardSnapshot: content.dashboardSnapshot,
+    sessionContext: content.sessionContext,
+    sessionNotes: content.sessionNotes,
+    sessionInsights: content.sessionInsights,
+    psychologistSummary: content.psychologistSummary,
+    psychologistChatSeed: content.psychologistChatSeed,
+    patientChatSeed: content.patientChatSeed,
+    patientSummary: content.patientSummary,
+    likertCheckIn,
+  };
+
+  await upsertPatientClinicalContent(admin, patientId, nextPayload);
+
+  return { patientId, ...nextPayload };
 };

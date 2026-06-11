@@ -6,7 +6,10 @@
  */
 
 import { createClient } from '@supabase/supabase-js';
-import { DEMO_CLINICAL_BY_EMAIL } from './lib/demo-clinical-data.mjs';
+import {
+  DEMO_INTERACTION_SPECS_BY_EMAIL,
+  resolveDemoClinicalPayload,
+} from './lib/demo-clinical-data.mjs';
 
 const url = process.env.SUPABASE_URL;
 const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -20,11 +23,80 @@ const admin = createClient(url, serviceKey, {
   auth: { autoRefreshToken: false, persistSession: false },
 });
 
+const isCloudSupabaseUrl = (value) =>
+  typeof value === 'string' && value.includes('supabase.co');
+
 const isInvalidJwtError = (message) =>
   typeof message === 'string' &&
   (message.includes('invalid JWT') ||
     message.includes('signature is invalid') ||
     message.includes('unable to parse or verify signature'));
+
+const isUserAlreadyRegisteredError = (message) =>
+  typeof message === 'string' &&
+  (message.includes('already been registered') ||
+    message.includes('already registered') ||
+    message.includes('User already registered'));
+
+const findAuthUserByEmail = async (email) => {
+  const normalized = email.trim().toLowerCase();
+  let page = 1;
+  const perPage = 1000;
+
+  while (true) {
+    const { data, error } = await admin.auth.admin.listUsers({ page, perPage });
+    if (error) {
+      throw error;
+    }
+
+    const found = data.users.find(
+      (user) => user.email?.trim().toLowerCase() === normalized
+    );
+    if (found) {
+      return found;
+    }
+
+    if (data.users.length < perPage) {
+      break;
+    }
+    page += 1;
+  }
+
+  return null;
+};
+
+const isMissingSchemaError = (error) => {
+  const message = error?.message ?? '';
+  const code = error?.code ?? '';
+  return (
+    code === 'PGRST205' ||
+    message.includes('schema cache') ||
+    message.includes("Could not find the table 'public.profiles'")
+  );
+};
+
+const assertDatabaseSchema = async () => {
+  const { error } = await admin.from('profiles').select('id').limit(1);
+
+  if (!error) {
+    return;
+  }
+
+  if (isMissingSchemaError(error)) {
+    console.error('Tabela public.profiles não existe no Supabase.');
+    if (isCloudSupabaseUrl(url)) {
+      console.error('Aplique as migrations no Cloud antes do seed:');
+      console.error('  npm run supabase:push:cloud');
+      console.error('ou use o fluxo completo:');
+      console.error('  yarn seed:cloud');
+    } else {
+      console.error('Execute: npm run supabase:reset');
+    }
+    process.exit(1);
+  }
+
+  throw new Error(`Schema check failed: ${error.message}`);
+};
 
 const assertServiceRoleKey = async () => {
   const { error } = await admin.auth.admin.listUsers({ page: 1, perPage: 1 });
@@ -33,11 +105,13 @@ const assertServiceRoleKey = async () => {
   }
 
   if (isInvalidJwtError(error.message)) {
-    console.error(
-      'SUPABASE_SERVICE_ROLE_KEY no .env não confere com o Supabase local (JWT inválido).'
-    );
-    console.error('Com o stack rodando, execute: npm run supabase:env');
-    console.error('Depois: npm run seed:local   (ou npm run supabase:reset)');
+    console.error('SUPABASE_SERVICE_ROLE_KEY no .env não confere com SUPABASE_URL (JWT inválido).');
+    if (!isCloudSupabaseUrl(url)) {
+      console.error('Supabase local: com o stack rodando, execute: npm run supabase:env');
+    } else {
+      console.error('Supabase Cloud: copie a service_role key em Project Settings → API.');
+    }
+    console.error('Depois: npm run seed:local');
     process.exit(1);
   }
 
@@ -129,6 +203,24 @@ const EMIR_PATIENTS = [
   ...DEMO_PATIENTS,
 ];
 
+const daysAgoIso = (daysAgo, hourUTC = 12) => {
+  const date = new Date();
+  date.setUTCDate(date.getUTCDate() - daysAgo);
+  date.setUTCHours(hourUTC, 0, 0, 0);
+  return date.toISOString();
+};
+
+const atCurrentWeekDayIso = (weekdayIndex, hourUTC = 12) => {
+  const now = new Date();
+  const day = now.getDay();
+  const todayWeekdayIndex = day === 0 ? 6 : day - 1;
+  const mondayOffset = day === 0 ? -6 : 1 - day;
+  const date = new Date(now);
+  date.setDate(date.getDate() + mondayOffset + weekdayIndex - todayWeekdayIndex);
+  date.setUTCHours(hourUTC, 0, 0, 0);
+  return date.toISOString();
+};
+
 const ALUIZIO_PATIENTS = [
   {
     fullName: 'Mauro Souza',
@@ -139,6 +231,15 @@ const ALUIZIO_PATIENTS = [
     isDeleted: false,
     enabledSinceMonthsAgo: 0,
   },
+  {
+    fullName: 'Carlos Amaro',
+    email: 'carlosamaro@gmail.com',
+    phone: '11988776655',
+    password: 'Data@123',
+    lastConsultationAt: daysAgoIso(4, 15),
+    isDeleted: false,
+    enabledSinceMonthsAgo: 2,
+  },
 ];
 
 const PSYCHOLOGIST_ACCOUNTS = [
@@ -146,6 +247,25 @@ const PSYCHOLOGIST_ACCOUNTS = [
   { psychologist: EMIR_PSYCHOLOGIST, patients: EMIR_PATIENTS },
   { psychologist: ALUIZIO_PSYCHOLOGIST, patients: ALUIZIO_PATIENTS },
 ];
+
+const upsertProfile = async ({ userId, email, role, fullName, phone }) => {
+  const { error } = await admin.from('profiles').upsert(
+    {
+      id: userId,
+      email,
+      role,
+      full_name: fullName,
+      phone,
+      language: 'pt',
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: 'id' }
+  );
+
+  if (error) {
+    throw new Error(`Profile ${email}: ${error.message}`);
+  }
+};
 
 const ensureAuthUser = async ({ email, password, role, fullName, phone }) => {
   const { data: existingProfile } = await admin
@@ -164,31 +284,27 @@ const ensureAuthUser = async ({ email, password, role, fullName, phone }) => {
       user_metadata: { role, phone },
     });
 
-    if (authError) {
-      if (isInvalidJwtError(authError.message)) {
-        console.error(
-          'SUPABASE_SERVICE_ROLE_KEY no .env não confere com o Supabase local (JWT inválido).'
-        );
-        console.error('Com o stack rodando, execute: npm run supabase:env');
-        console.error('Depois: npm run seed:local   (ou npm run supabase:reset)');
-        process.exit(1);
+    if (!authError) {
+      userId = authData.user.id;
+    } else if (isInvalidJwtError(authError.message)) {
+      console.error('SUPABASE_SERVICE_ROLE_KEY no .env não confere com SUPABASE_URL (JWT inválido).');
+      if (!isCloudSupabaseUrl(url)) {
+        console.error('Supabase local: execute npm run supabase:env');
       }
+      process.exit(1);
+    } else if (isUserAlreadyRegisteredError(authError.message)) {
+      const existingAuthUser = await findAuthUserByEmail(email);
+      if (!existingAuthUser) {
+        throw new Error(`${email}: ${authError.message}`);
+      }
+      userId = existingAuthUser.id;
+      console.log(`  Reusing existing auth user: ${email}`);
+    } else {
       throw new Error(`${email}: ${authError.message}`);
     }
-
-    userId = authData.user.id;
   }
 
-  await admin
-    .from('profiles')
-    .update({
-      full_name: fullName,
-      phone,
-      language: 'pt',
-      updated_at: new Date().toISOString(),
-    })
-    .eq('id', userId);
-
+  await upsertProfile({ userId, email, role, fullName, phone });
   return userId;
 };
 
@@ -404,8 +520,30 @@ const seedBillingForPsychologist = async (psychologistId, email, patients) => {
   }
 };
 
+const seedPatientInteractions = async (patientId, email) => {
+  const specs = DEMO_INTERACTION_SPECS_BY_EMAIL[email];
+  if (!specs?.length) {
+    return;
+  }
+
+  await admin.from('patient_interactions').delete().eq('patient_id', patientId);
+
+  const rows = specs.map(({ weekday, hourUTC, channel }) => ({
+    patient_id: patientId,
+    channel,
+    source: 'web',
+    mood_score: null,
+    created_at: atCurrentWeekDayIso(weekday, hourUTC),
+  }));
+
+  const { error } = await admin.from('patient_interactions').insert(rows);
+  if (error) {
+    throw new Error(`Patient interactions ${email}: ${error.message}`);
+  }
+};
+
 const upsertClinical = async (patientId, email) => {
-  const payload = DEMO_CLINICAL_BY_EMAIL[email];
+  const payload = resolveDemoClinicalPayload(email);
   if (!payload) {
     return;
   }
@@ -450,6 +588,7 @@ const seedPsychologistAccount = async (psychologist, patients) => {
 
     await linkPatient(psychologistId, patientId, demo);
     await upsertClinical(patientId, demo.email);
+    await seedPatientInteractions(patientId, demo.email);
 
     console.log(`  Patient: ${demo.fullName} (${demo.email})`);
   }
@@ -458,8 +597,10 @@ const seedPsychologistAccount = async (psychologist, patients) => {
 };
 
 const main = async () => {
-  console.log('Seeding local dev data…');
+  const target = isCloudSupabaseUrl(url) ? 'Supabase Cloud' : 'Supabase local';
+  console.log(`Seeding demo data (${target})…`);
   await assertServiceRoleKey();
+  await assertDatabaseSchema();
 
   for (const account of PSYCHOLOGIST_ACCOUNTS) {
     await seedPsychologistAccount(account.psychologist, account.patients);
@@ -480,6 +621,12 @@ const main = async () => {
     ALUIZIO_PATIENTS[0].email,
     '/',
     ALUIZIO_PATIENTS[0].password
+  );
+  console.log(
+    'Login Carlos Amaro (patient, charts demo):',
+    ALUIZIO_PATIENTS[1].email,
+    '/',
+    ALUIZIO_PATIENTS[1].password
   );
   console.log('Login demo patient (Ana):', DEMO_PATIENTS[0].email, '/', DEMO_PATIENTS[0].password);
 };

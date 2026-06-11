@@ -68,6 +68,8 @@ export type UpdateMoodFromPatientChatInput = {
   userMessage: string;
   chatHistory: ClinicalChatMessage[];
   language?: AppLanguage;
+  /** Evita LLM extra no pós-processamento assíncrono do chat. */
+  useHeuristicOnly?: boolean;
 };
 
 /** Atualiza evolução do humor com base na interação paciente ↔ agente de IA. */
@@ -83,6 +85,11 @@ export const updateMoodFromPatientChat = async (
 
   if (!userMessage) {
     return base;
+  }
+
+  if (input.useHeuristicOnly) {
+    const fallbackScore = estimateMoodFromPatientMessage(userMessage, currentMood);
+    return applyMoodScore(base, fallbackScore);
   }
 
   try {

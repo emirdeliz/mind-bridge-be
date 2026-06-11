@@ -37,6 +37,20 @@ export type DashboardDonutItem = {
   color?: string;
 };
 
+export type LikertDimensionId = 'mood' | 'anxiety' | 'sleep' | 'wellbeing';
+
+export type LikertCheckIn = {
+  scores: Partial<Record<LikertDimensionId, number>>;
+  updatedAt: string | null;
+};
+
+export const LIKERT_DIMENSION_IDS: LikertDimensionId[] = [
+  'mood',
+  'anxiety',
+  'sleep',
+  'wellbeing',
+];
+
 export type DashboardSnapshot = {
   moodTrendCategories: string[];
   moodTrendSeries: DashboardChartSeries[];
@@ -59,4 +73,5 @@ export type PatientClinicalContent = {
   psychologistChatSeed: ClinicalChatMessage[];
   patientChatSeed: ClinicalChatMessage[];
   patientSummary: string | null;
+  likertCheckIn?: LikertCheckIn | null;
 };

@@ -13,9 +13,11 @@ import {
 import type {
   ClinicalChatMessage,
   DashboardSnapshot,
+  LikertCheckIn,
   SessionInsight,
 } from '@domain/clinical-content.types.js';
 import type { AppLanguage } from '@domain/types.js';
+import { formatLikertCheckInForContext } from './format-likert-check-in-context.js';
 
 export type GeneratePsychologistSessionInsightsInput = {
   dashboardSnapshot: DashboardSnapshot;
@@ -23,7 +25,10 @@ export type GeneratePsychologistSessionInsightsInput = {
   sessionContext: string;
   chatHistory: ClinicalChatMessage[];
   patientChatHistory: ClinicalChatMessage[];
+  likertCheckIn?: LikertCheckIn | null;
   language?: AppLanguage;
+  /** Reutiliza resumo já gerado para evitar LLM duplicada. */
+  existingPatientSummary?: string | null;
 };
 
 export type PsychologistSessionInsightsResult = {
@@ -137,6 +142,16 @@ const buildHeuristicPsychologistSessionInsights = (
       `${patientUserCount} mensagem(ns) do paciente com o agente de IA`
     );
   }
+  const likertLine = formatLikertCheckInForContext(language, input.likertCheckIn);
+  if (likertLine) {
+    indicators.push(
+      likertLine
+        .split('\n')
+        .slice(1)
+        .map((line) => line.replace(/^- /, ''))
+        .join(' · ')
+    );
+  }
 
   const patterns: string[] = [];
   if (latestPatientReport) {
@@ -196,13 +211,16 @@ export const generatePsychologistSessionInsights = async (
   input: GeneratePsychologistSessionInsightsInput
 ): Promise<PsychologistSessionInsightsResult | null> => {
   const language = input.language ?? 'pt';
+  const existingSummary = input.existingPatientSummary?.trim();
   const [interactionsSummary, agenticPatterns, agenticActions] = await Promise.all([
-    generatePatientInteractionSummary(
-      env,
-      input.patientChatHistory,
-      language,
-      input.sessionContext
-    ),
+    existingSummary
+      ? Promise.resolve(existingSummary)
+      : generatePatientInteractionSummary(
+          env,
+          input.patientChatHistory,
+          language,
+          input.sessionContext
+        ),
     generateDetectedPatternsInsight(
       env,
       input.patientChatHistory,

@@ -20,11 +20,16 @@ const currentSessionConsiderations = (
   return currentNote?.content?.trim() ?? '';
 };
 
+export type RefreshPsychologistSessionInsightsOptions = {
+  existingPatientSummary?: string | null;
+};
+
 export const refreshPsychologistSessionInsights = async (
   env: Env,
   admin: SupabaseClient,
   patientId: string,
-  language: AppLanguage = 'pt'
+  language: AppLanguage = 'pt',
+  options?: RefreshPsychologistSessionInsightsOptions
 ): Promise<PatientClinicalContent> => {
   const content = await ensurePatientClinicalContent(admin, patientId);
   const dashboardSnapshot = await enrichDashboardSnapshotWithPatientActivity(
@@ -40,7 +45,10 @@ export const refreshPsychologistSessionInsights = async (
     sessionContext: content.sessionContext ?? '',
     chatHistory: content.psychologistChatSeed,
     patientChatHistory: content.patientChatSeed,
+    likertCheckIn: content.likertCheckIn,
     language,
+    existingPatientSummary:
+      options?.existingPatientSummary ?? content.patientSummary,
   });
 
   if (!generated) {

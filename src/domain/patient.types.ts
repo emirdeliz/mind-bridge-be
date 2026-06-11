@@ -18,3 +18,12 @@ export interface PsychologistPatientSaveBody {
   address?: string | null;
   language?: AppLanguage | null;
 }
+
+export interface PatientSelfRegisterBody {
+  email: string;
+  password: string;
+  phone: string;
+  fullName: string;
+  inviteCode?: string;
+  language?: AppLanguage | null;
+}

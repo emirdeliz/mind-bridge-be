@@ -1,6 +1,6 @@
 # mind-bridge-be
 
-Backend API for [mind-bridge-web](../mind-bridge-web): Node.js, TypeScript, Fastify, Joi, Supabase Auth, LangGraph.js, and Ollama.
+Backend API for [mind-bridge-web](../mind-bridge-web): Node.js, TypeScript, Fastify, Joi, Supabase Auth, LangGraph.js, and Google Gemini API (Ollama optional for local dev).
 
 ## Stack
 
@@ -11,7 +11,7 @@ Backend API for [mind-bridge-web](../mind-bridge-web): Node.js, TypeScript, Fast
 | Auth             | Supabase JWT (`Authorization: Bearer`) |
 | Data             | Supabase Postgres + RLS                |
 | AI orchestration | LangGraph.js                           |
-| LLM              | Ollama (`@langchain/ollama`)           |
+| LLM              | Gemini API (`@langchain/google-genai`) or Ollama (local) |
 
 ## Path aliases
 
@@ -46,24 +46,63 @@ cp .env.example .env
 npm install
 ```
 
+**Supabase Cloud (recomendado para deploy):**
+
+1. Crie um projeto em [supabase.com](https://supabase.com) (plano Free).
+2. Em **Project Settings → API**, copie `URL`, `anon` e `service_role` para o `.env`.
+3. Aplique as migrations: `npx supabase link` + `npx supabase db push` (ou rode os SQL em `supabase/migrations/` no SQL Editor).
+
 **Supabase local (Docker):** see [docker/README.md](./docker/README.md).
 
 ```bash
-npm run supabase:start    # sobe containers
-npm run supabase:reset    # migrations + sync chaves no .env + seed local
-npm run supabase:env      # só atualiza SUPABASE_* no .env (útil após reset manual)
-npm run seed:local        # reexecutar seed sem reset (rode supabase:env antes se JWT falhar)
+npm run supabase:start    # sobe containers (somente local)
+npm run supabase:reset    # local: db reset + seed | cloud: só seed idempotente
+npm run supabase:env      # só atualiza SUPABASE_* no .env (local, após reset)
+npm run seed:local        # seed demo (local ou cloud, idempotente)
+npm run seed:cloud        # alias de seed:local quando .env aponta para Supabase Cloud
 ```
 
-**Contas demo após seed:** `psicologo.demo@mindbridge.local` / `demo123456` · paciente `ana.demo@mindbridge.local` / `demo123456`
+**Supabase Cloud:**
 
-For a hosted project, apply `supabase/migrations/001_initial_schema.sql` in the Supabase SQL editor or via `supabase db push`.
+| Comando | O que faz |
+|---------|-----------|
+| `npm run supabase:push:cloud` | Aplica migrations no Cloud |
+| `npm run seed:cloud` | Push migrations + seed idempotente |
+| `npm run supabase:reset` | Igual ao seed quando `.env` aponta para Cloud |
+| `npm run supabase:reset:cloud -- --confirm` | **Reset destrutivo**: `db reset --linked` + seed |
 
-Ensure Ollama is running with the chat model from `.env`:
+Pré-requisitos para reset Cloud:
+
+1. `npx supabase login`
+2. `SUPABASE_DB_PASSWORD` no `.env` (senha do banco no dashboard)
+3. Primeira vez: `npx supabase link --project-ref <ref>` (o script tenta linkar automaticamente)
+
+O reset Cloud apaga dados das tabelas públicas e reaplica migrations. Usuários em `auth.users` **permanecem**; o seed reutiliza contas existentes.
+
+**Contas demo após seed local:** `psicologo.demo@mindbridge.local` / `demo123456` · paciente `ana.demo@mindbridge.local` / `demo123456`
+
+**LLM — Google Gemini API (padrão):**
+
+1. Obtenha uma API key em [Google AI Studio](https://aistudio.google.com/apikey).
+2. No `.env`:
 
 ```bash
-ollama pull llama3.2
+LLM_PROVIDER=gemini
+GOOGLE_GENERATIVE_AI_API_KEY=your-key
+GEMINI_CHAT_MODEL=gemini-2.0-flash
 ```
+
+**LLM — OpenRouter (opcional):** defina `LLM_PROVIDER=openrouter`, crie uma API key em [openrouter.ai/keys](https://openrouter.ai/keys) e escolha o modelo (ex.: `google/gemma-2-9b-it:free`).
+
+```bash
+LLM_PROVIDER=openrouter
+OPENROUTER_API_KEY=your-key
+OPENROUTER_CHAT_MODEL=google/gemma-2-9b-it:free
+```
+
+**LLM — Ollama local (opcional):** defina `LLM_PROVIDER=ollama` e rode `ollama pull gemma4`.
+
+**Deploy do backend:** use [render.yaml](./render.yaml) (Render free tier) ou Railway/Fly. Defina `CORS_ORIGIN` com a URL do front na Vercel.
 
 ## Run
 

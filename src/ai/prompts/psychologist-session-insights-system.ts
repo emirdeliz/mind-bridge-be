@@ -1,7 +1,8 @@
-import type { ClinicalChatMessage, DashboardSnapshot } from '@domain/clinical-content.types.js';
+import type { ClinicalChatMessage, DashboardSnapshot, LikertCheckIn } from '@domain/clinical-content.types.js';
 import type { AppLanguage } from '@domain/types.js';
 
 import { splitChatIntoInteractions } from '../../application/patient-chat-interaction-groups.js';
+import { formatLikertCheckInForContext } from '../../application/format-likert-check-in-context.js';
 import { normalizeAppLanguage } from './psychologist-copilot-system.js';
 
 type SessionInsightsContext = {
@@ -10,6 +11,7 @@ type SessionInsightsContext = {
   sessionContext: string;
   chatHistory: ClinicalChatMessage[];
   patientChatHistory: ClinicalChatMessage[];
+  likertCheckIn?: LikertCheckIn | null;
 };
 
 const formatPsychologistChatHistory = (history: ClinicalChatMessage[]): string => {
@@ -76,6 +78,7 @@ export const buildPsychologistSessionInsightsSystemPrompt = (
   const considerations = context.sessionConsiderations.trim();
   const psychologistChatBlock = formatPsychologistChatHistory(context.chatHistory);
   const patientChatBlock = formatPatientChatHistory(context.patientChatHistory);
+  const likertBlock = formatLikertCheckInForContext(language, context.likertCheckIn);
 
   const blocks: Record<AppLanguage, string[]> = {
     pt: [
@@ -96,6 +99,7 @@ export const buildPsychologistSessionInsightsSystemPrompt = (
       `Considerações da sessão:\n${considerations || '(vazio)'}`,
       `Contexto clínico:\n${context.sessionContext.trim() || '(vazio)'}`,
       `Métricas do paciente:\n${snapshotMetrics(context.dashboardSnapshot)}`,
+      ...(likertBlock ? [likertBlock] : []),
       ...(patientChatBlock
         ? [`Chat paciente ↔ agente de IA:\n${patientChatBlock}`]
         : []),
@@ -121,6 +125,7 @@ export const buildPsychologistSessionInsightsSystemPrompt = (
       `Consideraciones de la sesión:\n${considerations || '(vacío)'}`,
       `Contexto clínico:\n${context.sessionContext.trim() || '(vacío)'}`,
       `Métricas del paciente:\n${snapshotMetrics(context.dashboardSnapshot)}`,
+      ...(likertBlock ? [likertBlock] : []),
       ...(patientChatBlock
         ? [`Chat paciente ↔ agente de IA:\n${patientChatBlock}`]
         : []),
@@ -146,6 +151,7 @@ export const buildPsychologistSessionInsightsSystemPrompt = (
       `Session considerations:\n${considerations || '(empty)'}`,
       `Clinical context:\n${context.sessionContext.trim() || '(empty)'}`,
       `Patient metrics:\n${snapshotMetrics(context.dashboardSnapshot)}`,
+      ...(likertBlock ? [likertBlock] : []),
       ...(patientChatBlock
         ? [`Patient ↔ AI agent chat:\n${patientChatBlock}`]
         : []),

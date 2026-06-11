@@ -34,14 +34,13 @@ import {
   enrichDashboardSnapshotWithPatientActivity,
   recordPatientInteraction,
 } from '@application/enrich-dashboard-snapshot.js';
-import { refreshPatientInteractionSummary } from '@application/refresh-patient-interaction-summary.js';
+import { processPatientChatSideEffects } from '@application/process-patient-chat-side-effects.js';
 import { refreshPsychologistSessionInsights } from '@application/refresh-psychologist-session-insights.js';
-import { updateMoodFromPatientChat } from '@application/update-mood-from-patient-chat.js';
+import { runInBackground } from '@application/run-in-background.js';
 import {
   appendPatientChatMessages,
   appendPsychologistChatMessages,
   ensurePatientClinicalContent,
-  updatePatientDashboardSnapshot,
 } from '@infrastructure/supabase/clinical-content.repository.js';
 
 export const createAiRoutes =
@@ -123,38 +122,22 @@ export const createAiRoutes =
           source: 'web',
         });
 
-        const moodSnapshot = await updateMoodFromPatientChat(env, {
-          currentSnapshot: content.dashboardSnapshot,
-          userMessage: body.message,
-          chatHistory: content.patientChatSeed,
-          language,
-        });
-        await updatePatientDashboardSnapshot(
-          admin,
-          auth.userId,
-          moodSnapshot
-        );
-
-        const refreshedContent = await refreshPatientInteractionSummary(
-          env,
-          admin,
-          auth.userId,
-          language
-        );
-        const withInsights = await refreshPsychologistSessionInsights(
-          env,
-          admin,
-          auth.userId,
-          language
+        runInBackground(request.log, 'patient-chat-side-effects', () =>
+          processPatientChatSideEffects(env, admin, {
+            patientId: auth.userId,
+            userMessage: body.message,
+            language,
+            isInteractionEnd,
+          })
         );
 
         return {
           message: reply,
           messages: persistedMessages,
           patientId: auth.userId,
-          patientSummary: refreshedContent.patientSummary,
-          psychologistSummary: withInsights.psychologistSummary,
-          sessionInsights: withInsights.sessionInsights,
+          patientSummary: content.patientSummary,
+          psychologistSummary: content.psychologistSummary,
+          sessionInsights: content.sessionInsights,
         };
       }
     );
@@ -199,6 +182,7 @@ export const createAiRoutes =
             psychologistSummary: clinicalContent.psychologistSummary,
             patientSummary: clinicalContent.patientSummary,
             sessionInsights: clinicalContent.sessionInsights,
+            likertCheckIn: clinicalContent.likertCheckIn,
           }
         );
 
@@ -235,19 +219,22 @@ export const createAiRoutes =
           persistedMessages
         );
 
-        const refreshedContent = await refreshPsychologistSessionInsights(
-          env,
-          admin,
-          body.patientId,
-          normalizeAppLanguage(body.language)
+        const psychologistLanguage = normalizeAppLanguage(body.language);
+        runInBackground(request.log, 'psychologist-chat-side-effects', () =>
+          refreshPsychologistSessionInsights(
+            env,
+            admin,
+            body.patientId,
+            psychologistLanguage
+          ).then(() => undefined)
         );
 
         return {
           message: reply,
           patientId: body.patientId,
           psychologistId: auth.userId,
-          psychologistSummary: refreshedContent.psychologistSummary,
-          sessionInsights: refreshedContent.sessionInsights,
+          psychologistSummary: clinicalContent.psychologistSummary,
+          sessionInsights: clinicalContent.sessionInsights,
         };
       }
     );

@@ -3,9 +3,9 @@ import { resolve } from 'node:path';
 
 import Joi from 'joi';
 
-/** Node does not load `.env` automatically; seed uses `--env-file`, dev/start must too or use this. */
-const loadDotEnvFile = (): void => {
-  const envPath = resolve(process.cwd(), '.env');
+/** Node does not load `.env` automatically; load `.env` then `.env.local` (local overrides). */
+const loadEnvFile = (filename: string, override: boolean): void => {
+  const envPath = resolve(process.cwd(), filename);
   if (!existsSync(envPath)) {
     return;
   }
@@ -28,10 +28,15 @@ const loadDotEnvFile = (): void => {
     ) {
       value = value.slice(1, -1);
     }
-    if (process.env[key] === undefined) {
+    if (override || process.env[key] === undefined) {
       process.env[key] = value;
     }
   }
+};
+
+const loadDotEnvFiles = (): void => {
+  loadEnvFile('.env', false);
+  loadEnvFile('.env.local', true);
 };
 
 const envSchema = Joi.object({
@@ -83,7 +88,7 @@ export type Env = {
 };
 
 export const loadEnv = (): Env => {
-  loadDotEnvFile();
+  loadDotEnvFiles();
 
   const { value, error } = envSchema.validate(process.env, {
     abortEarly: false,

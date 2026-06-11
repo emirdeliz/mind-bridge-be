@@ -12,13 +12,14 @@ import { normalizeAppLanguage } from '@ai/prompts/psychologist-copilot-system.js
 import type { Env } from '@config/env.js';
 import type { AppLanguage } from '@domain/types.js';
 import { validateBody, validateParams } from '@http/middleware/validate.js';
+import { patientAnamnesisBodySchema } from '@http/schemas/anamnesis.schemas.js';
 import {
   endPsychologistSessionBodySchema,
   updateClinicalSessionBodySchema,
 } from '@http/schemas/clinical-content.schemas.js';
 import { patientIdParamsSchema } from '@http/schemas/patient.schemas.js';
 import { createAdminSupabaseClient } from '@infrastructure/supabase/client.js';
-import { updatePsychologistPatientClinicalSession } from '@infrastructure/supabase/clinical-content.repository.js';
+import { updatePsychologistPatientClinicalSession, updatePsychologistPatientAnamnesis } from '@infrastructure/supabase/clinical-content.repository.js';
 
 export const createClinicalContentRoutes =
   (env: Env): FastifyPluginAsync =>
@@ -105,6 +106,39 @@ export const createClinicalContentRoutes =
         );
 
         return { content };
+      }
+    );
+
+    app.patch(
+      '/psychologist/patients/:patientId/anamnesis',
+      {
+        preHandler: [
+          validateParams(patientIdParamsSchema),
+          validateBody(patientAnamnesisBodySchema),
+        ],
+      },
+      async (request) => {
+        const auth = request.auth!;
+        const supabase = request.userSupabase!;
+        const { patientId } = request.params as { patientId: string };
+        const body = request.body as Record<string, string | undefined>;
+
+        await assertPsychologistPatientAccess(supabase, auth, patientId);
+
+        const content = await updatePsychologistPatientAnamnesis(admin, patientId, {
+          chiefComplaint: body.chiefComplaint ?? '',
+          currentHistory: body.currentHistory ?? '',
+          personalHistory: body.personalHistory ?? '',
+          familyHistory: body.familyHistory ?? '',
+          socialHistory: body.socialHistory ?? '',
+          medicalPsychiatricHistory: body.medicalPsychiatricHistory ?? '',
+          lifeHabits: body.lifeHabits ?? '',
+          emotionalBehavioral: body.emotionalBehavioral ?? '',
+          therapeuticGoals: body.therapeuticGoals ?? '',
+          psychologistNotes: body.psychologistNotes ?? '',
+        });
+
+        return { anamnesis: content.anamnesis };
       }
     );
 

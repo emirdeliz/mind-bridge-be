@@ -271,14 +271,6 @@ const atCurrentWeekSlotIso = (
   return new Date(utcMs).toISOString();
 };
 
-const durationMinutesFromLocalTimes = (startTime, endTime) => {
-  const [startHour, startMinute] = startTime.split(':').map(Number);
-  const [endHour, endMinute] = endTime.split(':').map(Number);
-  const startTotal = startHour * 60 + startMinute;
-  const endTotal = endHour * 60 + endMinute;
-  return endTotal - startTotal;
-};
-
 const ALUIZIO_SCHEDULING_SETTINGS = {
   sessionDurationMinutes: 50,
   dayStartTime: '08:00:00',
@@ -289,7 +281,7 @@ const ALUIZIO_SCHEDULING_SETTINGS = {
 /**
  * weekdayIndex 0 = Monday (semana atual no fuso Brasil, UTC−3).
  * Horários de consulta alinham aos slots de 50 min (intervalo 12:00–13:00).
- * Compromissos particulares usam startTime/endTime livres.
+ * Compromissos particulares usam o slot clicado e a duração da sessão (50 min).
  */
 const ALUIZIO_SCHEDULING_APPOINTMENT_SEEDS = [
   {
@@ -319,8 +311,7 @@ const ALUIZIO_SCHEDULING_APPOINTMENT_SEEDS = [
   {
     isPersonalCommitment: true,
     weekdayIndex: 1,
-    startTime: '18:00',
-    endTime: '19:00',
+    time: '18:00',
     description: 'Consulta médica — cardiologista',
   },
   {
@@ -350,8 +341,7 @@ const ALUIZIO_SCHEDULING_APPOINTMENT_SEEDS = [
   {
     isPersonalCommitment: true,
     weekdayIndex: 3,
-    startTime: '17:10',
-    endTime: '18:30',
+    time: '17:10',
     description: 'Compromisso pessoal — jantar de família',
   },
   {
@@ -567,19 +557,11 @@ const seedPsychologistScheduling = async (
 
   for (const seed of appointmentSeeds) {
     if (seed.isPersonalCommitment) {
-      const personalDuration = durationMinutesFromLocalTimes(seed.startTime, seed.endTime);
-      if (personalDuration <= 0) {
-        console.warn(
-          `  Skip personal commitment: invalid time range (${seed.startTime}–${seed.endTime})`
-        );
-        continue;
-      }
-
       rows.push({
         psychologist_id: psychologistId,
         patient_id: null,
-        starts_at: atCurrentWeekSlotIso(seed.weekdayIndex, seed.startTime),
-        duration_minutes: personalDuration,
+        starts_at: atCurrentWeekSlotIso(seed.weekdayIndex, seed.time),
+        duration_minutes: durationMinutes,
         notes: seed.description,
         is_personal_commitment: true,
         updated_at: new Date().toISOString(),

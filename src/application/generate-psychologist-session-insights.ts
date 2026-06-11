@@ -27,6 +27,8 @@ export type GeneratePsychologistSessionInsightsInput = {
   patientChatHistory: ClinicalChatMessage[];
   likertCheckIn?: LikertCheckIn | null;
   language?: AppLanguage;
+  /** Reutiliza resumo já gerado para evitar LLM duplicada. */
+  existingPatientSummary?: string | null;
 };
 
 export type PsychologistSessionInsightsResult = {
@@ -209,13 +211,16 @@ export const generatePsychologistSessionInsights = async (
   input: GeneratePsychologistSessionInsightsInput
 ): Promise<PsychologistSessionInsightsResult | null> => {
   const language = input.language ?? 'pt';
+  const existingSummary = input.existingPatientSummary?.trim();
   const [interactionsSummary, agenticPatterns, agenticActions] = await Promise.all([
-    generatePatientInteractionSummary(
-      env,
-      input.patientChatHistory,
-      language,
-      input.sessionContext
-    ),
+    existingSummary
+      ? Promise.resolve(existingSummary)
+      : generatePatientInteractionSummary(
+          env,
+          input.patientChatHistory,
+          language,
+          input.sessionContext
+        ),
     generateDetectedPatternsInsight(
       env,
       input.patientChatHistory,

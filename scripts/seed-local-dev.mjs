@@ -334,12 +334,22 @@ const ALUIZIO_PATIENT_PAYMENT_SEEDS = [
   },
 ];
 
+/** Known demo patients also linked to Aluizio (in addition to Emir). */
+const ALUIZIO_ALL_PATIENTS = [...ALUIZIO_PATIENTS, ...DEMO_PATIENTS];
+
+const ALL_PATIENT_SEEDS_BY_EMAIL = new Map(
+  [...EMIR_PATIENTS, ...ALUIZIO_ALL_PATIENTS].map((patient) => [
+    patient.email.trim().toLowerCase(),
+    patient,
+  ])
+);
+
 const PSYCHOLOGIST_ACCOUNTS = [
   { psychologist: DEMO_PSYCHOLOGIST, patients: [] },
   { psychologist: EMIR_PSYCHOLOGIST, patients: EMIR_PATIENTS },
   {
     psychologist: ALUIZIO_PSYCHOLOGIST,
-    patients: ALUIZIO_PATIENTS,
+    patients: ALUIZIO_ALL_PATIENTS,
     patientPaymentSeeds: ALUIZIO_PATIENT_PAYMENT_SEEDS,
     schedulingSettings: ALUIZIO_SCHEDULING_SETTINGS,
     schedulingAppointmentSeeds: ALUIZIO_SCHEDULING_APPOINTMENT_SEEDS,
@@ -851,6 +861,58 @@ const upsertClinical = async (patientId, email) => {
   }
 };
 
+const linkPatientsWithoutCareToPsychologist = async (psychologistId, psychologistEmail) => {
+  const { data: patientProfiles, error: patientsError } = await admin
+    .from('profiles')
+    .select('id, email, full_name, phone')
+    .eq('role', 'patient');
+
+  if (patientsError) {
+    throw new Error(`Failed to list patient profiles: ${patientsError.message}`);
+  }
+
+  const { data: careRows, error: careError } = await admin
+    .from('care_relationships')
+    .select('patient_id');
+
+  if (careError) {
+    throw new Error(`Failed to list care relationships: ${careError.message}`);
+  }
+
+  const linkedPatientIds = new Set((careRows ?? []).map((row) => row.patient_id));
+  const unlinkedPatients = (patientProfiles ?? []).filter(
+    (profile) => !linkedPatientIds.has(profile.id)
+  );
+
+  if (!unlinkedPatients.length) {
+    return 0;
+  }
+
+  for (const profile of unlinkedPatients) {
+    const emailKey = profile.email?.trim().toLowerCase() ?? '';
+    const seed = ALL_PATIENT_SEEDS_BY_EMAIL.get(emailKey);
+    const demo = seed ?? {
+      email: profile.email,
+      fullName: profile.full_name ?? profile.email ?? 'Paciente',
+      phone: profile.phone,
+      lastConsultationAt: null,
+      isDeleted: false,
+      enabledSinceMonthsAgo: 0,
+    };
+
+    await linkPatient(psychologistId, profile.id, demo);
+
+    if (emailKey && resolveDemoClinicalPayload(emailKey)) {
+      await upsertClinical(profile.id, profile.email);
+      await seedPatientInteractions(profile.id, profile.email);
+    }
+
+    console.log(`  Linked orphan patient to ${psychologistEmail}: ${profile.email}`);
+  }
+
+  return unlinkedPatients.length;
+};
+
 const seedPsychologistAccount = async ({
   psychologist,
   patients,
@@ -909,6 +971,28 @@ const main = async () => {
     await seedPsychologistAccount(account);
   }
 
+  const { data: aluizioProfile, error: aluizioProfileError } = await admin
+    .from('profiles')
+    .select('id')
+    .eq('email', ALUIZIO_PSYCHOLOGIST.email)
+    .maybeSingle();
+
+  if (aluizioProfileError) {
+    throw new Error(`Failed to resolve Aluizio profile: ${aluizioProfileError.message}`);
+  }
+
+  if (aluizioProfile) {
+    const orphanCount = await linkPatientsWithoutCareToPsychologist(
+      aluizioProfile.id,
+      ALUIZIO_PSYCHOLOGIST.email
+    );
+    if (orphanCount > 0) {
+      console.log(
+        `Aluizio: ${orphanCount} paciente(s) sem vínculo foram associados a ${ALUIZIO_PSYCHOLOGIST.email}`
+      );
+    }
+  }
+
   console.log('Done.');
   console.log('Login demo psychologist:', DEMO_PSYCHOLOGIST.email, '/', DEMO_PSYCHOLOGIST.password);
   console.log('Login Emir (psychologist):', EMIR_PSYCHOLOGIST.email, '/', EMIR_PSYCHOLOGIST.password);
@@ -936,6 +1020,9 @@ const main = async () => {
   );
   console.log(
     'Aluizio scheduling: 5 consultas na semana atual (Carlos Amaro e Mauro Souza) — /psychologist/scheduling'
+  );
+  console.log(
+    'Aluizio patients: Mauro, Carlos, Ana, Bruno, Carla, Diego e Elisa (demo) — mais órfãos sem psicólogo no banco'
   );
   console.log('Login demo patient (Ana):', DEMO_PATIENTS[0].email, '/', DEMO_PATIENTS[0].password);
 };

@@ -1,6 +1,8 @@
 import type { FastifyPluginAsync } from 'fastify';
 
 import { assertPsychologist, NotFoundError } from '@application/authorization.js';
+import { durationMinutesUntilLocalTime } from '@domain/scheduling-slots.js';
+import { BadRequestError } from '@http/errors.js';
 import { getPsychologistSchedulingWeek } from '@application/get-psychologist-scheduling.js';
 import { movePsychologistAppointment } from '@application/move-psychologist-appointment.js';
 import { updatePsychologistSchedulingSettings } from '@application/update-psychologist-scheduling-settings.js';
@@ -81,16 +83,42 @@ export const createPsychologistSchedulingRoutes =
         const auth = request.auth!;
         assertPsychologist(auth);
         const body = request.body as {
-          patientId: string;
+          patientId?: string;
           startsAt: string;
           durationMinutes?: number;
           notes?: string | null;
+          isPersonalCommitment?: boolean;
+          endTime?: string;
+          personalDescription?: string;
+          tzOffset: number;
         };
+
+        if (body.isPersonalCommitment) {
+          const durationMinutes = durationMinutesUntilLocalTime(
+            body.startsAt,
+            body.endTime!,
+            body.tzOffset
+          );
+
+          if (durationMinutes <= 0) {
+            throw new BadRequestError('End time must be after start time');
+          }
+
+          const appointment = await createAppointment(admin, {
+            psychologistId: auth.userId,
+            startsAt: body.startsAt,
+            durationMinutes,
+            notes: body.personalDescription!.trim(),
+            isPersonalCommitment: true,
+          });
+
+          return { appointment };
+        }
 
         const patient = await getPatientForPsychologist(
           admin,
           auth.userId,
-          body.patientId,
+          body.patientId!,
           { includeDeleted: false }
         );
 

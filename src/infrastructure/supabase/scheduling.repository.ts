@@ -45,22 +45,24 @@ const mapAppointment = (row: unknown): PsychologistAppointment => {
   const record = keysToCamel<{
     id: string;
     psychologistId: string;
-    patientId: string;
+    patientId: string | null;
     startsAt: string;
     durationMinutes: number;
     notes: string | null;
+    isPersonalCommitment: boolean;
     patient: { fullName: string | null; email: string | null } | null;
   }>(row);
 
   return {
     id: record.id,
     psychologistId: record.psychologistId,
-    patientId: record.patientId,
+    patientId: record.patientId ?? null,
     patientFullName: record.patient?.fullName ?? null,
     patientEmail: record.patient?.email ?? null,
     startsAt: record.startsAt,
     durationMinutes: record.durationMinutes,
     notes: record.notes ?? null,
+    isPersonalCommitment: record.isPersonalCommitment ?? false,
   };
 };
 
@@ -136,6 +138,7 @@ const appointmentSelect = `
   starts_at,
   duration_minutes,
   notes,
+  is_personal_commitment,
   patient:profiles!patient_id (
     full_name,
     email
@@ -186,10 +189,11 @@ export const createAppointment = async (
   admin: SupabaseClient,
   input: {
     psychologistId: string;
-    patientId: string;
+    patientId?: string | null;
     startsAt: string;
     durationMinutes: number;
     notes?: string | null;
+    isPersonalCommitment?: boolean;
   }
 ): Promise<PsychologistAppointment> => {
   const { data, error } = await admin
@@ -197,27 +201,15 @@ export const createAppointment = async (
     .insert(
       toSnakeRecord({
         psychologistId: input.psychologistId,
-        patientId: input.patientId,
+        patientId: input.isPersonalCommitment ? null : input.patientId,
         startsAt: input.startsAt,
         durationMinutes: input.durationMinutes,
         notes: input.notes?.trim() || null,
+        isPersonalCommitment: input.isPersonalCommitment ?? false,
         updatedAt: new Date().toISOString(),
       })
     )
-    .select(
-      `
-      id,
-      psychologist_id,
-      patient_id,
-      starts_at,
-      duration_minutes,
-      notes,
-      patient:profiles!patient_id (
-        full_name,
-        email
-      )
-    `
-    )
+    .select(appointmentSelect)
     .single();
 
   if (error || !data) {
@@ -243,20 +235,7 @@ export const updateAppointmentStart = async (
     )
     .eq('id', appointmentId)
     .eq('psychologist_id', psychologistId)
-    .select(
-      `
-      id,
-      psychologist_id,
-      patient_id,
-      starts_at,
-      duration_minutes,
-      notes,
-      patient:profiles!patient_id (
-        full_name,
-        email
-      )
-    `
-    )
+    .select(appointmentSelect)
     .single();
 
   if (error || !data) {

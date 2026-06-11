@@ -77,6 +77,17 @@ export const toLocalTime = (date: Date, timeZoneOffsetMinutes: number): string =
   return `${hours}:${minutes}`;
 };
 
+export const durationMinutesUntilLocalTime = (
+  startsAtIso: string,
+  endTime: string,
+  timeZoneOffsetMinutes: number
+): number => {
+  const startsAt = new Date(startsAtIso);
+  const dateKey = toLocalDateKey(startsAt, timeZoneOffsetMinutes);
+  const endAt = combineLocalDateAndTime(dateKey, endTime, timeZoneOffsetMinutes);
+  return Math.round((endAt.getTime() - startsAt.getTime()) / 60_000);
+};
+
 export const appointmentRange = (
   startsAt: Date,
   durationMinutes: number

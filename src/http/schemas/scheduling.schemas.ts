@@ -24,12 +24,35 @@ export const updateSchedulingSettingsBodySchema = Joi.object({
 }).unknown(false);
 
 export const createAppointmentBodySchema = Joi.object({
-  patientId: Joi.string().uuid().required(),
   startsAt: Joi.string().isoDate().required(),
-  durationMinutes: Joi.number().integer().min(1).optional(),
-  notes: Joi.string().trim().max(2000).optional().allow('', null),
   weekStart: Joi.string().isoDate().required(),
   tzOffset: Joi.number().integer().required(),
+  isPersonalCommitment: Joi.boolean().optional().default(false),
+  patientId: Joi.when('isPersonalCommitment', {
+    is: true,
+    then: Joi.forbidden(),
+    otherwise: Joi.string().uuid().required(),
+  }),
+  durationMinutes: Joi.when('isPersonalCommitment', {
+    is: true,
+    then: Joi.forbidden(),
+    otherwise: Joi.number().integer().min(1).optional(),
+  }),
+  notes: Joi.when('isPersonalCommitment', {
+    is: true,
+    then: Joi.forbidden(),
+    otherwise: Joi.string().trim().max(2000).optional().allow('', null),
+  }),
+  endTime: Joi.when('isPersonalCommitment', {
+    is: true,
+    then: timeSchema.required(),
+    otherwise: Joi.forbidden(),
+  }),
+  personalDescription: Joi.when('isPersonalCommitment', {
+    is: true,
+    then: Joi.string().trim().min(1).max(2000).required(),
+    otherwise: Joi.forbidden(),
+  }),
 }).unknown(false);
 
 export const moveAppointmentBodySchema = Joi.object({

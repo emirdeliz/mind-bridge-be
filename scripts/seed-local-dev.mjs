@@ -210,13 +210,20 @@ const daysAgoIso = (daysAgo, hourUTC = 12) => {
   return date.toISOString();
 };
 
+const getLocalWeekdayIndex = (date = new Date()) => {
+  const day = date.getDay();
+  return day === 0 ? 6 : day - 1;
+};
+
+const dateForCurrentWeekday = (weekdayIndex, reference = new Date()) => {
+  const date = new Date(reference);
+  const todayWeekdayIndex = getLocalWeekdayIndex(reference);
+  date.setDate(date.getDate() - todayWeekdayIndex + weekdayIndex);
+  return date;
+};
+
 const atCurrentWeekDayIso = (weekdayIndex, hourUTC = 12) => {
-  const now = new Date();
-  const day = now.getDay();
-  const todayWeekdayIndex = day === 0 ? 6 : day - 1;
-  const mondayOffset = day === 0 ? -6 : 1 - day;
-  const date = new Date(now);
-  date.setDate(date.getDate() + mondayOffset + weekdayIndex - todayWeekdayIndex);
+  const date = dateForCurrentWeekday(weekdayIndex);
   date.setUTCHours(hourUTC, 0, 0, 0);
   return date.toISOString();
 };
@@ -242,21 +249,16 @@ const ALUIZIO_PATIENTS = [
   },
 ];
 
-/** Brazil (UTC−3): matches browser tzOffset in scheduling UI. */
-const BRAZIL_TZ_OFFSET_MINUTES = 180;
+/** Same convention as scheduling UI: -getTimezoneOffset() (e.g. −180 for Brazil UTC−3). */
+const getSchedulingTzOffsetMinutes = () => -new Date().getTimezoneOffset();
 
 const atCurrentWeekSlotIso = (
   weekdayIndex,
   timeLocal,
-  tzOffsetMinutes = BRAZIL_TZ_OFFSET_MINUTES
+  tzOffsetMinutes = getSchedulingTzOffsetMinutes()
 ) => {
   const [hourLocal, minuteLocal] = timeLocal.split(':').map(Number);
-  const now = new Date();
-  const day = now.getDay();
-  const todayWeekdayIndex = day === 0 ? 6 : day - 1;
-  const mondayOffset = day === 0 ? -6 : 1 - day;
-  const date = new Date(now);
-  date.setDate(date.getDate() + mondayOffset + weekdayIndex - todayWeekdayIndex);
+  const date = dateForCurrentWeekday(weekdayIndex);
   const utcMs =
     Date.UTC(
       date.getFullYear(),
@@ -269,6 +271,14 @@ const atCurrentWeekSlotIso = (
   return new Date(utcMs).toISOString();
 };
 
+const durationMinutesFromLocalTimes = (startTime, endTime) => {
+  const [startHour, startMinute] = startTime.split(':').map(Number);
+  const [endHour, endMinute] = endTime.split(':').map(Number);
+  const startTotal = startHour * 60 + startMinute;
+  const endTotal = endHour * 60 + endMinute;
+  return endTotal - startTotal;
+};
+
 const ALUIZIO_SCHEDULING_SETTINGS = {
   sessionDurationMinutes: 50,
   dayStartTime: '08:00:00',
@@ -276,8 +286,30 @@ const ALUIZIO_SCHEDULING_SETTINGS = {
   breakIntervals: [{ startTime: '12:00', endTime: '13:00' }],
 };
 
-/** weekdayIndex 0 = Monday. Times align with 50-min slots (break 12:00–13:00). */
+/**
+ * weekdayIndex 0 = Monday (semana atual no fuso Brasil, UTC−3).
+ * Horários de consulta alinham aos slots de 50 min (intervalo 12:00–13:00).
+ * Compromissos particulares usam startTime/endTime livres.
+ */
 const ALUIZIO_SCHEDULING_APPOINTMENT_SEEDS = [
+  {
+    patientEmail: 'maurosouza@gmail.com',
+    weekdayIndex: 0,
+    time: '09:40',
+    notes: null,
+  },
+  {
+    patientEmail: 'ana.demo@mindbridge.local',
+    weekdayIndex: 0,
+    time: '14:40',
+    notes: 'Acompanhamento semanal — técnicas de grounding',
+  },
+  {
+    patientEmail: 'maurosouza@gmail.com',
+    weekdayIndex: 1,
+    time: '08:00',
+    notes: null,
+  },
   {
     patientEmail: 'carlosamaro@gmail.com',
     weekdayIndex: 1,
@@ -285,28 +317,48 @@ const ALUIZIO_SCHEDULING_APPOINTMENT_SEEDS = [
     notes: 'Retorno TCC — reativação comportamental',
   },
   {
-    patientEmail: 'maurosouza@gmail.com',
+    isPersonalCommitment: true,
+    weekdayIndex: 1,
+    startTime: '11:20',
+    endTime: '12:00',
+    description: 'Consulta médica — cardiologista',
+  },
+  {
+    patientEmail: 'bruno.demo@mindbridge.local',
     weekdayIndex: 2,
-    time: '08:00',
+    time: '09:40',
     notes: null,
   },
   {
     patientEmail: 'carlosamaro@gmail.com',
-    weekdayIndex: 3,
+    weekdayIndex: 2,
     time: '14:40',
     notes: null,
   },
   {
+    patientEmail: 'carla.demo@mindbridge.local',
+    weekdayIndex: 3,
+    time: '08:00',
+    notes: 'Sessão online',
+  },
+  {
     patientEmail: 'maurosouza@gmail.com',
-    weekdayIndex: 4,
+    weekdayIndex: 3,
     time: '13:00',
     notes: 'Avaliação inicial presencial',
   },
   {
-    patientEmail: 'maurosouza@gmail.com',
-    weekdayIndex: 0,
-    time: '09:40',
-    notes: null,
+    isPersonalCommitment: true,
+    weekdayIndex: 3,
+    startTime: '17:10',
+    endTime: '18:30',
+    description: 'Compromisso pessoal — jantar de família',
+  },
+  {
+    patientEmail: 'diego.demo@mindbridge.local',
+    weekdayIndex: 4,
+    time: '10:30',
+    notes: 'Encaminhamento pós-avaliação',
   },
 ];
 
@@ -481,7 +533,7 @@ const seedPsychologistScheduling = async (
 
   if (deleteAppointmentsError && isMissingSchedulingTable(deleteAppointmentsError)) {
     console.warn(
-      '  Skip scheduling: apply migration 011_psychologist_scheduling.sql'
+      '  Skip scheduling: apply migrations 011_psychologist_scheduling.sql and 012_personal_scheduling_commitments.sql'
     );
     return;
   }
@@ -514,6 +566,27 @@ const seedPsychologistScheduling = async (
   const rows = [];
 
   for (const seed of appointmentSeeds) {
+    if (seed.isPersonalCommitment) {
+      const personalDuration = durationMinutesFromLocalTimes(seed.startTime, seed.endTime);
+      if (personalDuration <= 0) {
+        console.warn(
+          `  Skip personal commitment: invalid time range (${seed.startTime}–${seed.endTime})`
+        );
+        continue;
+      }
+
+      rows.push({
+        psychologist_id: psychologistId,
+        patient_id: null,
+        starts_at: atCurrentWeekSlotIso(seed.weekdayIndex, seed.startTime),
+        duration_minutes: personalDuration,
+        notes: seed.description,
+        is_personal_commitment: true,
+        updated_at: new Date().toISOString(),
+      });
+      continue;
+    }
+
     const patientId = patientIdByEmail[seed.patientEmail];
     if (!patientId) {
       console.warn(`  Skip appointment: patient not found (${seed.patientEmail})`);
@@ -526,6 +599,7 @@ const seedPsychologistScheduling = async (
       starts_at: atCurrentWeekSlotIso(seed.weekdayIndex, seed.time),
       duration_minutes: durationMinutes,
       notes: seed.notes ?? null,
+      is_personal_commitment: false,
       updated_at: new Date().toISOString(),
     });
   }
@@ -534,13 +608,39 @@ const seedPsychologistScheduling = async (
     return;
   }
 
-  const { error: insertError } = await admin.from('psychologist_appointments').insert(rows);
+  let insertedRows = rows;
+  let { error: insertError } = await admin.from('psychologist_appointments').insert(rows);
+
+  if (
+    insertError &&
+    rows.some((row) => row.is_personal_commitment) &&
+    (insertError.message.includes('is_personal_commitment') ||
+      insertError.message.includes('patient_or_personal') ||
+      insertError.message.includes('patient_id'))
+  ) {
+    insertedRows = rows.filter((row) => !row.is_personal_commitment);
+    console.warn(
+      '  Compromissos particulares ignorados: aplique a migration 012_personal_scheduling_commitments.sql'
+    );
+    if (insertedRows.length) {
+      const patientRows = insertedRows.map(({ is_personal_commitment: _flag, ...rest }) => rest);
+      ({ error: insertError } = await admin
+        .from('psychologist_appointments')
+        .insert(patientRows));
+    } else {
+      insertError = null;
+    }
+  }
 
   if (insertError) {
     throw new Error(`Scheduling appointments: ${insertError.message}`);
   }
 
-  console.log(`  Scheduling: ${rows.length} appointment(s) this week`);
+  const patientCount = insertedRows.filter((row) => !row.is_personal_commitment).length;
+  const personalCount = insertedRows.filter((row) => row.is_personal_commitment).length;
+  console.log(
+    `  Scheduling: ${insertedRows.length} item(s) na semana atual (${patientCount} consulta(s), ${personalCount} compromisso(s) particular(es))`
+  );
 };
 
 const seedPatientSessionPayments = async (
@@ -1019,7 +1119,7 @@ const main = async () => {
     'Aluizio patient payments: Carlos Amaro pago nos últimos 3 meses; Mauro Souza inadimplente no mês atual.'
   );
   console.log(
-    'Aluizio scheduling: 5 consultas na semana atual (Carlos Amaro e Mauro Souza) — /psychologist/scheduling'
+    'Aluizio scheduling: 9 consultas + 2 compromissos particulares na semana atual — /psychologist/scheduling'
   );
   console.log(
     'Aluizio patients: Mauro, Carlos, Ana, Bruno, Carla, Diego e Elisa (demo) — mais órfãos sem psicólogo no banco'

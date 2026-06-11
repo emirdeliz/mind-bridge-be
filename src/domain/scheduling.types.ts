@@ -15,12 +15,13 @@ export type PsychologistSchedulingSettings = {
 export type PsychologistAppointment = {
   id: string;
   psychologistId: string;
-  patientId: string;
+  patientId: string | null;
   patientFullName: string | null;
   patientEmail: string | null;
   startsAt: string;
   durationMinutes: number;
   notes: string | null;
+  isPersonalCommitment: boolean;
 };
 
 export type SchedulingConflictPreview = {

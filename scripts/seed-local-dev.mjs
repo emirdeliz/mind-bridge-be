@@ -242,6 +242,74 @@ const ALUIZIO_PATIENTS = [
   },
 ];
 
+/** Brazil (UTC−3): matches browser tzOffset in scheduling UI. */
+const BRAZIL_TZ_OFFSET_MINUTES = 180;
+
+const atCurrentWeekSlotIso = (
+  weekdayIndex,
+  timeLocal,
+  tzOffsetMinutes = BRAZIL_TZ_OFFSET_MINUTES
+) => {
+  const [hourLocal, minuteLocal] = timeLocal.split(':').map(Number);
+  const now = new Date();
+  const day = now.getDay();
+  const todayWeekdayIndex = day === 0 ? 6 : day - 1;
+  const mondayOffset = day === 0 ? -6 : 1 - day;
+  const date = new Date(now);
+  date.setDate(date.getDate() + mondayOffset + weekdayIndex - todayWeekdayIndex);
+  const utcMs =
+    Date.UTC(
+      date.getFullYear(),
+      date.getMonth(),
+      date.getDate(),
+      hourLocal,
+      minuteLocal
+    ) +
+    tzOffsetMinutes * 60_000;
+  return new Date(utcMs).toISOString();
+};
+
+const ALUIZIO_SCHEDULING_SETTINGS = {
+  sessionDurationMinutes: 50,
+  dayStartTime: '08:00:00',
+  dayEndTime: '20:00:00',
+  breakIntervals: [{ startTime: '12:00', endTime: '13:00' }],
+};
+
+/** weekdayIndex 0 = Monday. Times align with 50-min slots (break 12:00–13:00). */
+const ALUIZIO_SCHEDULING_APPOINTMENT_SEEDS = [
+  {
+    patientEmail: 'carlosamaro@gmail.com',
+    weekdayIndex: 1,
+    time: '10:30',
+    notes: 'Retorno TCC — reativação comportamental',
+  },
+  {
+    patientEmail: 'maurosouza@gmail.com',
+    weekdayIndex: 2,
+    time: '08:00',
+    notes: null,
+  },
+  {
+    patientEmail: 'carlosamaro@gmail.com',
+    weekdayIndex: 3,
+    time: '14:40',
+    notes: null,
+  },
+  {
+    patientEmail: 'maurosouza@gmail.com',
+    weekdayIndex: 4,
+    time: '13:00',
+    notes: 'Avaliação inicial presencial',
+  },
+  {
+    patientEmail: 'maurosouza@gmail.com',
+    weekdayIndex: 0,
+    time: '09:40',
+    notes: null,
+  },
+];
+
 /** Demo session payments for Aluizio — monthsAgo 0 = current month. */
 const ALUIZIO_PATIENT_PAYMENT_SEEDS = [
   {
@@ -273,6 +341,8 @@ const PSYCHOLOGIST_ACCOUNTS = [
     psychologist: ALUIZIO_PSYCHOLOGIST,
     patients: ALUIZIO_PATIENTS,
     patientPaymentSeeds: ALUIZIO_PATIENT_PAYMENT_SEEDS,
+    schedulingSettings: ALUIZIO_SCHEDULING_SETTINGS,
+    schedulingAppointmentSeeds: ALUIZIO_SCHEDULING_APPOINTMENT_SEEDS,
   },
 ];
 
@@ -367,6 +437,100 @@ const isMissingPatientPaymentsTable = (error) => {
     message.includes('patient_session_payments') ||
     message.includes('schema cache')
   );
+};
+
+const isMissingSchedulingTable = (error) => {
+  const message = error?.message ?? '';
+  const code = error?.code ?? '';
+  return (
+    code === 'PGRST205' ||
+    message.includes('psychologist_scheduling_settings') ||
+    message.includes('psychologist_appointments') ||
+    message.includes('schema cache')
+  );
+};
+
+const seedPsychologistScheduling = async (
+  psychologistId,
+  settings,
+  appointmentSeeds,
+  patientIdByEmail
+) => {
+  if (!settings && !appointmentSeeds?.length) {
+    return;
+  }
+
+  const { error: deleteAppointmentsError } = await admin
+    .from('psychologist_appointments')
+    .delete()
+    .eq('psychologist_id', psychologistId);
+
+  if (deleteAppointmentsError && !isMissingSchedulingTable(deleteAppointmentsError)) {
+    throw new Error(`Scheduling appointments cleanup: ${deleteAppointmentsError.message}`);
+  }
+
+  if (deleteAppointmentsError && isMissingSchedulingTable(deleteAppointmentsError)) {
+    console.warn(
+      '  Skip scheduling: apply migration 011_psychologist_scheduling.sql'
+    );
+    return;
+  }
+
+  if (settings) {
+    const { error: settingsError } = await admin
+      .from('psychologist_scheduling_settings')
+      .upsert(
+        {
+          psychologist_id: psychologistId,
+          session_duration_minutes: settings.sessionDurationMinutes,
+          day_start_time: settings.dayStartTime,
+          day_end_time: settings.dayEndTime,
+          break_intervals: settings.breakIntervals,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: 'psychologist_id' }
+      );
+
+    if (settingsError) {
+      throw new Error(`Scheduling settings: ${settingsError.message}`);
+    }
+  }
+
+  if (!appointmentSeeds?.length) {
+    return;
+  }
+
+  const durationMinutes = settings?.sessionDurationMinutes ?? 50;
+  const rows = [];
+
+  for (const seed of appointmentSeeds) {
+    const patientId = patientIdByEmail[seed.patientEmail];
+    if (!patientId) {
+      console.warn(`  Skip appointment: patient not found (${seed.patientEmail})`);
+      continue;
+    }
+
+    rows.push({
+      psychologist_id: psychologistId,
+      patient_id: patientId,
+      starts_at: atCurrentWeekSlotIso(seed.weekdayIndex, seed.time),
+      duration_minutes: durationMinutes,
+      notes: seed.notes ?? null,
+      updated_at: new Date().toISOString(),
+    });
+  }
+
+  if (!rows.length) {
+    return;
+  }
+
+  const { error: insertError } = await admin.from('psychologist_appointments').insert(rows);
+
+  if (insertError) {
+    throw new Error(`Scheduling appointments: ${insertError.message}`);
+  }
+
+  console.log(`  Scheduling: ${rows.length} appointment(s) this week`);
 };
 
 const seedPatientSessionPayments = async (
@@ -691,6 +855,8 @@ const seedPsychologistAccount = async ({
   psychologist,
   patients,
   patientPaymentSeeds,
+  schedulingSettings,
+  schedulingAppointmentSeeds,
 }) => {
   const psychologistId = await ensureAuthUser({
     ...psychologist,
@@ -723,6 +889,12 @@ const seedPsychologistAccount = async ({
   await seedPatientSessionPayments(
     psychologistId,
     patientPaymentSeeds,
+    patientIdByEmail
+  );
+  await seedPsychologistScheduling(
+    psychologistId,
+    schedulingSettings,
+    schedulingAppointmentSeeds,
     patientIdByEmail
   );
 };
@@ -761,6 +933,9 @@ const main = async () => {
   );
   console.log(
     'Aluizio patient payments: Carlos Amaro pago nos últimos 3 meses; Mauro Souza inadimplente no mês atual.'
+  );
+  console.log(
+    'Aluizio scheduling: 5 consultas na semana atual (Carlos Amaro e Mauro Souza) — /psychologist/scheduling'
   );
   console.log('Login demo patient (Ana):', DEMO_PATIENTS[0].email, '/', DEMO_PATIENTS[0].password);
 };

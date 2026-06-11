@@ -5,11 +5,18 @@ import type {
   DashboardSnapshot,
   LikertCheckIn,
   LikertDimensionId,
+  PatientAnamnesis,
   PatientClinicalContent,
   SessionInsight,
   SessionNoteEntry,
 } from '@domain/clinical-content.types.js';
+import { emptyPatientAnamnesis } from '@domain/clinical-content.types.js';
 import { keysToCamel, toSnakeRecord } from '@helpers';
+
+const normalizeAnamnesis = (value: Partial<PatientAnamnesis> | null | undefined): PatientAnamnesis => ({
+  ...emptyPatientAnamnesis(),
+  ...(value ?? {}),
+});
 
 const emptyDashboard = (): DashboardSnapshot => ({
   moodTrendCategories: [],
@@ -60,6 +67,7 @@ export const defaultClinicalContentPayload = (): ClinicalContentSeedPayload => (
   patientChatSeed: [],
   patientSummary: null,
   likertCheckIn: null,
+  anamnesis: emptyPatientAnamnesis(),
 });
 
 const hasCurrentSessionNote = (notes: SessionNoteEntry[]): boolean =>
@@ -75,6 +83,7 @@ const mapRow = (row: unknown): PatientClinicalContent => {
     psychologistChatSeed: record.psychologistChatSeed ?? [],
     patientChatSeed: record.patientChatSeed ?? [],
     likertCheckIn: record.likertCheckIn ?? null,
+    anamnesis: normalizeAnamnesis(record.anamnesis),
   };
 };
 
@@ -126,6 +135,7 @@ export const ensurePatientClinicalContent = async (
     psychologistChatSeed: existing.psychologistChatSeed,
     patientChatSeed: existing.patientChatSeed,
     patientSummary: existing.patientSummary,
+    anamnesis: existing.anamnesis,
   });
 
   return { ...existing, sessionNotes: nextNotes };
@@ -163,6 +173,7 @@ export const updatePatientDashboardSnapshot = async (
     psychologistChatSeed: content.psychologistChatSeed,
     patientChatSeed: content.patientChatSeed,
     patientSummary: content.patientSummary,
+    anamnesis: content.anamnesis,
   };
 
   await upsertPatientClinicalContent(admin, patientId, nextPayload);
@@ -191,6 +202,7 @@ export const appendPatientChatMessages = async (
     psychologistChatSeed: content.psychologistChatSeed,
     patientChatSeed,
     patientSummary: content.patientSummary,
+    anamnesis: content.anamnesis,
   };
 
   await upsertPatientClinicalContent(admin, patientId, nextPayload);
@@ -219,6 +231,7 @@ export const appendPsychologistChatMessages = async (
     psychologistChatSeed,
     patientChatSeed: content.patientChatSeed,
     patientSummary: content.patientSummary,
+    anamnesis: content.anamnesis,
   };
 
   await upsertPatientClinicalContent(admin, patientId, nextPayload);
@@ -248,6 +261,7 @@ export const updatePatientInteractionSummary = async (
     psychologistChatSeed: content.psychologistChatSeed,
     patientChatSeed: content.patientChatSeed,
     patientSummary,
+    anamnesis: content.anamnesis,
   };
 
   await upsertPatientClinicalContent(admin, patientId, nextPayload);
@@ -271,6 +285,7 @@ export const updatePsychologistSessionInsights = async (
     psychologistChatSeed: content.psychologistChatSeed,
     patientChatSeed: content.patientChatSeed,
     patientSummary: content.patientSummary,
+    anamnesis: content.anamnesis,
   };
 
   await upsertPatientClinicalContent(admin, patientId, nextPayload);
@@ -313,6 +328,7 @@ export const updatePsychologistPatientClinicalSession = async (
     psychologistChatSeed: content.psychologistChatSeed,
     patientChatSeed: content.patientChatSeed,
     patientSummary: content.patientSummary,
+    anamnesis: content.anamnesis,
   };
 
   await upsertPatientClinicalContent(admin, patientId, nextPayload);
@@ -357,6 +373,31 @@ export const endPsychologistPatientSession = async (
     psychologistChatSeed: [],
     patientChatSeed: content.patientChatSeed,
     patientSummary: content.patientSummary,
+    anamnesis: content.anamnesis,
+  };
+
+  await upsertPatientClinicalContent(admin, patientId, nextPayload);
+
+  return { patientId, ...nextPayload };
+};
+
+export const updatePsychologistPatientAnamnesis = async (
+  admin: SupabaseClient,
+  patientId: string,
+  anamnesis: PatientAnamnesis
+): Promise<PatientClinicalContent> => {
+  const content = await ensurePatientClinicalContent(admin, patientId);
+
+  const nextPayload: ClinicalContentSeedPayload = {
+    dashboardSnapshot: content.dashboardSnapshot,
+    sessionContext: content.sessionContext,
+    sessionNotes: content.sessionNotes,
+    sessionInsights: content.sessionInsights,
+    psychologistSummary: content.psychologistSummary,
+    psychologistChatSeed: content.psychologistChatSeed,
+    patientChatSeed: content.patientChatSeed,
+    patientSummary: content.patientSummary,
+    anamnesis: normalizeAnamnesis(anamnesis),
   };
 
   await upsertPatientClinicalContent(admin, patientId, nextPayload);
@@ -374,6 +415,10 @@ export const upsertPatientClinicalContent = async (
     payload.likertCheckIn !== undefined
       ? payload.likertCheckIn
       : (existing?.likertCheckIn ?? null);
+  const anamnesis =
+    payload.anamnesis !== undefined
+      ? normalizeAnamnesis(payload.anamnesis)
+      : normalizeAnamnesis(existing?.anamnesis);
 
   const { error } = await admin.from('patient_clinical_content').upsert(
     toSnakeRecord({
@@ -387,6 +432,7 @@ export const upsertPatientClinicalContent = async (
       patientChatSeed: payload.patientChatSeed,
       patientSummary: payload.patientSummary,
       likertCheckIn,
+      anamnesis,
       updatedAt: new Date().toISOString(),
     }),
     { onConflict: 'patient_id' }
@@ -418,6 +464,7 @@ export const updatePatientLikertCheckIn = async (
     patientChatSeed: content.patientChatSeed,
     patientSummary: content.patientSummary,
     likertCheckIn,
+    anamnesis: content.anamnesis,
   };
 
   await upsertPatientClinicalContent(admin, patientId, nextPayload);

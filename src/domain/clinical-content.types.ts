@@ -63,6 +63,32 @@ export type DashboardSnapshot = {
   lastUpdatedAt: string;
 };
 
+export type PatientAnamnesis = {
+  chiefComplaint: string;
+  currentHistory: string;
+  personalHistory: string;
+  familyHistory: string;
+  socialHistory: string;
+  medicalPsychiatricHistory: string;
+  lifeHabits: string;
+  emotionalBehavioral: string;
+  therapeuticGoals: string;
+  psychologistNotes: string;
+};
+
+export const emptyPatientAnamnesis = (): PatientAnamnesis => ({
+  chiefComplaint: '',
+  currentHistory: '',
+  personalHistory: '',
+  familyHistory: '',
+  socialHistory: '',
+  medicalPsychiatricHistory: '',
+  lifeHabits: '',
+  emotionalBehavioral: '',
+  therapeuticGoals: '',
+  psychologistNotes: '',
+});
+
 export type PatientClinicalContent = {
   patientId: string;
   dashboardSnapshot: DashboardSnapshot;
@@ -74,4 +100,5 @@ export type PatientClinicalContent = {
   patientChatSeed: ClinicalChatMessage[];
   patientSummary: string | null;
   likertCheckIn?: LikertCheckIn | null;
+  anamnesis: PatientAnamnesis;
 };

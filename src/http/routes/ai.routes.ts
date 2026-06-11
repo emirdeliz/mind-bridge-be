@@ -183,6 +183,7 @@ export const createAiRoutes =
             patientSummary: clinicalContent.patientSummary,
             sessionInsights: clinicalContent.sessionInsights,
             likertCheckIn: clinicalContent.likertCheckIn,
+            anamnesis: clinicalContent.anamnesis,
           }
         );
 

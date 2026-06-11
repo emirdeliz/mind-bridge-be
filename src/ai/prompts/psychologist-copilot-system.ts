@@ -5,6 +5,7 @@ import type {
 } from '@domain/clinical-content.types.js';
 import type { AppLanguage } from '@domain/types.js';
 import { formatLikertCheckInForContext } from '@application/format-likert-check-in-context.js';
+import { formatPatientAnamnesisForContext } from '@application/format-patient-anamnesis-context.js';
 
 export const normalizeAppLanguage = (value: unknown): AppLanguage => {
   if (value === 'en' || value === 'es' || value === 'pt') {
@@ -26,6 +27,7 @@ type RetrievalContent = Pick<
   | 'patientSummary'
   | 'sessionInsights'
   | 'likertCheckIn'
+  | 'anamnesis'
 >;
 
 const averageMoodScore = (snapshot: DashboardSnapshot): number | null => {
@@ -72,6 +74,7 @@ export const buildPsychologistCopilotRetrievalContext = (
   const patientSummary = content.patientSummary?.trim() ?? '';
   const insights = formatInsights(content.sessionInsights ?? []);
   const likertContext = formatLikertCheckInForContext(language, content.likertCheckIn);
+  const anamnesisContext = formatPatientAnamnesisForContext(language, content.anamnesis);
 
   const labels: Record<
     AppLanguage,
@@ -142,6 +145,9 @@ export const buildPsychologistCopilotRetrievalContext = (
   }
   if (patientSummary) {
     lines.push(`${copy.patientSummary} ${patientSummary}`);
+  }
+  if (anamnesisContext) {
+    lines.push(anamnesisContext);
   }
   if (likertContext) {
     lines.push(likertContext);

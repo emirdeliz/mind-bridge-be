@@ -242,10 +242,38 @@ const ALUIZIO_PATIENTS = [
   },
 ];
 
+/** Demo session payments for Aluizio — monthsAgo 0 = current month. */
+const ALUIZIO_PATIENT_PAYMENT_SEEDS = [
+  {
+    patientEmail: 'carlosamaro@gmail.com',
+    payments: [
+      {
+        monthsAgo: 0,
+        amountCents: 35000,
+        notes: 'Sessão presencial — pagamento via PIX',
+      },
+      {
+        monthsAgo: 1,
+        amountCents: 35000,
+        notes: null,
+      },
+      {
+        monthsAgo: 2,
+        amountCents: 30000,
+        notes: 'Valor acordado na avaliação inicial',
+      },
+    ],
+  },
+];
+
 const PSYCHOLOGIST_ACCOUNTS = [
   { psychologist: DEMO_PSYCHOLOGIST, patients: [] },
   { psychologist: EMIR_PSYCHOLOGIST, patients: EMIR_PATIENTS },
-  { psychologist: ALUIZIO_PSYCHOLOGIST, patients: ALUIZIO_PATIENTS },
+  {
+    psychologist: ALUIZIO_PSYCHOLOGIST,
+    patients: ALUIZIO_PATIENTS,
+    patientPaymentSeeds: ALUIZIO_PATIENT_PAYMENT_SEEDS,
+  },
 ];
 
 const upsertProfile = async ({ userId, email, role, fullName, phone }) => {
@@ -314,6 +342,96 @@ const linkedAtFromMonthsAgo = (monthsAgo = 0) => {
   date.setUTCHours(12, 0, 0, 0);
   date.setUTCMonth(date.getUTCMonth() - monthsAgo);
   return date.toISOString();
+};
+
+const billingMonthFromOffset = (monthsAgo = 0) => {
+  const monthDate = new Date();
+  monthDate.setUTCDate(1);
+  monthDate.setUTCMonth(monthDate.getUTCMonth() - monthsAgo);
+  return `${monthDate.getUTCFullYear()}-${String(monthDate.getUTCMonth() + 1).padStart(2, '0')}-01`;
+};
+
+const paidAtInMonth = (monthsAgo = 0, dayUTC = 10) => {
+  const date = new Date();
+  date.setUTCDate(dayUTC);
+  date.setUTCMonth(date.getUTCMonth() - monthsAgo);
+  date.setUTCHours(14, 30, 0, 0);
+  return date.toISOString();
+};
+
+const isMissingPatientPaymentsTable = (error) => {
+  const message = error?.message ?? '';
+  const code = error?.code ?? '';
+  return (
+    code === 'PGRST205' ||
+    message.includes('patient_session_payments') ||
+    message.includes('schema cache')
+  );
+};
+
+const seedPatientSessionPayments = async (
+  psychologistId,
+  paymentSeeds,
+  patientIdByEmail
+) => {
+  if (!paymentSeeds?.length) {
+    return;
+  }
+
+  const { error: deleteError } = await admin
+    .from('patient_session_payments')
+    .delete()
+    .eq('psychologist_id', psychologistId);
+
+  if (deleteError && !isMissingPatientPaymentsTable(deleteError)) {
+    throw new Error(`Patient payments cleanup: ${deleteError.message}`);
+  }
+
+  if (deleteError && isMissingPatientPaymentsTable(deleteError)) {
+    console.warn(
+      '  Skip patient payments: apply migration 010_patient_session_payments.sql'
+    );
+    return;
+  }
+
+  const rows = [];
+
+  for (const seed of paymentSeeds) {
+    const patientId = patientIdByEmail[seed.patientEmail];
+    if (!patientId) {
+      console.warn(`  Skip payments: patient not found (${seed.patientEmail})`);
+      continue;
+    }
+
+    for (const payment of seed.payments) {
+      rows.push({
+        psychologist_id: psychologistId,
+        patient_id: patientId,
+        billing_month: billingMonthFromOffset(payment.monthsAgo),
+        amount_cents: payment.amountCents,
+        paid_at: paidAtInMonth(payment.monthsAgo, payment.dayUTC ?? 10),
+        notes: payment.notes ?? null,
+        updated_at: new Date().toISOString(),
+      });
+    }
+  }
+
+  if (!rows.length) {
+    return;
+  }
+
+  const { error: insertError } = await admin.from('patient_session_payments').insert(rows);
+  if (insertError) {
+    if (isMissingPatientPaymentsTable(insertError)) {
+      console.warn(
+        '  Skip patient payments: apply migration 010_patient_session_payments.sql'
+      );
+      return;
+    }
+    throw new Error(`Patient payments insert: ${insertError.message}`);
+  }
+
+  console.log(`  Patient payments: ${rows.length} record(s)`);
 };
 
 const resolveDisabledAt = (demo) => {
@@ -569,13 +687,19 @@ const upsertClinical = async (patientId, email) => {
   }
 };
 
-const seedPsychologistAccount = async (psychologist, patients) => {
+const seedPsychologistAccount = async ({
+  psychologist,
+  patients,
+  patientPaymentSeeds,
+}) => {
   const psychologistId = await ensureAuthUser({
     ...psychologist,
     phone: psychologist.phone ?? '',
     role: 'psychologist',
   });
   console.log(`Psychologist: ${psychologist.email} (${psychologistId})`);
+
+  const patientIdByEmail = {};
 
   for (const demo of patients) {
     const patientId = await ensureAuthUser({
@@ -586,6 +710,8 @@ const seedPsychologistAccount = async (psychologist, patients) => {
       phone: demo.phone,
     });
 
+    patientIdByEmail[demo.email] = patientId;
+
     await linkPatient(psychologistId, patientId, demo);
     await upsertClinical(patientId, demo.email);
     await seedPatientInteractions(patientId, demo.email);
@@ -594,6 +720,11 @@ const seedPsychologistAccount = async (psychologist, patients) => {
   }
 
   await seedBillingForPsychologist(psychologistId, psychologist.email, patients);
+  await seedPatientSessionPayments(
+    psychologistId,
+    patientPaymentSeeds,
+    patientIdByEmail
+  );
 };
 
 const main = async () => {
@@ -603,7 +734,7 @@ const main = async () => {
   await assertDatabaseSchema();
 
   for (const account of PSYCHOLOGIST_ACCOUNTS) {
-    await seedPsychologistAccount(account.psychologist, account.patients);
+    await seedPsychologistAccount(account);
   }
 
   console.log('Done.');
@@ -627,6 +758,9 @@ const main = async () => {
     ALUIZIO_PATIENTS[1].email,
     '/',
     ALUIZIO_PATIENTS[1].password
+  );
+  console.log(
+    'Aluizio patient payments: Carlos Amaro pago nos últimos 3 meses; Mauro Souza inadimplente no mês atual.'
   );
   console.log('Login demo patient (Ana):', DEMO_PATIENTS[0].email, '/', DEMO_PATIENTS[0].password);
 };

@@ -33,20 +33,11 @@ export const createAppointmentBodySchema = Joi.object({
     then: Joi.forbidden(),
     otherwise: Joi.string().uuid().required(),
   }),
-  durationMinutes: Joi.when('isPersonalCommitment', {
-    is: true,
-    then: Joi.forbidden(),
-    otherwise: Joi.number().integer().min(1).optional(),
-  }),
+  durationMinutes: Joi.number().integer().min(1).optional(),
   notes: Joi.when('isPersonalCommitment', {
     is: true,
     then: Joi.forbidden(),
     otherwise: Joi.string().trim().max(2000).optional().allow('', null),
-  }),
-  endTime: Joi.when('isPersonalCommitment', {
-    is: true,
-    then: timeSchema.required(),
-    otherwise: Joi.forbidden(),
   }),
   personalDescription: Joi.when('isPersonalCommitment', {
     is: true,

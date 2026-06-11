@@ -319,8 +319,8 @@ const ALUIZIO_SCHEDULING_APPOINTMENT_SEEDS = [
   {
     isPersonalCommitment: true,
     weekdayIndex: 1,
-    startTime: '11:20',
-    endTime: '12:00',
+    startTime: '18:00',
+    endTime: '19:00',
     description: 'Consulta médica — cardiologista',
   },
   {

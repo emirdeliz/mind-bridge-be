@@ -1,8 +1,6 @@
 import type { FastifyPluginAsync } from 'fastify';
 
 import { assertPsychologist, NotFoundError } from '@application/authorization.js';
-import { durationMinutesUntilLocalTime } from '@domain/scheduling-slots.js';
-import { BadRequestError } from '@http/errors.js';
 import { getPsychologistSchedulingWeek } from '@application/get-psychologist-scheduling.js';
 import { movePsychologistAppointment } from '@application/move-psychologist-appointment.js';
 import { updatePsychologistSchedulingSettings } from '@application/update-psychologist-scheduling-settings.js';
@@ -88,22 +86,14 @@ export const createPsychologistSchedulingRoutes =
           durationMinutes?: number;
           notes?: string | null;
           isPersonalCommitment?: boolean;
-          endTime?: string;
           personalDescription?: string;
           tzOffset: number;
         };
 
+        const settings = await getSchedulingSettings(admin, auth.userId);
+        const durationMinutes = body.durationMinutes ?? settings.sessionDurationMinutes;
+
         if (body.isPersonalCommitment) {
-          const durationMinutes = durationMinutesUntilLocalTime(
-            body.startsAt,
-            body.endTime!,
-            body.tzOffset
-          );
-
-          if (durationMinutes <= 0) {
-            throw new BadRequestError('End time must be after start time');
-          }
-
           const appointment = await createAppointment(admin, {
             psychologistId: auth.userId,
             startsAt: body.startsAt,
@@ -126,12 +116,11 @@ export const createPsychologistSchedulingRoutes =
           return reply.status(404).send({ error: 'Patient not found' });
         }
 
-        const settings = await getSchedulingSettings(admin, auth.userId);
         const appointment = await createAppointment(admin, {
           psychologistId: auth.userId,
           patientId: body.patientId,
           startsAt: body.startsAt,
-          durationMinutes: body.durationMinutes ?? settings.sessionDurationMinutes,
+          durationMinutes,
           notes: body.notes,
         });
 

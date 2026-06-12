@@ -99,6 +99,7 @@ export type PatientClinicalContent = {
   psychologistChatSeed: ClinicalChatMessage[];
   patientChatSeed: ClinicalChatMessage[];
   patientSummary: string | null;
+  patientSummaryUserMessageCount?: number;
   likertCheckIn?: LikertCheckIn | null;
   anamnesis: PatientAnamnesis;
 };

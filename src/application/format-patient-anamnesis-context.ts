@@ -1,6 +1,10 @@
 import type { PatientAnamnesis } from '@domain/clinical-content.types.js';
 import type { AppLanguage } from '@domain/types.js';
 
+import { truncateContextText } from './truncate-context-text.js';
+
+const MAX_ANAMNESIS_FIELD_CHARS = 600;
+
 type AnamnesisFieldKey = keyof PatientAnamnesis;
 
 const ANAMNESIS_FIELD_ORDER: AnamnesisFieldKey[] = [
@@ -80,7 +84,9 @@ export const formatPatientAnamnesisForContext = (
       return [];
     }
 
-    return [`- ${FIELD_LABELS[language][field]}: ${value}`];
+    return [
+      `- ${FIELD_LABELS[language][field]}: ${truncateContextText(value, MAX_ANAMNESIS_FIELD_CHARS)}`,
+    ];
   });
 
   if (!lines.length) {

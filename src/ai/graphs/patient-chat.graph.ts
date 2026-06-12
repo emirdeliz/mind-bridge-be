@@ -14,10 +14,57 @@ import { buildPatientChatSystemPrompt } from '@ai/prompts/patient-chat-system.js
 import { resolveLanguageInstruction } from '@ai/prompts/response-language.js';
 import type { ClinicalChatMessage } from '@domain/clinical-content.types.js';
 import type { AppLanguage } from '@domain/types.js';
+import { extractStreamChunkContent } from '@ai/stream-chunk-content.js';
 import {
   PatientChatAnnotation,
   type PatientChatState,
 } from '@ai/state/patient-chat.state.js';
+
+const buildPatientChatMessages = (
+  state: PatientChatState
+): {
+  language: AppLanguage;
+  system: SystemMessage;
+  human: HumanMessage;
+} => {
+  const language = (state.responseLanguage as AppLanguage) ?? 'pt';
+  const questionCount = countAgentQuestionsInChat(state.chatHistory);
+  const system = new SystemMessage(
+    [
+      buildPatientChatSystemPrompt(language, {
+        psychologistContext: state.careContext,
+        chatHistory: state.chatHistory,
+        questionCount,
+      }),
+      resolveLanguageInstruction(language),
+    ]
+      .filter(Boolean)
+      .join('\n\n')
+  );
+  const human = new HumanMessage(
+    buildPatientChatHumanPrompt(
+      language,
+      state.userMessage,
+      state.careContext,
+      questionCount,
+      state.chatHistory
+    )
+  );
+
+  return { language, system, human };
+};
+
+const finalizePatientChatAssistantMessage = (
+  raw: string,
+  language: AppLanguage
+): string => {
+  let assistantMessage = finalizePatientChatResponse(raw);
+  if (!assistantMessage || isLeakedPatientChatReasoning(assistantMessage)) {
+    assistantMessage = getPatientChatFallbackReply(language);
+  }
+
+  return assistantMessage;
+};
 
 const buildRetrievalContext = (state: PatientChatState): string => {
   if (state.careContext?.trim()) {
@@ -44,43 +91,17 @@ const retrieveNode = async (
 const createRespondNode =
   (env: Env) =>
   async (state: PatientChatState): Promise<Partial<PatientChatState>> => {
-    const language = (state.responseLanguage as AppLanguage) ?? 'pt';
-    const questionCount = countAgentQuestionsInChat(state.chatHistory);
-
     const model = createPatientChatModel(env);
-    const system = new SystemMessage(
-      [
-        buildPatientChatSystemPrompt(language, {
-          psychologistContext: state.careContext,
-          chatHistory: state.chatHistory,
-          questionCount,
-        }),
-        resolveLanguageInstruction(language),
-      ]
-        .filter(Boolean)
-        .join('\n\n')
-    );
-    const human = new HumanMessage(
-      buildPatientChatHumanPrompt(
-        language,
-        state.userMessage,
-        state.careContext,
-        questionCount,
-        state.chatHistory
-      )
-    );
+    const { language, system, human } = buildPatientChatMessages(state);
     const response = await model.invoke([system, human]);
     const content =
       typeof response.content === 'string'
         ? response.content
         : String(response.content);
 
-    let assistantMessage = finalizePatientChatResponse(content);
-    if (!assistantMessage || isLeakedPatientChatReasoning(assistantMessage)) {
-      assistantMessage = getPatientChatFallbackReply(language);
-    }
-
-    return { assistantMessage };
+    return {
+      assistantMessage: finalizePatientChatAssistantMessage(content, language),
+    };
   };
 
 export const createPatientChatGraph = (env: Env) => {
@@ -92,6 +113,44 @@ export const createPatientChatGraph = (env: Env) => {
     .addEdge('respond', END);
 
   return graph.compile();
+};
+
+export const streamPatientChatGraph = async (
+  env: Env,
+  input: {
+    patientId: string;
+    userMessage: string;
+    psychologistContext?: string;
+    chatHistory?: ClinicalChatMessage[];
+    retrievalContext?: string;
+    language?: AppLanguage;
+  },
+  onDelta: (delta: string) => void
+): Promise<string> => {
+  const model = createPatientChatModel(env);
+  const { language, system, human } = buildPatientChatMessages({
+    patientId: input.patientId,
+    userMessage: input.userMessage,
+    careContext: input.psychologistContext ?? '',
+    chatHistory: input.chatHistory ?? [],
+    responseLanguage: input.language ?? 'pt',
+    retrievalContext: input.retrievalContext ?? '',
+    assistantMessage: '',
+  });
+
+  let raw = '';
+  const stream = await model.stream([system, human]);
+  for await (const chunk of stream) {
+    const piece = extractStreamChunkContent(chunk.content);
+    if (!piece) {
+      continue;
+    }
+
+    raw += piece;
+    onDelta(piece);
+  }
+
+  return finalizePatientChatAssistantMessage(raw, language);
 };
 
 export const runPatientChatGraph = async (

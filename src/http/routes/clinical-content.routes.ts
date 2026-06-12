@@ -19,6 +19,7 @@ import {
 } from '@http/schemas/clinical-content.schemas.js';
 import { patientIdParamsSchema } from '@http/schemas/patient.schemas.js';
 import { createAdminSupabaseClient } from '@infrastructure/supabase/client.js';
+import { runInBackground } from '@application/run-in-background.js';
 import { updatePsychologistPatientClinicalSession, updatePsychologistPatientAnamnesis } from '@infrastructure/supabase/clinical-content.repository.js';
 
 export const createClinicalContentRoutes =
@@ -96,13 +97,20 @@ export const createClinicalContentRoutes =
 
         await assertPsychologistPatientAccess(supabase, auth, patientId);
 
-        await updatePsychologistPatientClinicalSession(admin, patientId, body);
-
-        const content = await refreshPsychologistSessionInsights(
-          env,
+        const content = await updatePsychologistPatientClinicalSession(
           admin,
           patientId,
-          normalizeAppLanguage(body.language)
+          body
+        );
+
+        const refreshLanguage = normalizeAppLanguage(body.language);
+        runInBackground(request.log, 'clinical-session-insights', () =>
+          refreshPsychologistSessionInsights(
+            env,
+            admin,
+            patientId,
+            refreshLanguage
+          ).then(() => undefined)
         );
 
         return { content };

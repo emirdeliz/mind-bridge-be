@@ -6,6 +6,9 @@ import type {
 import type { AppLanguage } from '@domain/types.js';
 import { formatLikertCheckInForContext } from '@application/format-likert-check-in-context.js';
 import { formatPatientAnamnesisForContext } from '@application/format-patient-anamnesis-context.js';
+import { truncateContextText } from '@application/truncate-context-text.js';
+
+const MAX_SUMMARY_CONTEXT_CHARS = 800;
 
 export const normalizeAppLanguage = (value: unknown): AppLanguage => {
   if (value === 'en' || value === 'es' || value === 'pt') {
@@ -141,10 +144,14 @@ export const buildPsychologistCopilotRetrievalContext = (
     lines.push(`- ${copy.channel(mainChannel)}`);
   }
   if (psychologistSummary) {
-    lines.push(`${copy.psychologistSummary} ${psychologistSummary}`);
+    lines.push(
+      `${copy.psychologistSummary} ${truncateContextText(psychologistSummary, MAX_SUMMARY_CONTEXT_CHARS)}`
+    );
   }
   if (patientSummary) {
-    lines.push(`${copy.patientSummary} ${patientSummary}`);
+    lines.push(
+      `${copy.patientSummary} ${truncateContextText(patientSummary, MAX_SUMMARY_CONTEXT_CHARS)}`
+    );
   }
   if (anamnesisContext) {
     lines.push(anamnesisContext);

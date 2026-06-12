@@ -8,6 +8,7 @@ import {
   updatePatientInteractionSummary,
 } from '@infrastructure/supabase/clinical-content.repository.js';
 
+import { countPatientUserMessagesInContent } from './patient-chat-message-count.js';
 import { generatePatientInteractionSummary } from './generate-patient-interaction-summary.js';
 
 export const refreshPatientInteractionSummary = async (
@@ -23,6 +24,12 @@ export const refreshPatientInteractionSummary = async (
     language,
     content.sessionContext ?? ''
   );
+  const userMessageCount = countPatientUserMessagesInContent(content);
 
-  return updatePatientInteractionSummary(admin, patientId, patientSummary);
+  return updatePatientInteractionSummary(
+    admin,
+    patientId,
+    patientSummary,
+    userMessageCount
+  );
 };

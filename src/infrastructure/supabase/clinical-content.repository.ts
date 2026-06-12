@@ -84,6 +84,7 @@ const mapRow = (row: unknown): PatientClinicalContent => {
     patientChatSeed: record.patientChatSeed ?? [],
     likertCheckIn: record.likertCheckIn ?? null,
     anamnesis: normalizeAnamnesis(record.anamnesis),
+    patientSummaryUserMessageCount: record.patientSummaryUserMessageCount ?? 0,
   };
 };
 
@@ -248,16 +249,20 @@ export type UpdatePsychologistSessionInsightsPayload = {
 export const updatePatientInteractionSummary = async (
   admin: SupabaseClient,
   patientId: string,
-  patientSummary: string | null
+  patientSummary: string | null,
+  patientSummaryUserMessageCount?: number
 ): Promise<PatientClinicalContent> => {
   const content = await ensurePatientClinicalContent(admin, patientId);
+  const summaryUserMessageCount =
+    patientSummaryUserMessageCount ??
+    content.patientChatSeed.filter((entry) => entry.sender === 'user').length;
 
   const nextPayload: ClinicalContentSeedPayload = {
     dashboardSnapshot: content.dashboardSnapshot,
     sessionContext: content.sessionContext,
     sessionNotes: content.sessionNotes,
     sessionInsights: content.sessionInsights,
-    psychologistSummary: patientSummary,
+    psychologistSummary: content.psychologistSummary,
     psychologistChatSeed: content.psychologistChatSeed,
     patientChatSeed: content.patientChatSeed,
     patientSummary,
@@ -265,8 +270,18 @@ export const updatePatientInteractionSummary = async (
   };
 
   await upsertPatientClinicalContent(admin, patientId, nextPayload);
+  await admin
+    .from('patient_clinical_content')
+    .update({
+      patient_summary_user_message_count: summaryUserMessageCount,
+    })
+    .eq('patient_id', patientId);
 
-  return { patientId, ...nextPayload };
+  return {
+    patientId,
+    ...nextPayload,
+    patientSummaryUserMessageCount: summaryUserMessageCount,
+  };
 };
 
 export const updatePsychologistSessionInsights = async (

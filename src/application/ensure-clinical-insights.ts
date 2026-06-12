@@ -5,6 +5,9 @@ import type { PatientClinicalContent } from '@domain/clinical-content.types.js';
 import type { AppLanguage } from '@domain/types.js';
 import { ensurePatientClinicalContent } from '@infrastructure/supabase/clinical-content.repository.js';
 
+import { PATTERNS_INSIGHT_TITLES } from './apply-agentic-patterns-insight.js';
+import { RECOMMENDED_ACTIONS_INSIGHT_TITLES } from './apply-agentic-recommended-actions-insight.js';
+import { countPatientUserMessagesInContent } from './patient-chat-message-count.js';
 import { hasWeeklyPatientChatReports } from './patient-chat-interaction-groups.js';
 import { refreshPatientInteractionSummary } from './refresh-patient-interaction-summary.js';
 import { refreshPsychologistSessionInsights } from './refresh-psychologist-session-insights.js';
@@ -19,10 +22,41 @@ const hasPsychologistSessionActivity = (
   content.psychologistChatSeed.length > 0 ||
   content.sessionNotes.some((note) => note.isCurrent && note.content?.trim());
 
-/** Rebuild when patient chatted — summary is cheap and must reflect all conversations. */
+const AGENTIC_PENDING_MARKERS = ['pendente', 'pending', 'aguardando', 'pendiente'];
+
+const isAgenticInsightPending = (body: string | undefined): boolean => {
+  const trimmed = body?.trim() ?? '';
+  if (!trimmed) {
+    return true;
+  }
+
+  const lower = trimmed.toLowerCase();
+  return AGENTIC_PENDING_MARKERS.some((marker) => lower.includes(marker));
+};
+
+const findInsightBodyByTitle = (
+  content: PatientClinicalContent,
+  title: string
+): string | undefined =>
+  content.sessionInsights.find((insight) => insight.title.trim() === title)?.body;
+
+/** Refresh only when summary is missing or patient chat has new user messages. */
 export const needsPatientInteractionSummaryRefresh = (
   content: PatientClinicalContent
-): boolean => hasPatientChatReports(content);
+): boolean => {
+  if (!hasPatientChatReports(content)) {
+    return false;
+  }
+
+  const currentCount = countPatientUserMessagesInContent(content);
+  const summaryCount = content.patientSummaryUserMessageCount ?? 0;
+
+  if (!content.patientSummary?.trim()) {
+    return true;
+  }
+
+  return currentCount > summaryCount;
+};
 
 export const needsPsychologistSessionInsightsRefresh = (
   content: PatientClinicalContent
@@ -33,6 +67,28 @@ export const needsPsychologistSessionInsightsRefresh = (
 
   return (
     !content.psychologistSummary?.trim() || !content.sessionInsights?.length
+  );
+};
+
+export const needsWeeklyAgenticInsightsRefresh = (
+  content: PatientClinicalContent,
+  language: AppLanguage
+): boolean => {
+  if (!hasWeeklyPatientChatReports(content.patientChatSeed)) {
+    return false;
+  }
+
+  if (!content.sessionInsights?.length) {
+    return false;
+  }
+
+  const patternsTitle = PATTERNS_INSIGHT_TITLES[language];
+  const actionsTitle = RECOMMENDED_ACTIONS_INSIGHT_TITLES[language];
+  const patternsBody = findInsightBodyByTitle(content, patternsTitle);
+  const actionsBody = findInsightBodyByTitle(content, actionsTitle);
+
+  return (
+    isAgenticInsightPending(patternsBody) || isAgenticInsightPending(actionsBody)
   );
 };
 
@@ -62,7 +118,7 @@ export const ensureClinicalInsightsOnRead = async (
         patientId,
         language
       );
-    } else if (hasWeeklyPatientChatReports(content.patientChatSeed)) {
+    } else if (needsWeeklyAgenticInsightsRefresh(content, language)) {
       content = await refreshWeeklyAgenticInsights(
         env,
         admin,

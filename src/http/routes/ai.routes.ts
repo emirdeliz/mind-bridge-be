@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import type { FastifyPluginAsync } from 'fastify';
+import type { FastifyBaseLogger, FastifyPluginAsync, FastifyReply } from 'fastify';
 
 import type { Env } from '@config/env.js';
 import type { ClinicalChatMessage } from '@domain/clinical-content.types.js';
@@ -14,7 +14,10 @@ import {
   assertPsychologistPatientAccess,
   ForbiddenError,
 } from '@application/authorization.js';
-import { runPatientChatGraph } from '@ai/graphs/patient-chat.graph.js';
+import {
+  runPatientChatGraph,
+  streamPatientChatGraph,
+} from '@ai/graphs/patient-chat.graph.js';
 import { countAgentQuestionsInChat } from '@ai/prompts/patient-chat-interaction.js';
 import {
   getInteractionScopedHistory,
@@ -23,17 +26,23 @@ import {
   resolvePatientChatInteraction,
   shouldClosePatientChatInteraction,
 } from '@ai/prompts/patient-chat-session.js';
-import { runPsychologistCopilotGraph } from '@ai/graphs/psychologist-copilot.graph.js';
+import {
+  runPsychologistCopilotGraph,
+  streamPsychologistCopilotGraph,
+} from '@ai/graphs/psychologist-copilot.graph.js';
+import {
+  endAiStream,
+  startAiStream,
+  wantsAiStream,
+  writeAiStreamEvent,
+} from '@http/ai-stream.js';
 import { validateBody } from '@http/middleware/validate.js';
 import {
   patientChatBodySchema,
   psychologistChatBodySchema,
 } from '@http/schemas/ai.schemas.js';
 import { createAdminSupabaseClient } from '@infrastructure/supabase/client.js';
-import {
-  enrichDashboardSnapshotWithPatientActivity,
-  recordPatientInteraction,
-} from '@application/enrich-dashboard-snapshot.js';
+import { recordPatientInteraction } from '@application/enrich-dashboard-snapshot.js';
 import { processPatientChatSideEffects } from '@application/process-patient-chat-side-effects.js';
 import { refreshPsychologistSessionInsights } from '@application/refresh-psychologist-session-insights.js';
 import { runInBackground } from '@application/run-in-background.js';
@@ -42,6 +51,98 @@ import {
   appendPsychologistChatMessages,
   ensurePatientClinicalContent,
 } from '@infrastructure/supabase/clinical-content.repository.js';
+
+const buildPatientChatPersistedMessages = (input: {
+  userMessageId: string;
+  agentMessageId: string;
+  userMessage: string;
+  reply: string;
+  interactionId: string;
+  isNewInteraction: boolean;
+  isInteractionEnd: boolean;
+}): ClinicalChatMessage[] => {
+  const exchangedAt = new Date().toISOString();
+  return [
+    {
+      id: input.userMessageId,
+      sender: 'user',
+      text: input.userMessage,
+      createdAt: exchangedAt,
+      interactionId: input.interactionId,
+      isInteractionStart: input.isNewInteraction,
+    },
+    {
+      id: input.agentMessageId,
+      sender: 'agent',
+      text: input.reply,
+      createdAt: new Date().toISOString(),
+      interactionId: input.interactionId,
+      isInteractionEnd: input.isInteractionEnd,
+    },
+  ];
+};
+
+const persistPatientChatExchange = async (
+  env: Env,
+  admin: ReturnType<typeof createAdminSupabaseClient>,
+  logger: FastifyBaseLogger,
+  input: {
+    patientId: string;
+    userMessage: string;
+    reply: string;
+    language: AppLanguage;
+    interactionId: string;
+    isNewInteraction: boolean;
+    isInteractionEnd: boolean;
+    userMessageId: string;
+    agentMessageId: string;
+  }
+): Promise<void> => {
+  const persistedMessages = buildPatientChatPersistedMessages(input);
+
+  await appendPatientChatMessages(admin, input.patientId, persistedMessages);
+  await recordPatientInteraction(admin, input.patientId, {
+    channel: 'text',
+    source: 'web',
+  });
+
+  runInBackground(logger, 'patient-chat-side-effects', () =>
+    processPatientChatSideEffects(env, admin, {
+      patientId: input.patientId,
+      userMessage: input.userMessage,
+      language: input.language,
+      isInteractionEnd: input.isInteractionEnd,
+    })
+  );
+};
+
+const streamLlmReply = async (
+  reply: FastifyReply,
+  generate: (onDelta: (delta: string) => void) => Promise<string>
+): Promise<string> => {
+  startAiStream(reply);
+
+  try {
+    return await generate((delta) => {
+      writeAiStreamEvent(reply, { type: 'delta', delta });
+    });
+  } catch (error) {
+    writeAiStreamEvent(reply, {
+      type: 'error',
+      error: error instanceof Error ? error.message : 'Failed to generate reply',
+    });
+    endAiStream(reply);
+    throw error;
+  }
+};
+
+const finishAiStream = (
+  reply: FastifyReply,
+  event: Extract<import('@http/ai-stream.js').AiStreamEvent, { type: 'done' }>
+): void => {
+  writeAiStreamEvent(reply, event);
+  endAiStream(reply);
+};
 
 export const createAiRoutes =
   (env: Env): FastifyPluginAsync =>
@@ -52,13 +153,14 @@ export const createAiRoutes =
       {
         preHandler: validateBody(patientChatBodySchema),
       },
-      async (request) => {
+      async (request, reply) => {
         const auth = request.auth!;
         const body = request.body as {
           message: string;
           careContext?: string;
           language?: AppLanguage;
         };
+        const useStream = wantsAiStream(request);
 
         assertPatientSelf(auth, auth.userId);
 
@@ -80,37 +182,75 @@ export const createAiRoutes =
         const questionCount = countAgentQuestionsInChat(interactionHistory);
         const forcedClosing = shouldClosePatientChatInteraction(questionCount);
 
-        const reply = forcedClosing
-          ? getPatientChatInteractionClosingReply(language)
-          : await runPatientChatGraph(env, {
+        const userMessageId = randomUUID();
+        const agentMessageId = randomUUID();
+
+        let agentReply: string;
+        if (forcedClosing) {
+          agentReply = getPatientChatInteractionClosingReply(language);
+        } else if (useStream) {
+          agentReply = await streamLlmReply(reply, (onDelta) =>
+            streamPatientChatGraph(
+              env,
+              {
+                patientId: auth.userId,
+                userMessage: body.message,
+                psychologistContext,
+                chatHistory: interactionHistory,
+                language,
+              },
+              onDelta
+            )
+          );
+        } else {
+          agentReply = await runPatientChatGraph(env, {
+            patientId: auth.userId,
+            userMessage: body.message,
+            psychologistContext,
+            chatHistory: interactionHistory,
+            language,
+          });
+        }
+
+        const isInteractionEnd = isAgentInteractionEndReply(
+          agentReply,
+          forcedClosing
+        );
+
+        const persistedMessages = buildPatientChatPersistedMessages({
+          userMessageId,
+          agentMessageId,
+          userMessage: body.message,
+          reply: agentReply,
+          interactionId,
+          isNewInteraction,
+          isInteractionEnd,
+        });
+
+        if (useStream) {
+          if (forcedClosing) {
+            startAiStream(reply);
+          }
+          finishAiStream(reply, {
+            type: 'done',
+            message: agentReply,
+            messages: persistedMessages,
+          });
+          runInBackground(request.log, 'patient-chat-persist', () =>
+            persistPatientChatExchange(env, admin, request.log, {
               patientId: auth.userId,
               userMessage: body.message,
-              psychologistContext,
-              chatHistory: interactionHistory,
+              reply: agentReply,
               language,
-            });
-
-        const isInteractionEnd = isAgentInteractionEndReply(reply, forcedClosing);
-
-        const exchangedAt = new Date().toISOString();
-        const persistedMessages: ClinicalChatMessage[] = [
-          {
-            id: randomUUID(),
-            sender: 'user',
-            text: body.message,
-            createdAt: exchangedAt,
-            interactionId,
-            isInteractionStart: isNewInteraction,
-          },
-          {
-            id: randomUUID(),
-            sender: 'agent',
-            text: reply,
-            createdAt: new Date().toISOString(),
-            interactionId,
-            isInteractionEnd,
-          },
-        ];
+              interactionId,
+              isNewInteraction,
+              isInteractionEnd,
+              userMessageId,
+              agentMessageId,
+            })
+          );
+          return reply;
+        }
 
         const content = await appendPatientChatMessages(
           admin,
@@ -132,7 +272,7 @@ export const createAiRoutes =
         );
 
         return {
-          message: reply,
+          message: agentReply,
           messages: persistedMessages,
           patientId: auth.userId,
           patientSummary: content.patientSummary,
@@ -147,7 +287,7 @@ export const createAiRoutes =
       {
         preHandler: validateBody(psychologistChatBodySchema),
       },
-      async (request) => {
+      async (request, reply) => {
         const auth = request.auth!;
         const supabase = request.userSupabase!;
         const body = request.body as {
@@ -157,6 +297,7 @@ export const createAiRoutes =
           sessionConsiderations?: string;
           language?: AppLanguage;
         };
+        const useStream = wantsAiStream(request);
 
         if (auth.role !== 'psychologist') {
           throw new ForbiddenError();
@@ -169,16 +310,10 @@ export const createAiRoutes =
           body.patientId
         );
         const chatHistory = clinicalContent.psychologistChatSeed ?? [];
-        const dashboardSnapshot = await enrichDashboardSnapshotWithPatientActivity(
-          admin,
-          body.patientId,
-          clinicalContent.dashboardSnapshot,
-          clinicalContent.patientChatSeed
-        );
         const retrievalContext = buildPsychologistCopilotRetrievalContext(
           normalizeAppLanguage(body.language),
           {
-            dashboardSnapshot,
+            dashboardSnapshot: clinicalContent.dashboardSnapshot,
             psychologistSummary: clinicalContent.psychologistSummary,
             patientSummary: clinicalContent.patientSummary,
             sessionInsights: clinicalContent.sessionInsights,
@@ -187,7 +322,7 @@ export const createAiRoutes =
           }
         );
 
-        const reply = await runPsychologistCopilotGraph(env, {
+        const graphInput = {
           psychologistId: auth.userId,
           patientId: body.patientId,
           userMessage: body.message,
@@ -196,7 +331,17 @@ export const createAiRoutes =
           language: normalizeAppLanguage(body.language),
           chatHistory,
           retrievalContext,
-        });
+        };
+
+        let agentReply: string;
+        if (useStream) {
+          agentReply = await streamLlmReply(reply, (onDelta) =>
+            streamPsychologistCopilotGraph(env, graphInput, onDelta)
+          );
+          finishAiStream(reply, { type: 'done', message: agentReply });
+        } else {
+          agentReply = await runPsychologistCopilotGraph(env, graphInput);
+        }
 
         const exchangedAt = new Date().toISOString();
         const persistedMessages: ClinicalChatMessage[] = [
@@ -209,16 +354,26 @@ export const createAiRoutes =
           {
             id: randomUUID(),
             sender: 'agent',
-            text: reply,
+            text: agentReply,
             createdAt: new Date().toISOString(),
           },
         ];
 
-        await appendPsychologistChatMessages(
-          admin,
-          body.patientId,
-          persistedMessages
-        );
+        if (useStream) {
+          runInBackground(request.log, 'psychologist-chat-persist', async () => {
+            await appendPsychologistChatMessages(
+              admin,
+              body.patientId,
+              persistedMessages
+            );
+          });
+        } else {
+          await appendPsychologistChatMessages(
+            admin,
+            body.patientId,
+            persistedMessages
+          );
+        }
 
         const psychologistLanguage = normalizeAppLanguage(body.language);
         runInBackground(request.log, 'psychologist-chat-side-effects', () =>
@@ -230,8 +385,12 @@ export const createAiRoutes =
           ).then(() => undefined)
         );
 
+        if (useStream) {
+          return reply;
+        }
+
         return {
-          message: reply,
+          message: agentReply,
           patientId: body.patientId,
           psychologistId: auth.userId,
           psychologistSummary: clinicalContent.psychologistSummary,

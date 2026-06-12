@@ -10,6 +10,7 @@ import {
   DEMO_INTERACTION_SPECS_BY_EMAIL,
   resolveDemoClinicalPayload,
 } from './lib/demo-clinical-data.mjs';
+import { DEFAULT_PSYCHOLOGIST_CHAT_SHORTCUTS } from './lib/default-psychologist-chat-shortcuts.mjs';
 
 const url = process.env.SUPABASE_URL;
 const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -995,6 +996,59 @@ const linkPatientsWithoutCareToPsychologist = async (psychologistId, psychologis
   return unlinkedPatients.length;
 };
 
+const seedPsychologistChatShortcuts = async (psychologistId) => {
+  const { count, error: countError } = await admin
+    .from('psychologist_chat_shortcuts')
+    .select('id', { count: 'exact', head: true })
+    .eq('psychologist_id', psychologistId);
+
+  if (countError) {
+    if (countError.code === 'PGRST205') {
+      console.warn('  Chat shortcuts table missing — apply migration 015');
+      return;
+    }
+    throw new Error(`Failed to check chat shortcuts: ${countError.message}`);
+  }
+
+  if ((count ?? 0) > 0) {
+    return;
+  }
+
+  const now = new Date().toISOString();
+  const rows = DEFAULT_PSYCHOLOGIST_CHAT_SHORTCUTS.map((shortcut) => ({
+    psychologist_id: psychologistId,
+    sort_order: shortcut.sortOrder,
+    translations: shortcut.translations,
+    created_at: now,
+    updated_at: now,
+  }));
+
+  const { error: insertError } = await admin.from('psychologist_chat_shortcuts').insert(rows);
+  if (insertError) {
+    throw new Error(`Failed to seed chat shortcuts: ${insertError.message}`);
+  }
+
+  console.log(`  Chat shortcuts: ${rows.length} default shortcut(s)`);
+};
+
+const seedPsychologistChatShortcutsForAll = async () => {
+  const { data: psychologists, error } = await admin
+    .from('profiles')
+    .select('id')
+    .eq('role', 'psychologist');
+
+  if (error) {
+    if (error.code === 'PGRST205') {
+      return;
+    }
+    throw new Error(`Failed to list psychologists for chat shortcuts: ${error.message}`);
+  }
+
+  for (const psychologist of psychologists ?? []) {
+    await seedPsychologistChatShortcuts(psychologist.id);
+  }
+};
+
 const seedPsychologistAccount = async ({
   psychologist,
   patients,
@@ -1041,6 +1095,7 @@ const seedPsychologistAccount = async ({
     schedulingAppointmentSeeds,
     patientIdByEmail
   );
+  await seedPsychologistChatShortcuts(psychologistId);
 };
 
 const main = async () => {
@@ -1052,6 +1107,8 @@ const main = async () => {
   for (const account of PSYCHOLOGIST_ACCOUNTS) {
     await seedPsychologistAccount(account);
   }
+
+  await seedPsychologistChatShortcutsForAll();
 
   const { data: aluizioProfile, error: aluizioProfileError } = await admin
     .from('profiles')

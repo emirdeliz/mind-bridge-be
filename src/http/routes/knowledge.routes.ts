@@ -38,7 +38,10 @@ export const createKnowledgeRoutes =
         admin,
         auth.userId
       );
-      return { documents };
+      return {
+        documents,
+        maxFileBytes: env.KNOWLEDGE_MAX_FILE_BYTES,
+      };
     });
 
     app.post('/knowledge/documents', async (request) => {

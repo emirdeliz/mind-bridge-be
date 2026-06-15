@@ -1,0 +1,58 @@
+---
+description: Prefer helpers for pure functions; keep application/infrastructure for side effects
+globs:
+  - src/**/*.ts
+alwaysApply: true
+---
+
+# Pure Functions → Helpers
+
+Place **pure functions** (no DB, no HTTP, no env reads, no mutable state) in `src/helpers/`, not in `application/`, `http/`, or mixed into route handlers.
+
+## Put in `src/helpers/`
+
+- Case transforms, string/date/format utilities
+- Validation, parsing, chunking, mapping, and deterministic transforms
+- Small pure builders with no I/O
+
+Import from `@helpers` (export via `src/helpers/index.ts`).
+
+## Keep elsewhere
+
+| Layer | Responsibility |
+|-------|----------------|
+| `application/` | Use cases, orchestration, side effects |
+| `infrastructure/` | Supabase, external APIs, repositories |
+| `http/` | Routes, middleware, request/response |
+| `ai/graphs/` | LangGraph nodes and agent wiring |
+| `domain/` | Types and domain models |
+
+Domain-specific pure logic used only by one AI module (e.g. `chunk-text.ts`) may live next to that module; **prefer `helpers/`** when the function is generic or reused across layers.
+
+## When editing
+
+- **New pure utility** → add to `src/helpers/`, export from `index.ts`
+- **Pure function inside a route or use case** → extract to `helpers/` if reusable or > few lines
+- **Do not** duplicate pure logic in `application/` when it belongs in `helpers/`
+
+## Examples
+
+```ts
+// ✅ helpers/case-transform.ts
+export const keysToCamel = <T>(value: unknown): T => { ... };
+
+// ✅ application/ingest-knowledge-document.ts
+import { chunkDocumentText } from '@ai/retrieval/chunk-text.js'; // or @helpers if moved
+
+// ❌ http/routes/knowledge.routes.ts
+const normalizeFileName = (name: string) => name.trim().toLowerCase(); // inline — extract to helpers
+```
+
+```ts
+// ✅ helpers — env-free validation
+export const isWithinByteLimit = (bytes: number, max: number): boolean => bytes > 0 && bytes <= max;
+
+// ❌ helpers — reads process.env (side effect)
+export const getMaxBytes = () => Number(process.env.KNOWLEDGE_MAX_FILE_BYTES);
+// → keep env resolution in config/env.ts; pass values into pure helpers
+```

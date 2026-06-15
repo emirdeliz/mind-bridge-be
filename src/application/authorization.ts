@@ -26,6 +26,38 @@ export const assertAdmin = (auth: AuthContext | undefined): void => {
   }
 };
 
+export const assertKnowledgeDocumentUploader = (
+  auth: AuthContext | undefined,
+  allowedRole: 'admin' | 'psychologist'
+): void => {
+  if (!auth) {
+    throw new Error('Unauthorized: missing auth context');
+  }
+
+  if (allowedRole === 'admin') {
+    assertAdmin(auth);
+    return;
+  }
+
+  assertPsychologist(auth);
+};
+
+export const assertKnowledgeDocumentReader = (
+  auth: AuthContext | undefined
+): void => {
+  if (!auth) {
+    throw new Error('Unauthorized: missing auth context');
+  }
+
+  if (auth.isAdmin || auth.role === 'psychologist') {
+    return;
+  }
+
+  throw new ForbiddenError(
+    'Only psychologists or platform admins may access knowledge documents'
+  );
+};
+
 export const assertPsychologist = (auth: AuthContext | undefined): void => {
   if (!auth) {
     throw new Error('Unauthorized: missing auth context');

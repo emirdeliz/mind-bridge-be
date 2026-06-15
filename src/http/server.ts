@@ -17,6 +17,7 @@ import { createPsychologistBillingRoutes } from '@http/routes/psychologist-billi
 import { createPsychologistPatientPaymentsRoutes } from '@http/routes/psychologist-patient-payments.routes.js';
 import { createPsychologistPatientsRoutes } from '@http/routes/psychologist-patients.routes.js';
 import { createPsychologistSchedulingRoutes } from '@http/routes/psychologist-scheduling.routes.js';
+import { createKnowledgeRoutes } from '@http/routes/knowledge.routes.js';
 import { healthRoutes } from '@http/routes/health.routes.js';
 import { meRoutes } from '@http/routes/me.routes.js';
 
@@ -52,6 +53,7 @@ export const buildServer = async (env: Env) => {
   await app.register(createPatientLikertRoutes(env));
   await app.register(createPatientInteractionRoutes(env));
   await app.register(createClinicalContentRoutes(env));
+  await app.register(createKnowledgeRoutes(env));
 
   return app;
 };

@@ -40,3 +40,23 @@ export const hasActiveCareRelationship = async (
 
   return Boolean(data);
 };
+
+export const listActivePsychologistIdsForPatient = async (
+  client: SupabaseClient,
+  patientId: string
+): Promise<string[]> => {
+  const { data, error } = await client
+    .from('care_relationships')
+    .select('psychologist_id')
+    .eq('patient_id', patientId)
+    .eq('status', 'active')
+    .eq('is_deleted', false);
+
+  if (error) {
+    throw new Error(`Failed to list patient psychologists: ${error.message}`);
+  }
+
+  return (data ?? [])
+    .map((row) => row.psychologist_id as string)
+    .filter(Boolean);
+};

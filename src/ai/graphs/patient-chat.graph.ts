@@ -35,6 +35,7 @@ const buildPatientChatMessages = (
         psychologistContext: state.careContext,
         chatHistory: state.chatHistory,
         questionCount,
+        retrievalContext: state.retrievalContext,
       }),
       resolveLanguageInstruction(language),
     ]
@@ -66,21 +67,8 @@ const finalizePatientChatAssistantMessage = (
   return assistantMessage;
 };
 
-const buildRetrievalContext = (state: PatientChatState): string => {
-  if (state.careContext?.trim()) {
-    return '';
-  }
-
-  if (state.retrievalContext?.trim()) {
-    return state.retrievalContext;
-  }
-
-  return [
-    'Retrieved snippets (mock):',
-    '- Patient reported work-related anxiety in recent interactions.',
-    '- Sleep hygiene discussed in prior sessions.',
-  ].join('\n');
-};
+const buildRetrievalContext = (state: PatientChatState): string =>
+  state.retrievalContext?.trim() ?? '';
 
 const retrieveNode = async (
   state: PatientChatState

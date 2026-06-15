@@ -15,6 +15,7 @@ type PatientChatPromptContext = {
   psychologistContext: string;
   chatHistory: ClinicalChatMessage[];
   questionCount: number;
+  retrievalContext?: string;
 };
 
 const notProvided = (language: AppLanguage): string => {
@@ -119,6 +120,7 @@ export const buildPatientChatSystemPrompt = (
     context.psychologistContext,
     questionCount
   );
+  const knowledgeBlock = context.retrievalContext?.trim() ?? '';
   const pacingGuidance = buildPatientChatPacingGuidance(
     language,
     questionCount,
@@ -140,6 +142,9 @@ export const buildPatientChatSystemPrompt = (
       pacingGuidance,
       `Contexto do psicólogo (uso interno — traduza para linguagem simples na resposta):\n${psychologistContext}`,
       hasContext ? focusBlock : '',
+      knowledgeBlock
+        ? `${knowledgeBlock}\nUse somente como referência interna. Não cite o documento nem termos técnicos ao paciente.`
+        : '',
       `Histórico recente:\n${history}`,
       'PROIBIDO: raciocínio interno, análise, "Thinking Process", listas numeradas ou blocos de raciocínio. Envie SOMENTE a mensagem final ao paciente.',
       'Lembrete final: 1–2 frases curtas, palavras simples, uma pergunta, sem repetir o paciente.',
@@ -155,6 +160,9 @@ export const buildPatientChatSystemPrompt = (
       pacingGuidance,
       `Contexto del psicólogo (uso interno — traduce a lenguaje simple en la respuesta):\n${psychologistContext}`,
       hasContext ? focusBlock : '',
+      knowledgeBlock
+        ? `${knowledgeBlock}\nÚsalo solo como referencia interna. No cites el documento ni términos técnicos al paciente.`
+        : '',
       `Historial reciente:\n${history}`,
       'PROHIBIDO: razonamiento interno, análisis, "Thinking Process", listas numeradas o bloques de razonamiento. Envía SOLO el mensaje final al paciente.',
       'Recordatorio final: 1–2 frases cortas, palabras simples, una pregunta, sin repetir al paciente.',
@@ -170,6 +178,9 @@ export const buildPatientChatSystemPrompt = (
       pacingGuidance,
       `Psychologist context (internal use — translate to simple language in the reply):\n${psychologistContext}`,
       hasContext ? focusBlock : '',
+      knowledgeBlock
+        ? `${knowledgeBlock}\nUse only as internal reference. Do not cite the document or technical terms to the patient.`
+        : '',
       `Recent history:\n${history}`,
       'FORBIDDEN: internal reasoning, analysis, "Thinking Process", numbered lists, or reasoning blocks. Send ONLY the final message to the patient.',
       'Final reminder: 1–2 short sentences, simple words, one question, do not repeat the patient.',

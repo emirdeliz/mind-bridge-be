@@ -5,6 +5,14 @@ import type { Env } from '@config/env.js';
 const OPENROUTER_BASE_URL = 'https://openrouter.ai/api/v1';
 const EMBEDDING_BATCH_SIZE = 32;
 
+export type EmbedTextsProgress = {
+  batchIndex: number;
+  batchSize: number;
+  processedChunks: number;
+  totalChunks: number;
+  durationMs: number;
+};
+
 export const createOpenRouterEmbeddings = (env: Env): OpenAIEmbeddings =>
   new OpenAIEmbeddings({
     apiKey: env.OPENROUTER_API_KEY,
@@ -16,7 +24,10 @@ export const createOpenRouterEmbeddings = (env: Env): OpenAIEmbeddings =>
 
 export const embedTexts = async (
   env: Env,
-  texts: string[]
+  texts: string[],
+  options?: {
+    onBatchComplete?: (progress: EmbedTextsProgress) => void;
+  }
 ): Promise<number[][]> => {
   if (!texts.length) {
     return [];
@@ -26,9 +37,18 @@ export const embedTexts = async (
   const vectors: number[][] = [];
 
   for (let index = 0; index < texts.length; index += EMBEDDING_BATCH_SIZE) {
+    const batchStartedAt = Date.now();
     const batch = texts.slice(index, index + EMBEDDING_BATCH_SIZE);
     const batchVectors = await embeddings.embedDocuments(batch);
     vectors.push(...batchVectors);
+
+    options?.onBatchComplete?.({
+      batchIndex: Math.floor(index / EMBEDDING_BATCH_SIZE) + 1,
+      batchSize: batch.length,
+      processedChunks: vectors.length,
+      totalChunks: texts.length,
+      durationMs: Date.now() - batchStartedAt,
+    });
   }
 
   return vectors;

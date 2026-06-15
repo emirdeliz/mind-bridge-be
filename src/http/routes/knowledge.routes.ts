@@ -6,6 +6,7 @@ import {
   indexKnowledgePdfDocument,
 } from '@application/ingest-knowledge-document.js';
 import { runInBackground } from '@application/run-in-background.js';
+import { logKnowledgeIngestStage } from '@application/knowledge-ingest-log.js';
 import {
   assertKnowledgeDocumentReader,
   assertKnowledgeDocumentUploader,
@@ -74,20 +75,41 @@ export const createKnowledgeRoutes =
       const fileName = part.filename.trim();
       const title = fileName.replace(/\.pdf$/i, '').trim() || fileName;
 
-      const result = await enqueueKnowledgePdfUpload(env, admin, {
-        uploadedBy: auth.userId,
-        title,
-        fileName,
-        fileBuffer,
-      });
+      logKnowledgeIngestStage(
+        request.log,
+        'upload-received',
+        {
+          fileName,
+          fileSizeBytes: fileBuffer.byteLength,
+          uploadedBy: auth.userId,
+        },
+        'Knowledge PDF upload received'
+      );
 
-      runInBackground(request.log, 'knowledge-pdf-indexing', () =>
-        indexKnowledgePdfDocument(env, admin, {
-          documentId: result.document.id,
-          title: result.document.title,
+      const result = await enqueueKnowledgePdfUpload(
+        env,
+        admin,
+        {
+          uploadedBy: auth.userId,
+          title,
           fileName,
           fileBuffer,
-        })
+        },
+        request.log
+      );
+
+      runInBackground(request.log, 'knowledge-pdf-indexing', () =>
+        indexKnowledgePdfDocument(
+          env,
+          admin,
+          {
+            documentId: result.document.id,
+            title: result.document.title,
+            fileName,
+            fileBuffer,
+          },
+          request.log
+        )
       );
 
       return {

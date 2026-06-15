@@ -42,6 +42,7 @@ import {
   psychologistChatBodySchema,
 } from '@http/schemas/ai.schemas.js';
 import { createAdminSupabaseClient } from '@infrastructure/supabase/client.js';
+import { retrieveKnowledgeContext } from '@application/retrieve-knowledge-context.js';
 import { recordPatientInteraction } from '@application/enrich-dashboard-snapshot.js';
 import { processPatientChatSideEffects } from '@application/process-patient-chat-side-effects.js';
 import { refreshPsychologistSessionInsights } from '@application/refresh-psychologist-session-insights.js';
@@ -144,6 +145,14 @@ const finishAiStream = (
   endAiStream(reply);
 };
 
+const joinRetrievalContexts = (
+  ...sections: Array<string | undefined>
+): string =>
+  sections
+    .map((section) => section?.trim())
+    .filter((section): section is string => Boolean(section))
+    .join('\n\n');
+
 export const createAiRoutes =
   (env: Env): FastifyPluginAsync =>
   async (app) => {
@@ -181,6 +190,14 @@ export const createAiRoutes =
         );
         const questionCount = countAgentQuestionsInChat(interactionHistory);
         const forcedClosing = shouldClosePatientChatInteraction(questionCount);
+        const knowledgeRetrieval = forcedClosing
+          ? ''
+          : await retrieveKnowledgeContext(
+              env,
+              admin,
+              body.message,
+              language
+            );
 
         const userMessageId = randomUUID();
         const agentMessageId = randomUUID();
@@ -198,6 +215,7 @@ export const createAiRoutes =
                 psychologistContext,
                 chatHistory: interactionHistory,
                 language,
+                retrievalContext: knowledgeRetrieval,
               },
               onDelta
             )
@@ -209,6 +227,7 @@ export const createAiRoutes =
             psychologistContext,
             chatHistory: interactionHistory,
             language,
+            retrievalContext: knowledgeRetrieval,
           });
         }
 
@@ -310,8 +329,9 @@ export const createAiRoutes =
           body.patientId
         );
         const chatHistory = clinicalContent.psychologistChatSeed ?? [];
-        const retrievalContext = buildPsychologistCopilotRetrievalContext(
-          normalizeAppLanguage(body.language),
+        const psychologistLanguage = normalizeAppLanguage(body.language);
+        const clinicalRetrieval = buildPsychologistCopilotRetrievalContext(
+          psychologistLanguage,
           {
             dashboardSnapshot: clinicalContent.dashboardSnapshot,
             psychologistSummary: clinicalContent.psychologistSummary,
@@ -321,6 +341,16 @@ export const createAiRoutes =
             anamnesis: clinicalContent.anamnesis,
           }
         );
+        const knowledgeRetrieval = await retrieveKnowledgeContext(
+          env,
+          admin,
+          body.message,
+          psychologistLanguage
+        );
+        const retrievalContext = joinRetrievalContexts(
+          clinicalRetrieval,
+          knowledgeRetrieval
+        );
 
         const graphInput = {
           psychologistId: auth.userId,
@@ -328,7 +358,7 @@ export const createAiRoutes =
           userMessage: body.message,
           clinicalContext: body.clinicalContext,
           sessionConsiderations: body.sessionConsiderations,
-          language: normalizeAppLanguage(body.language),
+          language: psychologistLanguage,
           chatHistory,
           retrievalContext,
         };
@@ -375,7 +405,6 @@ export const createAiRoutes =
           );
         }
 
-        const psychologistLanguage = normalizeAppLanguage(body.language);
         runInBackground(request.log, 'psychologist-chat-side-effects', () =>
           refreshPsychologistSessionInsights(
             env,

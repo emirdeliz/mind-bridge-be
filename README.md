@@ -155,6 +155,21 @@ Login/signup stay on the **web client** via `@supabase/supabase-js`; this API do
 
 ## Next steps
 
-- Wire pgvector RAG in `retrieve` graph nodes
 - Persist chat turns to `chat_messages`
 - Persist session notes / dashboard edits via API (hoje seed + leitura)
+
+## Knowledge RAG (OpenRouter + pgvector)
+
+1. Apply migration `017_knowledge_rag.sql` (`npm run supabase:push:cloud` or local reset).
+2. Set in `.env`:
+   - `RAG_ENABLED=true`
+   - `OPENROUTER_API_KEY=...`
+   - `OPENROUTER_EMBEDDING_MODEL=openai/text-embedding-3-small` (optional)
+   - `KNOWLEDGE_UPLOAD_ROLE=admin` or `psychologist` (who may upload/delete PDFs)
+3. Index a PDF:
+   - CLI: `npm run knowledge:ingest -- ./protocolo.pdf "Protocolo de atendimento"`
+   - API: `POST /knowledge/documents` (`multipart/form-data`, field `file`, optional `title`)
+4. Chat endpoints automatically retrieve relevant chunks when `RAG_ENABLED=true`.
+
+List documents: `GET /knowledge/documents` (psychologist or admin).  
+Archive: `DELETE /knowledge/documents/:documentId` (role per `KNOWLEDGE_UPLOAD_ROLE`).

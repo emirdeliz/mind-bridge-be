@@ -11,12 +11,14 @@ export interface UserProfile {
   address: string | null;
   phone: string | null;
   language: AppLanguage | null;
+  isAdmin: boolean;
 }
 
 export interface AuthContext {
   userId: string;
   email: string;
   role: UserRole;
+  isAdmin: boolean;
   accessToken: string;
 }
 

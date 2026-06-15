@@ -55,6 +55,7 @@ export const registerAuthHook = (app: FastifyInstance, env: Env): void => {
       userId: data.user.id,
       email: data.user.email ?? profile.email,
       role: profile.role,
+      isAdmin: profile.isAdmin,
       accessToken,
     };
     request.userSupabase = supabase;

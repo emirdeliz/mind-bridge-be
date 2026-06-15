@@ -68,9 +68,10 @@ export type BillableRelationship = {
   isDeleted: boolean;
 };
 
-const isBillableDuringMonth = (
+const isBillableDuringWindow = (
   relationship: BillableRelationship,
-  bounds: BillingMonthBounds
+  windowStart: Date,
+  windowEndExclusive: Date
 ): boolean => {
   const enabledAt = new Date(relationship.createdAt);
   const disabledAt = relationship.disabledAt
@@ -78,10 +79,20 @@ const isBillableDuringMonth = (
     : null;
 
   return (
-    enabledAt < bounds.monthEndExclusive &&
-    (disabledAt === null || disabledAt > bounds.monthStart)
+    enabledAt < windowEndExclusive &&
+    (disabledAt === null || disabledAt > windowStart)
   );
 };
+
+const isBillableDuringMonth = (
+  relationship: BillableRelationship,
+  bounds: BillingMonthBounds
+): boolean =>
+  isBillableDuringWindow(
+    relationship,
+    bounds.monthStart,
+    bounds.monthEndExclusive
+  );
 
 const wasDeactivatedDuringMonth = (
   disabledAt: string | null,

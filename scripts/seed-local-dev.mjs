@@ -387,6 +387,27 @@ const ALL_PATIENT_SEEDS_BY_EMAIL = new Map(
   ])
 );
 
+const EXTRA_DEMO_PSYCHOLOGISTS = [
+  { fullName: 'Dr. Paula Silva', email: 'psicologo01.demo@mindbridge.local', phone: '11990001001', password: 'demo123456' },
+  { fullName: 'Dr. Ricardo Alves', email: 'psicologo02.demo@mindbridge.local', phone: '11990001002', password: 'demo123456' },
+  { fullName: 'Dra. Fernanda Lima', email: 'psicologo03.demo@mindbridge.local', phone: '11990001003', password: 'demo123456' },
+  { fullName: 'Dr. Gustavo Moura', email: 'psicologo04.demo@mindbridge.local', phone: '11990001004', password: 'demo123456' },
+  { fullName: 'Dra. Helena Rocha', email: 'psicologo05.demo@mindbridge.local', phone: '11990001005', password: 'demo123456' },
+  { fullName: 'Dr. Igor Nunes', email: 'psicologo06.demo@mindbridge.local', phone: '11990001006', password: 'demo123456' },
+  { fullName: 'Dra. Juliana Prado', email: 'psicologo07.demo@mindbridge.local', phone: '11990001007', password: 'demo123456' },
+];
+
+const buildExtraDemoPatients = (psychologistIndex, patientCount) =>
+  Array.from({ length: patientCount }, (_, patientIndex) => ({
+    fullName: `Paciente ${psychologistIndex + 1}.${patientIndex + 1}`,
+    email: `p${String(psychologistIndex + 1).padStart(2, '0')}${String(patientIndex + 1).padStart(2, '0')}@mindbridge.local`,
+    phone: `1199${String(psychologistIndex + 1).padStart(2, '0')}${String(patientIndex + 1).padStart(4, '0')}`,
+    password: 'demo123456',
+    lastConsultationAt: null,
+    isDeleted: false,
+    enabledSinceMonthsAgo: (psychologistIndex + patientIndex) % 6,
+  }));
+
 const PSYCHOLOGIST_ACCOUNTS = [
   { psychologist: DEMO_PSYCHOLOGIST, patients: [] },
   { psychologist: EMIR_PSYCHOLOGIST, patients: EMIR_PATIENTS },
@@ -397,6 +418,10 @@ const PSYCHOLOGIST_ACCOUNTS = [
     schedulingSettings: ALUIZIO_SCHEDULING_SETTINGS,
     schedulingAppointmentSeeds: ALUIZIO_SCHEDULING_APPOINTMENT_SEEDS,
   },
+  ...EXTRA_DEMO_PSYCHOLOGISTS.map((psychologist, index) => ({
+    psychologist,
+    patients: buildExtraDemoPatients(index, 2 + (index % 4)),
+  })),
 ];
 
 const upsertProfile = async ({ userId, email, role, fullName, phone }) => {
@@ -1109,6 +1134,20 @@ const main = async () => {
   }
 
   await seedPsychologistChatShortcutsForAll();
+
+  const { error: adminFlagError } = await admin
+    .from('profiles')
+    .update({
+      is_admin: true,
+      updated_at: new Date().toISOString(),
+    })
+    .in('email', [EMIR_PSYCHOLOGIST.email, ALUIZIO_PSYCHOLOGIST.email]);
+
+  if (adminFlagError) {
+    throw new Error(`Failed to seed admin flags: ${adminFlagError.message}`);
+  }
+
+  console.log('Admin flags: Emir and Aluizio');
 
   const { data: aluizioProfile, error: aluizioProfileError } = await admin
     .from('profiles')

@@ -12,6 +12,7 @@ export const meRoutes: FastifyPluginAsync = async (app) => {
       id: auth.userId,
       email: auth.email,
       role: auth.role,
+      isAdmin: auth.isAdmin,
       profile,
     };
   });

@@ -17,6 +17,15 @@ export class NotFoundError extends Error {
   }
 }
 
+export const assertAdmin = (auth: AuthContext | undefined): void => {
+  if (!auth) {
+    throw new Error('Unauthorized: missing auth context');
+  }
+  if (!auth.isAdmin) {
+    throw new ForbiddenError('Only platform admins may perform this action');
+  }
+};
+
 export const assertPsychologist = (auth: AuthContext | undefined): void => {
   if (!auth) {
     throw new Error('Unauthorized: missing auth context');

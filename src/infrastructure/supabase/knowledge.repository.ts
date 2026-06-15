@@ -3,6 +3,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type {
   KnowledgeChunkMatch,
   KnowledgeDocument,
+  KnowledgeDocumentIndexStatus,
 } from '@domain/knowledge.types.js';
 import { ForbiddenError, NotFoundError } from '@application/authorization.js';
 
@@ -13,6 +14,7 @@ type KnowledgeDocumentRow = {
   uploaded_by: string | null;
   chunk_count: number;
   status: 'active' | 'archived';
+  index_status: KnowledgeDocumentIndexStatus;
   created_at: string;
   updated_at: string;
 };
@@ -32,9 +34,13 @@ const mapDocument = (row: KnowledgeDocumentRow): KnowledgeDocument => ({
   uploadedBy: row.uploaded_by,
   chunkCount: row.chunk_count,
   status: row.status,
+  indexStatus: row.index_status,
   createdAt: row.created_at,
   updatedAt: row.updated_at,
 });
+
+const knowledgeDocumentSelect =
+  'id, title, file_name, uploaded_by, chunk_count, status, index_status, created_at, updated_at';
 
 const normalizeFileName = (fileName: string): string =>
   fileName.trim().toLowerCase();
@@ -48,9 +54,7 @@ export const listActiveKnowledgeDocumentsByPsychologist = async (
 ): Promise<KnowledgeDocument[]> => {
   const { data, error } = await client
     .from('knowledge_documents')
-    .select(
-      'id, title, file_name, uploaded_by, chunk_count, status, created_at, updated_at'
-    )
+    .select(knowledgeDocumentSelect)
     .eq('status', 'active')
     .eq('uploaded_by', psychologistId)
     .order('updated_at', { ascending: false });
@@ -79,13 +83,31 @@ export const findActiveKnowledgeDocumentByFileName = async (
   );
 };
 
+export const getKnowledgeDocumentById = async (
+  client: SupabaseClient,
+  documentId: string
+): Promise<KnowledgeDocument | null> => {
+  const { data, error } = await client
+    .from('knowledge_documents')
+    .select(knowledgeDocumentSelect)
+    .eq('id', documentId)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`Failed to load knowledge document: ${error.message}`);
+  }
+
+  return data ? mapDocument(data as KnowledgeDocumentRow) : null;
+};
+
 export const insertKnowledgeDocument = async (
   client: SupabaseClient,
   input: {
     title: string;
     fileName: string;
     uploadedBy: string | null;
-    chunkCount: number;
+    chunkCount?: number;
+    indexStatus?: KnowledgeDocumentIndexStatus;
   }
 ): Promise<KnowledgeDocument> => {
   const { data, error } = await client
@@ -94,16 +116,53 @@ export const insertKnowledgeDocument = async (
       title: input.title,
       file_name: input.fileName,
       uploaded_by: input.uploadedBy,
-      chunk_count: input.chunkCount,
+      chunk_count: input.chunkCount ?? 0,
+      index_status: input.indexStatus ?? 'pending',
       status: 'active',
     })
-    .select(
-      'id, title, file_name, uploaded_by, chunk_count, status, created_at, updated_at'
-    )
+    .select(knowledgeDocumentSelect)
     .single();
 
   if (error || !data) {
     throw new Error(`Failed to insert knowledge document: ${error?.message}`);
+  }
+
+  return mapDocument(data as KnowledgeDocumentRow);
+};
+
+export const updateKnowledgeDocumentIndexStatus = async (
+  client: SupabaseClient,
+  documentId: string,
+  input: {
+    indexStatus: KnowledgeDocumentIndexStatus;
+    chunkCount?: number;
+  }
+): Promise<KnowledgeDocument> => {
+  const payload: Record<string, unknown> = {
+    index_status: input.indexStatus,
+    updated_at: new Date().toISOString(),
+  };
+
+  if (input.chunkCount !== undefined) {
+    payload.chunk_count = input.chunkCount;
+  }
+
+  const { data, error } = await client
+    .from('knowledge_documents')
+    .update(payload)
+    .eq('id', documentId)
+    .eq('status', 'active')
+    .select(knowledgeDocumentSelect)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(
+      `Failed to update knowledge document index status: ${error.message}`
+    );
+  }
+
+  if (!data) {
+    throw new NotFoundError('Knowledge document not found');
   }
 
   return mapDocument(data as KnowledgeDocumentRow);
@@ -156,9 +215,7 @@ export const archiveKnowledgeDocument = async (
   }
 
   const { data, error } = await query
-    .select(
-      'id, title, file_name, uploaded_by, chunk_count, status, created_at, updated_at'
-    )
+    .select(knowledgeDocumentSelect)
     .maybeSingle();
 
   if (error) {

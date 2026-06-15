@@ -1,7 +1,11 @@
 import multipart from '@fastify/multipart';
 import type { FastifyPluginAsync } from 'fastify';
 
-import { ingestKnowledgePdf } from '@application/ingest-knowledge-document.js';
+import {
+  enqueueKnowledgePdfUpload,
+  indexKnowledgePdfDocument,
+} from '@application/ingest-knowledge-document.js';
+import { runInBackground } from '@application/run-in-background.js';
 import {
   assertKnowledgeDocumentReader,
   assertKnowledgeDocumentUploader,
@@ -70,12 +74,21 @@ export const createKnowledgeRoutes =
       const fileName = part.filename.trim();
       const title = fileName.replace(/\.pdf$/i, '').trim() || fileName;
 
-      const result = await ingestKnowledgePdf(env, admin, {
+      const result = await enqueueKnowledgePdfUpload(env, admin, {
         uploadedBy: auth.userId,
         title,
         fileName,
         fileBuffer,
       });
+
+      runInBackground(request.log, 'knowledge-pdf-indexing', () =>
+        indexKnowledgePdfDocument(env, admin, {
+          documentId: result.document.id,
+          title: result.document.title,
+          fileName,
+          fileBuffer,
+        })
+      );
 
       return {
         document: result.document,

@@ -1,5 +1,11 @@
 export type KnowledgeDocumentStatus = 'active' | 'archived';
 
+export type KnowledgeDocumentIndexStatus =
+  | 'pending'
+  | 'indexing'
+  | 'indexed'
+  | 'failed';
+
 export type KnowledgeDocument = {
   id: string;
   title: string;
@@ -7,6 +13,7 @@ export type KnowledgeDocument = {
   uploadedBy: string | null;
   chunkCount: number;
   status: KnowledgeDocumentStatus;
+  indexStatus: KnowledgeDocumentIndexStatus;
   createdAt: string;
   updatedAt: string;
 };

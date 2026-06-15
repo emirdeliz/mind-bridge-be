@@ -10,7 +10,12 @@ const MIN_SIMILARITY = 0.2;
 
 const formatKnowledgeRetrievalContext = (
   language: AppLanguage,
-  snippets: Array<{ content: string; similarity: number; title?: string }>
+  snippets: Array<{
+    content: string;
+    similarity: number;
+    title?: string;
+    section?: string;
+  }>
 ): string => {
   if (!snippets.length) {
     return '';
@@ -18,29 +23,43 @@ const formatKnowledgeRetrievalContext = (
 
   const labels: Record<
     AppLanguage,
-    { title: string; source: (value: string) => string }
+    {
+      title: string;
+      source: (value: string) => string;
+      section: (value: string) => string;
+    }
   > = {
     pt: {
       title: 'Base de conhecimento (trechos relevantes do protocolo/documento):',
-      source: (value) => `Fonte: ${value}`,
+      source: (value) => `Documento: ${value}`,
+      section: (value) => `Seção: ${value}`,
     },
     es: {
       title: 'Base de conocimiento (fragmentos relevantes del protocolo/documento):',
-      source: (value) => `Fuente: ${value}`,
+      source: (value) => `Documento: ${value}`,
+      section: (value) => `Sección: ${value}`,
     },
     en: {
       title: 'Knowledge base (relevant protocol/document excerpts):',
-      source: (value) => `Source: ${value}`,
+      source: (value) => `Document: ${value}`,
+      section: (value) => `Section: ${value}`,
     },
   };
 
   const copy = labels[language] ?? labels.pt;
   const lines = snippets.map((snippet, index) => {
-    const source =
+    const labelsBlock = [
       typeof snippet.title === 'string' && snippet.title.trim()
         ? copy.source(snippet.title)
-        : '';
-    const prefix = source ? `${source}\n` : '';
+        : '',
+      typeof snippet.section === 'string' && snippet.section.trim()
+        ? copy.section(snippet.section)
+        : '',
+    ]
+      .filter(Boolean)
+      .join(' | ');
+
+    const prefix = labelsBlock ? `${labelsBlock}\n` : '';
     return `${index + 1}. ${prefix}${snippet.content.trim()}`;
   });
 
@@ -82,6 +101,10 @@ export const retrieveKnowledgeContext = async (
       title:
         typeof match.metadata.title === 'string'
           ? match.metadata.title
+          : undefined,
+      section:
+        typeof match.metadata.section === 'string'
+          ? match.metadata.section
           : undefined,
     }))
   );

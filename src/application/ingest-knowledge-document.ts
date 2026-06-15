@@ -3,7 +3,7 @@ import pdfParse from 'pdf-parse';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 import { embedTexts } from '@ai/embeddings/openrouter-embeddings.js';
-import { chunkText } from '@ai/retrieval/chunk-text.js';
+import { chunkDocumentText } from '@ai/retrieval/chunk-text.js';
 import { BadRequestError } from '@http/errors.js';
 import type { Env } from '@config/env.js';
 import type { KnowledgeDocument } from '@domain/knowledge.types.js';
@@ -71,13 +71,20 @@ export const ingestKnowledgePdf = async (
 
   const title = sanitizeTitle(input.title, input.fileName);
   const text = await extractPdfText(input.fileBuffer);
-  const chunks = chunkText(text, env.RAG_CHUNK_SIZE, env.RAG_CHUNK_OVERLAP);
+  const chunks = chunkDocumentText(
+    text,
+    env.RAG_CHUNK_SIZE,
+    env.RAG_CHUNK_OVERLAP
+  );
 
   if (!chunks.length) {
     throw new BadRequestError('PDF has no indexable text content');
   }
 
-  const embeddings = await embedTexts(env, chunks);
+  const embeddings = await embedTexts(
+    env,
+    chunks.map((chunk) => chunk.content)
+  );
   const document = await insertKnowledgeDocument(admin, {
     title,
     fileName: input.fileName,
@@ -87,13 +94,16 @@ export const ingestKnowledgePdf = async (
 
   await insertKnowledgeChunks(
     admin,
-    chunks.map((content, chunkIndex) => ({
+    chunks.map((chunk, chunkIndex) => ({
       documentId: document.id,
       chunkIndex,
-      content,
+      content: chunk.content,
       metadata: {
         title,
         fileName: input.fileName,
+        section: chunk.section,
+        sectionIndex: chunk.sectionIndex,
+        chunkIndexInSection: chunk.chunkIndexInSection,
         chunkIndex,
       },
       embedding: embeddings[chunkIndex]!,

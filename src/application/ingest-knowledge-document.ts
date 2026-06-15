@@ -210,6 +210,12 @@ export const indexKnowledgePdfDocument = async (
       throw new BadRequestError('PDF has no indexable text content');
     }
 
+    if (chunks.length > env.RAG_MAX_CHUNKS_PER_DOCUMENT) {
+      throw new BadRequestError(
+        `PDF produced ${chunks.length} chunks, exceeding the limit of ${env.RAG_MAX_CHUNKS_PER_DOCUMENT}. Increase RAG_CHUNK_SIZE or split the document into smaller PDFs.`
+      );
+    }
+
     logKnowledgeIngestStage(
       logger,
       'chunking-completed',
@@ -306,7 +312,8 @@ export const indexKnowledgePdfDocument = async (
           chunkIndex,
         },
         embedding: embeddings[chunkIndex]!,
-      }))
+      })),
+      { batchSize: env.RAG_CHUNK_INSERT_BATCH_SIZE }
     );
 
     logKnowledgeIngestStage(

@@ -15,7 +15,6 @@ const SECTION_HEADING_PATTERNS: RegExp[] = [
   /^(?:\d{1,2}(?:\.\d+)*)\s+\S/,
   /^#{1,4}\s+\S/,
   /^[IVXLC]+\.\s+\S/,
-  /^[A-ZÁÀÂÃÉÊÍÓÔÕÚÇ][A-ZÁÀÂÃÉÊÍÓÔÕÚÇ0-9\s\-–—:()]{2,90}$/,
 ];
 
 const looksLikeSectionHeading = (line: string): boolean => {

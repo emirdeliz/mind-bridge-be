@@ -79,6 +79,10 @@ const envSchema = Joi.object({
   RAG_TOP_K: Joi.number().integer().min(1).max(20).default(5),
   RAG_CHUNK_SIZE: Joi.number().integer().min(200).max(4000).default(800),
   RAG_CHUNK_OVERLAP: Joi.number().integer().min(0).max(1000).default(120),
+  RAG_MAX_CHUNKS_PER_DOCUMENT: Joi.number().integer().min(50).max(10_000).default(1500),
+  RAG_EMBEDDING_BATCH_SIZE: Joi.number().integer().min(1).max(256).default(64),
+  RAG_EMBEDDING_TIMEOUT_MS: Joi.number().integer().min(5_000).max(600_000).default(120_000),
+  RAG_CHUNK_INSERT_BATCH_SIZE: Joi.number().integer().min(10).max(500).default(40),
   KNOWLEDGE_UPLOAD_ROLE: Joi.string()
     .valid('admin', 'psychologist')
     .default('psychologist'),
@@ -109,6 +113,10 @@ export type Env = {
   RAG_TOP_K: number;
   RAG_CHUNK_SIZE: number;
   RAG_CHUNK_OVERLAP: number;
+  RAG_MAX_CHUNKS_PER_DOCUMENT: number;
+  RAG_EMBEDDING_BATCH_SIZE: number;
+  RAG_EMBEDDING_TIMEOUT_MS: number;
+  RAG_CHUNK_INSERT_BATCH_SIZE: number;
   KNOWLEDGE_UPLOAD_ROLE: 'admin' | 'psychologist';
   KNOWLEDGE_MAX_FILE_BYTES: number;
 };

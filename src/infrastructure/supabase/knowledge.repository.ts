@@ -176,23 +176,33 @@ export const insertKnowledgeChunks = async (
     content: string;
     metadata: Record<string, unknown>;
     embedding: number[];
-  }>
+  }>,
+  options?: {
+    batchSize?: number;
+  }
 ): Promise<void> => {
   if (!rows.length) {
     return;
   }
 
-  const payload = rows.map((row) => ({
-    document_id: row.documentId,
-    chunk_index: row.chunkIndex,
-    content: row.content,
-    metadata: row.metadata,
-    embedding: formatEmbeddingForPgvector(row.embedding),
-  }));
+  const batchSize = options?.batchSize ?? 40;
 
-  const { error } = await client.from('knowledge_chunks').insert(payload);
-  if (error) {
-    throw new Error(`Failed to insert knowledge chunks: ${error.message}`);
+  for (let index = 0; index < rows.length; index += batchSize) {
+    const batch = rows.slice(index, index + batchSize);
+    const payload = batch.map((row) => ({
+      document_id: row.documentId,
+      chunk_index: row.chunkIndex,
+      content: row.content,
+      metadata: row.metadata,
+      embedding: formatEmbeddingForPgvector(row.embedding),
+    }));
+
+    const { error } = await client.from('knowledge_chunks').insert(payload);
+    if (error) {
+      throw new Error(
+        `Failed to insert knowledge chunks (batch ${Math.floor(index / batchSize) + 1}): ${error.message}`
+      );
+    }
   }
 };
 

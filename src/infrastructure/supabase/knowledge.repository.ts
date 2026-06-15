@@ -4,7 +4,7 @@ import type {
   KnowledgeChunkMatch,
   KnowledgeDocument,
 } from '@domain/knowledge.types.js';
-import { NotFoundError } from '@application/authorization.js';
+import { ForbiddenError, NotFoundError } from '@application/authorization.js';
 
 type KnowledgeDocumentRow = {
   id: string;
@@ -36,11 +36,15 @@ const mapDocument = (row: KnowledgeDocumentRow): KnowledgeDocument => ({
   updatedAt: row.updated_at,
 });
 
+const normalizeFileName = (fileName: string): string =>
+  fileName.trim().toLowerCase();
+
 export const formatEmbeddingForPgvector = (embedding: number[]): string =>
   `[${embedding.join(',')}]`;
 
-export const listActiveKnowledgeDocuments = async (
-  client: SupabaseClient
+export const listActiveKnowledgeDocumentsByPsychologist = async (
+  client: SupabaseClient,
+  psychologistId: string
 ): Promise<KnowledgeDocument[]> => {
   const { data, error } = await client
     .from('knowledge_documents')
@@ -48,13 +52,31 @@ export const listActiveKnowledgeDocuments = async (
       'id, title, file_name, uploaded_by, chunk_count, status, created_at, updated_at'
     )
     .eq('status', 'active')
-    .order('created_at', { ascending: false });
+    .eq('uploaded_by', psychologistId)
+    .order('updated_at', { ascending: false });
 
   if (error) {
     throw new Error(`Failed to list knowledge documents: ${error.message}`);
   }
 
   return (data as KnowledgeDocumentRow[]).map(mapDocument);
+};
+
+export const findActiveKnowledgeDocumentByFileName = async (
+  client: SupabaseClient,
+  psychologistId: string,
+  fileName: string
+): Promise<KnowledgeDocument | null> => {
+  const normalized = normalizeFileName(fileName);
+  const documents = await listActiveKnowledgeDocumentsByPsychologist(
+    client,
+    psychologistId
+  );
+
+  return (
+    documents.find((document) => normalizeFileName(document.fileName) === normalized) ??
+    null
+  );
 };
 
 export const insertKnowledgeDocument = async (
@@ -117,16 +139,23 @@ export const insertKnowledgeChunks = async (
 
 export const archiveKnowledgeDocument = async (
   client: SupabaseClient,
-  documentId: string
+  documentId: string,
+  psychologistId?: string
 ): Promise<KnowledgeDocument> => {
-  const { data, error } = await client
+  let query = client
     .from('knowledge_documents')
     .update({
       status: 'archived',
       updated_at: new Date().toISOString(),
     })
     .eq('id', documentId)
-    .eq('status', 'active')
+    .eq('status', 'active');
+
+  if (psychologistId) {
+    query = query.eq('uploaded_by', psychologistId);
+  }
+
+  const { data, error } = await query
     .select(
       'id, title, file_name, uploaded_by, chunk_count, status, created_at, updated_at'
     )
@@ -137,6 +166,9 @@ export const archiveKnowledgeDocument = async (
   }
 
   if (!data) {
+    if (psychologistId) {
+      throw new ForbiddenError('Knowledge document not found or not owned by you');
+    }
     throw new NotFoundError('Knowledge document not found');
   }
 
@@ -148,11 +180,15 @@ export const matchKnowledgeChunks = async (
   input: {
     queryEmbedding: number[];
     matchCount: number;
+    psychologistIds?: string[];
   }
 ): Promise<KnowledgeChunkMatch[]> => {
   const { data, error } = await client.rpc('match_knowledge_chunks', {
     query_embedding: formatEmbeddingForPgvector(input.queryEmbedding),
     match_count: input.matchCount,
+    psychologist_ids: input.psychologistIds?.length
+      ? input.psychologistIds
+      : null,
   });
 
   if (error) {

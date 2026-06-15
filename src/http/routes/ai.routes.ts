@@ -41,6 +41,7 @@ import {
   patientChatBodySchema,
   psychologistChatBodySchema,
 } from '@http/schemas/ai.schemas.js';
+import { listActivePsychologistIdsForPatient } from '@infrastructure/supabase/profile.repository.js';
 import { createAdminSupabaseClient } from '@infrastructure/supabase/client.js';
 import { retrieveKnowledgeContext } from '@application/retrieve-knowledge-context.js';
 import { recordPatientInteraction } from '@application/enrich-dashboard-snapshot.js';
@@ -190,14 +191,16 @@ export const createAiRoutes =
         );
         const questionCount = countAgentQuestionsInChat(interactionHistory);
         const forcedClosing = shouldClosePatientChatInteraction(questionCount);
+        const patientPsychologistIds = await listActivePsychologistIdsForPatient(
+          admin,
+          auth.userId
+        );
         const knowledgeRetrieval = forcedClosing
           ? ''
-          : await retrieveKnowledgeContext(
-              env,
-              admin,
-              body.message,
-              language
-            );
+          : await retrieveKnowledgeContext(env, admin, body.message, {
+              languageInput: language,
+              psychologistIds: patientPsychologistIds,
+            });
 
         const userMessageId = randomUUID();
         const agentMessageId = randomUUID();
@@ -345,7 +348,10 @@ export const createAiRoutes =
           env,
           admin,
           body.message,
-          psychologistLanguage
+          {
+            languageInput: psychologistLanguage,
+            psychologistIds: [auth.userId],
+          }
         );
         const retrievalContext = joinRetrievalContexts(
           clinicalRetrieval,

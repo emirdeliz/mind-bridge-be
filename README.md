@@ -165,10 +165,11 @@ Login/signup stay on the **web client** via `@supabase/supabase-js`; this API do
    - `RAG_ENABLED=true`
    - `OPENROUTER_API_KEY=...`
    - `OPENROUTER_EMBEDDING_MODEL=openai/text-embedding-3-small` (optional)
-   - `KNOWLEDGE_UPLOAD_ROLE=admin` or `psychologist` (who may upload/delete PDFs)
+   - `KNOWLEDGE_UPLOAD_ROLE=psychologist` (default; who may upload/delete PDFs)
 3. Index a PDF:
-   - CLI: `npm run knowledge:ingest -- ./protocolo.pdf "Protocolo de atendimento"`
-   - API: `POST /knowledge/documents` (`multipart/form-data`, field `file`, optional `title`)
+   - CLI: `npm run knowledge:ingest -- ./protocolo.pdf <psychologist-user-id> [title]`
+   - API: `POST /knowledge/documents` (`multipart/form-data`, field `file`)
+   - Web: Configurações → Documentos de contexto (RAG)
 4. Chunking is **hybrid**: sections/topics first (headings, numbered titles, CAPÍTULO/SEÇÃO), then size-based splits for long sections (`RAG_CHUNK_SIZE` / `RAG_CHUNK_OVERLAP`).
 5. Chat endpoints automatically retrieve relevant chunks when `RAG_ENABLED=true`.
 

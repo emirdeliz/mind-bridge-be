@@ -8,6 +8,8 @@ import { BadRequestError } from '@http/errors.js';
 import type { Env } from '@config/env.js';
 import type { KnowledgeDocument } from '@domain/knowledge.types.js';
 import {
+  archiveKnowledgeDocument,
+  findActiveKnowledgeDocumentByFileName,
   insertKnowledgeChunks,
   insertKnowledgeDocument,
 } from '@infrastructure/supabase/knowledge.repository.js';
@@ -49,12 +51,12 @@ export const ingestKnowledgePdf = async (
   env: Env,
   admin: SupabaseClient,
   input: {
-    uploadedBy: string | null;
+    uploadedBy: string;
     title: string;
     fileName: string;
     fileBuffer: Buffer;
   }
-): Promise<KnowledgeDocument> => {
+): Promise<{ document: KnowledgeDocument; replaced: boolean }> => {
   if (!env.RAG_ENABLED) {
     throw new BadRequestError('Knowledge RAG is disabled on this server');
   }
@@ -71,6 +73,15 @@ export const ingestKnowledgePdf = async (
 
   const title = sanitizeTitle(input.title, input.fileName);
   const text = await extractPdfText(input.fileBuffer);
+  const existing = await findActiveKnowledgeDocumentByFileName(
+    admin,
+    input.uploadedBy,
+    input.fileName
+  );
+  if (existing) {
+    await archiveKnowledgeDocument(admin, existing.id, input.uploadedBy);
+  }
+
   const chunks = chunkDocumentText(
     text,
     env.RAG_CHUNK_SIZE,
@@ -110,5 +121,5 @@ export const ingestKnowledgePdf = async (
     }))
   );
 
-  return document;
+  return { document, replaced: Boolean(existing) };
 };

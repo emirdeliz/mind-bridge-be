@@ -70,9 +70,17 @@ export const retrieveKnowledgeContext = async (
   env: Env,
   admin: SupabaseClient,
   query: string,
-  languageInput?: unknown
+  options?: {
+    languageInput?: unknown;
+    psychologistIds?: string[];
+  }
 ): Promise<string> => {
   if (!env.RAG_ENABLED) {
+    return '';
+  }
+
+  const psychologistIds = (options?.psychologistIds ?? []).filter(Boolean);
+  if (!psychologistIds.length) {
     return '';
   }
 
@@ -81,11 +89,12 @@ export const retrieveKnowledgeContext = async (
     return '';
   }
 
-  const language = normalizeAppLanguage(languageInput);
+  const language = normalizeAppLanguage(options?.languageInput);
   const queryEmbedding = await embedQuery(env, normalizedQuery);
   const matches = await matchKnowledgeChunks(admin, {
     queryEmbedding,
     matchCount: env.RAG_TOP_K,
+    psychologistIds,
   });
 
   const relevant = matches.filter((match) => match.similarity >= MIN_SIMILARITY);
@@ -99,9 +108,11 @@ export const retrieveKnowledgeContext = async (
       content: match.content,
       similarity: match.similarity,
       title:
-        typeof match.metadata.title === 'string'
-          ? match.metadata.title
-          : undefined,
+        typeof match.metadata.fileName === 'string'
+          ? match.metadata.fileName
+          : typeof match.metadata.title === 'string'
+            ? match.metadata.title
+            : undefined,
       section:
         typeof match.metadata.section === 'string'
           ? match.metadata.section

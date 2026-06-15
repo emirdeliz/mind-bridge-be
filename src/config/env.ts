@@ -81,7 +81,7 @@ const envSchema = Joi.object({
   RAG_CHUNK_OVERLAP: Joi.number().integer().min(0).max(1000).default(120),
   KNOWLEDGE_UPLOAD_ROLE: Joi.string()
     .valid('admin', 'psychologist')
-    .default('admin'),
+    .default('psychologist'),
   KNOWLEDGE_MAX_FILE_BYTES: Joi.number()
     .integer()
     .min(1024)

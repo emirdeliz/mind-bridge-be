@@ -5,13 +5,14 @@ import { ingestKnowledgePdf } from '@application/ingest-knowledge-document.js';
 import {
   assertKnowledgeDocumentReader,
   assertKnowledgeDocumentUploader,
+  assertPsychologist,
 } from '@application/authorization.js';
 import type { Env } from '@config/env.js';
 import { validateParams } from '@http/middleware/validate.js';
 import { knowledgeDocumentParamsSchema } from '@http/schemas/knowledge.schemas.js';
 import {
   archiveKnowledgeDocument,
-  listActiveKnowledgeDocuments,
+  listActiveKnowledgeDocumentsByPsychologist,
 } from '@infrastructure/supabase/knowledge.repository.js';
 import { createAdminSupabaseClient } from '@infrastructure/supabase/client.js';
 import { BadRequestError } from '@http/errors.js';
@@ -31,8 +32,12 @@ export const createKnowledgeRoutes =
     app.get('/knowledge/documents', async (request) => {
       const auth = request.auth!;
       assertKnowledgeDocumentReader(auth);
+      assertPsychologist(auth);
 
-      const documents = await listActiveKnowledgeDocuments(admin);
+      const documents = await listActiveKnowledgeDocumentsByPsychologist(
+        admin,
+        auth.userId
+      );
       return { documents };
     });
 
@@ -53,26 +58,26 @@ export const createKnowledgeRoutes =
         throw new BadRequestError('Only PDF files are supported');
       }
 
-      const titleField = part.fields.title;
-      const title =
-        titleField && 'value' in titleField
-          ? String(titleField.value ?? '')
-          : part.filename.replace(/\.pdf$/i, '');
-
       const chunks: Buffer[] = [];
       for await (const chunk of part.file) {
         chunks.push(chunk);
       }
 
       const fileBuffer = Buffer.concat(chunks);
-      const document = await ingestKnowledgePdf(env, admin, {
+      const fileName = part.filename.trim();
+      const title = fileName.replace(/\.pdf$/i, '').trim() || fileName;
+
+      const result = await ingestKnowledgePdf(env, admin, {
         uploadedBy: auth.userId,
         title,
-        fileName: part.filename,
+        fileName,
         fileBuffer,
       });
 
-      return { document };
+      return {
+        document: result.document,
+        replaced: result.replaced,
+      };
     });
 
     app.delete(
@@ -83,7 +88,11 @@ export const createKnowledgeRoutes =
         assertKnowledgeDocumentUploader(auth, env.KNOWLEDGE_UPLOAD_ROLE);
 
         const { documentId } = request.params as { documentId: string };
-        const document = await archiveKnowledgeDocument(admin, documentId);
+        const document = await archiveKnowledgeDocument(
+          admin,
+          documentId,
+          auth.userId
+        );
         return { document };
       }
     );

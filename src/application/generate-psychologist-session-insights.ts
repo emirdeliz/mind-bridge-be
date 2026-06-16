@@ -142,7 +142,10 @@ const buildHeuristicPsychologistSessionInsights = (
       `${patientUserCount} mensagem(ns) do paciente com o agente de IA`
     );
   }
-  const likertLine = formatLikertCheckInForContext(language, input.likertCheckIn);
+  const likertLine = formatLikertCheckInForContext(
+    language,
+    input.likertCheckIn
+  );
   if (likertLine) {
     indicators.push(
       likertLine
@@ -179,9 +182,13 @@ const buildHeuristicPsychologistSessionInsights = (
       'Análise agêntica pendente — ações serão sugeridas com base nas conversas da última semana.'
     );
   } else if (considerations) {
-    actions.push('Revisar e validar as considerações da sessão com o paciente.');
+    actions.push(
+      'Revisar e validar as considerações da sessão com o paciente.'
+    );
   } else {
-    actions.push('Registrar considerações da sessão para consolidar o plano terapêutico.');
+    actions.push(
+      'Registrar considerações da sessão para consolidar o plano terapêutico.'
+    );
   }
 
   const sessionInsights: SessionInsight[] = [
@@ -212,30 +219,30 @@ export const generatePsychologistSessionInsights = async (
 ): Promise<PsychologistSessionInsightsResult | null> => {
   const language = input.language ?? 'pt';
   const existingSummary = input.existingPatientSummary?.trim();
-  const [interactionsSummary, agenticPatterns, agenticActions] = await Promise.all([
-    existingSummary
-      ? Promise.resolve(existingSummary)
-      : generatePatientInteractionSummary(
-          env,
-          input.patientChatHistory,
-          language,
-          input.sessionContext
-        ),
-    generateDetectedPatternsInsight(
-      env,
-      input.patientChatHistory,
-      language,
-      input.sessionContext
-    ),
-    generateRecommendedActionsInsight(
-      env,
-      input.patientChatHistory,
-      language,
-      input.sessionContext,
-      input.sessionConsiderations
-    ),
-  ]);
-
+  const [interactionsSummary, agenticPatterns, agenticActions] =
+    await Promise.all([
+      existingSummary
+        ? Promise.resolve(existingSummary)
+        : generatePatientInteractionSummary(
+            env,
+            input.patientChatHistory,
+            language,
+            input.sessionContext
+          ),
+      generateDetectedPatternsInsight(
+        env,
+        input.patientChatHistory,
+        language,
+        input.sessionContext
+      ),
+      generateRecommendedActionsInsight(
+        env,
+        input.patientChatHistory,
+        language,
+        input.sessionContext,
+        input.sessionConsiderations
+      ),
+    ]);
 
   const heuristic = buildHeuristicPsychologistSessionInsights(input);
   if (!heuristic) {

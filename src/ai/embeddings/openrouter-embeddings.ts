@@ -56,7 +56,10 @@ export const embedTexts = async (
   return vectors;
 };
 
-export const embedQuery = async (env: Env, query: string): Promise<number[]> => {
+export const embedQuery = async (
+  env: Env,
+  query: string
+): Promise<number[]> => {
   const embeddings = createOpenRouterEmbeddings(env);
   return embeddings.embedQuery(query);
 };

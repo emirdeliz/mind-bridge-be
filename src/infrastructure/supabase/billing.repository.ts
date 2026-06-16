@@ -200,7 +200,9 @@ export const listCareRelationshipsForBilling = async (
     .eq('status', 'active');
 
   if (error) {
-    throw new Error(`Failed to load care relationships for billing: ${error.message}`);
+    throw new Error(
+      `Failed to load care relationships for billing: ${error.message}`
+    );
   }
 
   return (data ?? [])
@@ -265,7 +267,9 @@ export const listPsychologistIdsWithCareRelationships = async (
     .eq('status', 'active');
 
   if (error) {
-    throw new Error(`Failed to list psychologists for billing: ${error.message}`);
+    throw new Error(
+      `Failed to list psychologists for billing: ${error.message}`
+    );
   }
 
   return [
@@ -313,18 +317,22 @@ export const upsertPsychologistBillingDailySnapshot = async (
   enabledPatientCount: number,
   patientIds: string[]
 ): Promise<void> => {
-  const { error } = await admin.from('psychologist_billing_daily_snapshots').upsert(
-    toSnakeRecord({
-      psychologistId,
-      snapshotDate,
-      enabledPatientCount,
-      patientIds,
-    }),
-    { onConflict: 'psychologist_id,snapshot_date' }
-  );
+  const { error } = await admin
+    .from('psychologist_billing_daily_snapshots')
+    .upsert(
+      toSnakeRecord({
+        psychologistId,
+        snapshotDate,
+        enabledPatientCount,
+        patientIds,
+      }),
+      { onConflict: 'psychologist_id,snapshot_date' }
+    );
 
   if (error) {
-    throw new Error(`Failed to upsert billing daily snapshot: ${error.message}`);
+    throw new Error(
+      `Failed to upsert billing daily snapshot: ${error.message}`
+    );
   }
 };
 

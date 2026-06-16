@@ -1,6 +1,9 @@
 import type { FastifyPluginAsync } from 'fastify';
 
-import { assertPsychologist, NotFoundError } from '@application/authorization.js';
+import {
+  assertPsychologist,
+  NotFoundError,
+} from '@application/authorization.js';
 import { getPsychologistPatientPayments } from '@application/get-psychologist-patient-payments.js';
 import type { Env } from '@config/env.js';
 import {

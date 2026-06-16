@@ -35,7 +35,9 @@ export const listPlatformCareRelationships = async (
     .eq('status', 'active');
 
   if (error) {
-    throw new Error(`Failed to load platform care relationships: ${error.message}`);
+    throw new Error(
+      `Failed to load platform care relationships: ${error.message}`
+    );
   }
 
   return listKeysToCamel<PlatformCareRelationshipRow>(data ?? []);
@@ -51,11 +53,15 @@ export const listPlatformBillingRowsForMonths = async (
 
   const { data, error } = await admin
     .from('psychologist_billing_monthly')
-    .select('billing_month, psychologist_id, enabled_patient_count, net_amount_cents')
+    .select(
+      'billing_month, psychologist_id, enabled_patient_count, net_amount_cents'
+    )
     .in('billing_month', billingMonths);
 
   if (error) {
-    throw new Error(`Failed to load platform billing metrics: ${error.message}`);
+    throw new Error(
+      `Failed to load platform billing metrics: ${error.message}`
+    );
   }
 
   return listKeysToCamel<MonthlyBillingRow>(data ?? []);
@@ -118,5 +124,6 @@ export const getPlatformCurrency = async (
     throw new Error(`Failed to load platform currency: ${error.message}`);
   }
 
-  return keysToCamel<{ currency: string }>(data ?? { currency: 'BRL' }).currency;
+  return keysToCamel<{ currency: string }>(data ?? { currency: 'BRL' })
+    .currency;
 };

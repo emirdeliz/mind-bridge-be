@@ -35,7 +35,9 @@ export const getPsychologistBilling = async (
     try {
       billingMonth = normalizeBillingMonth(options.billingMonth);
     } catch {
-      throw new BadRequestError('Invalid billing month format. Use YYYY-MM-01.');
+      throw new BadRequestError(
+        'Invalid billing month format. Use YYYY-MM-01.'
+      );
     }
   }
 

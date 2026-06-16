@@ -81,11 +81,13 @@ export const getOrCreatePsychologistInviteCode = async (
 
   for (let attempt = 0; attempt < 5; attempt += 1) {
     const code = generateInviteCode();
-    const { error: insertError } = await admin.from('psychologist_invite_codes').insert({
-      psychologist_id: psychologistId,
-      code,
-      updated_at: new Date().toISOString(),
-    });
+    const { error: insertError } = await admin
+      .from('psychologist_invite_codes')
+      .insert({
+        psychologist_id: psychologistId,
+        code,
+        updated_at: new Date().toISOString(),
+      });
 
     if (!insertError) {
       return code;
@@ -105,16 +107,14 @@ export const regeneratePsychologistInviteCode = async (
 ): Promise<string> => {
   for (let attempt = 0; attempt < 5; attempt += 1) {
     const code = generateInviteCode();
-    const { error } = await admin
-      .from('psychologist_invite_codes')
-      .upsert(
-        {
-          psychologist_id: psychologistId,
-          code,
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: 'psychologist_id' }
-      );
+    const { error } = await admin.from('psychologist_invite_codes').upsert(
+      {
+        psychologist_id: psychologistId,
+        code,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: 'psychologist_id' }
+    );
 
     if (!error) {
       return code;

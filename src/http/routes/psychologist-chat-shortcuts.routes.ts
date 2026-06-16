@@ -4,10 +4,7 @@ import { assertPsychologist } from '@application/authorization.js';
 import { generateChatShortcutTranslations } from '@application/generate-chat-shortcut-translations.js';
 import type { Env } from '@config/env.js';
 import type { PsychologistChatShortcutSaveBody } from '@domain/psychologist-chat-shortcut.types.js';
-import {
-  validateBody,
-  validateParams,
-} from '@http/middleware/validate.js';
+import { validateBody, validateParams } from '@http/middleware/validate.js';
 import {
   chatShortcutIdParamsSchema,
   saveChatShortcutBodySchema,
@@ -29,7 +26,10 @@ export const createPsychologistChatShortcutsRoutes =
       const auth = request.auth!;
       assertPsychologist(auth);
 
-      const shortcuts = await ensureDefaultPsychologistChatShortcuts(admin, auth.userId);
+      const shortcuts = await ensureDefaultPsychologistChatShortcuts(
+        admin,
+        auth.userId
+      );
       return { shortcuts };
     });
 

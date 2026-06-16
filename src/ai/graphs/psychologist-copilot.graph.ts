@@ -1,5 +1,9 @@
 import { END, START, StateGraph } from '@langchain/langgraph';
-import { AIMessage, HumanMessage, SystemMessage } from '@langchain/core/messages';
+import {
+  AIMessage,
+  HumanMessage,
+  SystemMessage,
+} from '@langchain/core/messages';
 import { Annotation } from '@langchain/langgraph';
 
 import type { Env } from '@config/env.js';
@@ -100,17 +104,19 @@ export const streamPsychologistCopilotGraph = async (
   onDelta: (delta: string) => void
 ): Promise<string> => {
   const model = createPsychologistCopilotModel(env);
-  const { language, system, history, human } = buildPsychologistCopilotMessages({
-    psychologistId: input.psychologistId,
-    patientId: input.patientId,
-    userMessage: input.userMessage,
-    clinicalContext: input.clinicalContext ?? '',
-    sessionConsiderations: input.sessionConsiderations ?? '',
-    responseLanguage: input.language ?? 'pt',
-    retrievalContext: input.retrievalContext ?? '',
-    chatHistory: input.chatHistory ?? [],
-    assistantMessage: '',
-  });
+  const { language, system, history, human } = buildPsychologistCopilotMessages(
+    {
+      psychologistId: input.psychologistId,
+      patientId: input.patientId,
+      userMessage: input.userMessage,
+      clinicalContext: input.clinicalContext ?? '',
+      sessionConsiderations: input.sessionConsiderations ?? '',
+      responseLanguage: input.language ?? 'pt',
+      retrievalContext: input.retrievalContext ?? '',
+      chatHistory: input.chatHistory ?? [],
+      assistantMessage: '',
+    }
+  );
 
   let raw = '';
   const stream = await model.stream([system, ...history, human]);

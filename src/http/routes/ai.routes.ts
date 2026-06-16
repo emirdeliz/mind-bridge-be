@@ -1,6 +1,10 @@
 import { randomUUID } from 'node:crypto';
 
-import type { FastifyBaseLogger, FastifyPluginAsync, FastifyReply } from 'fastify';
+import type {
+  FastifyBaseLogger,
+  FastifyPluginAsync,
+  FastifyReply,
+} from 'fastify';
 
 import type { Env } from '@config/env.js';
 import type { ClinicalChatMessage } from '@domain/clinical-content.types.js';
@@ -131,7 +135,8 @@ const streamLlmReply = async (
   } catch (error) {
     writeAiStreamEvent(reply, {
       type: 'error',
-      error: error instanceof Error ? error.message : 'Failed to generate reply',
+      error:
+        error instanceof Error ? error.message : 'Failed to generate reply',
     });
     endAiStream(reply);
     throw error;
@@ -179,7 +184,9 @@ export const createAiRoutes =
           auth.userId
         );
         const psychologistContext =
-          clinicalContent.sessionContext?.trim() || body.careContext?.trim() || '';
+          clinicalContent.sessionContext?.trim() ||
+          body.careContext?.trim() ||
+          '';
         const language = normalizeAppLanguage(body.language);
         const chatHistory = clinicalContent.patientChatSeed ?? [];
         const { interactionId, isNewInteraction } =
@@ -191,10 +198,8 @@ export const createAiRoutes =
         );
         const questionCount = countAgentQuestionsInChat(interactionHistory);
         const forcedClosing = shouldClosePatientChatInteraction(questionCount);
-        const patientPsychologistIds = await listActivePsychologistIdsForPatient(
-          admin,
-          auth.userId
-        );
+        const patientPsychologistIds =
+          await listActivePsychologistIdsForPatient(admin, auth.userId);
         const knowledgeRetrieval = forcedClosing
           ? ''
           : await retrieveKnowledgeContext(env, admin, body.message, {
@@ -396,13 +401,17 @@ export const createAiRoutes =
         ];
 
         if (useStream) {
-          runInBackground(request.log, 'psychologist-chat-persist', async () => {
-            await appendPsychologistChatMessages(
-              admin,
-              body.patientId,
-              persistedMessages
-            );
-          });
+          runInBackground(
+            request.log,
+            'psychologist-chat-persist',
+            async () => {
+              await appendPsychologistChatMessages(
+                admin,
+                body.patientId,
+                persistedMessages
+              );
+            }
+          );
         } else {
           await appendPsychologistChatMessages(
             admin,

@@ -1,7 +1,15 @@
 import type { DashboardSnapshot } from '@domain/clinical-content.types.js';
 import type { PatientInteraction } from '@domain/patient-interaction.types.js';
 
-const WEEKDAY_LABELS = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'] as const;
+const WEEKDAY_LABELS = [
+  'Seg',
+  'Ter',
+  'Qua',
+  'Qui',
+  'Sex',
+  'Sáb',
+  'Dom',
+] as const;
 const MOOD_DIARY_TARGET_DAYS = 7;
 const CHANNEL_LABELS: Record<string, string> = {
   text: 'Texto',
@@ -28,7 +36,9 @@ const toWeekdayIndex = (date: Date): number => {
   return day === 0 ? 6 : day - 1;
 };
 
-const uniqueChatEngagementDays = (interactions: PatientInteraction[]): number => {
+const uniqueChatEngagementDays = (
+  interactions: PatientInteraction[]
+): number => {
   const days = new Set<string>();
   for (const entry of interactions) {
     if (entry.channel !== 'text' && entry.channel !== 'audio') continue;
@@ -73,7 +83,9 @@ export const computePatientDashboardMetrics = (
   rollingWeekStart.setDate(rollingWeekStart.getDate() - 6);
   rollingWeekStart.setHours(0, 0, 0, 0);
   const chatEngagementDays = uniqueChatEngagementDays(
-    interactions.filter((entry) => new Date(entry.createdAt) >= rollingWeekStart)
+    interactions.filter(
+      (entry) => new Date(entry.createdAt) >= rollingWeekStart
+    )
   );
   const moodDiaryAdherencePercent = Math.min(
     100,
@@ -89,11 +101,13 @@ export const computePatientDashboardMetrics = (
         color: '#818cf8',
       },
     ],
-    interactionChannels: Object.entries(channelCounts).map(([channel, value]) => ({
-      name: CHANNEL_LABELS[channel] ?? channel,
-      value,
-      color: CHANNEL_COLORS[channel],
-    })),
+    interactionChannels: Object.entries(channelCounts).map(
+      ([channel, value]) => ({
+        name: CHANNEL_LABELS[channel] ?? channel,
+        value,
+        color: CHANNEL_COLORS[channel],
+      })
+    ),
     moodDiaryAdherencePercent,
   };
 };

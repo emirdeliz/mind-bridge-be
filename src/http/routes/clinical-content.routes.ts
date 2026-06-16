@@ -20,7 +20,10 @@ import {
 import { patientIdParamsSchema } from '@http/schemas/patient.schemas.js';
 import { createAdminSupabaseClient } from '@infrastructure/supabase/client.js';
 import { runInBackground } from '@application/run-in-background.js';
-import { updatePsychologistPatientClinicalSession, updatePsychologistPatientAnamnesis } from '@infrastructure/supabase/clinical-content.repository.js';
+import {
+  updatePsychologistPatientClinicalSession,
+  updatePsychologistPatientAnamnesis,
+} from '@infrastructure/supabase/clinical-content.repository.js';
 
 export const createClinicalContentRoutes =
   (env: Env): FastifyPluginAsync =>
@@ -133,18 +136,22 @@ export const createClinicalContentRoutes =
 
         await assertPsychologistPatientAccess(supabase, auth, patientId);
 
-        const content = await updatePsychologistPatientAnamnesis(admin, patientId, {
-          chiefComplaint: body.chiefComplaint ?? '',
-          currentHistory: body.currentHistory ?? '',
-          personalHistory: body.personalHistory ?? '',
-          familyHistory: body.familyHistory ?? '',
-          socialHistory: body.socialHistory ?? '',
-          medicalPsychiatricHistory: body.medicalPsychiatricHistory ?? '',
-          lifeHabits: body.lifeHabits ?? '',
-          emotionalBehavioral: body.emotionalBehavioral ?? '',
-          therapeuticGoals: body.therapeuticGoals ?? '',
-          psychologistNotes: body.psychologistNotes ?? '',
-        });
+        const content = await updatePsychologistPatientAnamnesis(
+          admin,
+          patientId,
+          {
+            chiefComplaint: body.chiefComplaint ?? '',
+            currentHistory: body.currentHistory ?? '',
+            personalHistory: body.personalHistory ?? '',
+            familyHistory: body.familyHistory ?? '',
+            socialHistory: body.socialHistory ?? '',
+            medicalPsychiatricHistory: body.medicalPsychiatricHistory ?? '',
+            lifeHabits: body.lifeHabits ?? '',
+            emotionalBehavioral: body.emotionalBehavioral ?? '',
+            therapeuticGoals: body.therapeuticGoals ?? '',
+            psychologistNotes: body.psychologistNotes ?? '',
+          }
+        );
 
         return { anamnesis: content.anamnesis };
       }

@@ -22,7 +22,12 @@ const hasPsychologistSessionActivity = (
   content.psychologistChatSeed.length > 0 ||
   content.sessionNotes.some((note) => note.isCurrent && note.content?.trim());
 
-const AGENTIC_PENDING_MARKERS = ['pendente', 'pending', 'aguardando', 'pendiente'];
+const AGENTIC_PENDING_MARKERS = [
+  'pendente',
+  'pending',
+  'aguardando',
+  'pendiente',
+];
 
 const isAgenticInsightPending = (body: string | undefined): boolean => {
   const trimmed = body?.trim() ?? '';
@@ -38,7 +43,8 @@ const findInsightBodyByTitle = (
   content: PatientClinicalContent,
   title: string
 ): string | undefined =>
-  content.sessionInsights.find((insight) => insight.title.trim() === title)?.body;
+  content.sessionInsights.find((insight) => insight.title.trim() === title)
+    ?.body;
 
 /** Refresh only when summary is missing or patient chat has new user messages. */
 export const needsPatientInteractionSummaryRefresh = (
@@ -61,7 +67,10 @@ export const needsPatientInteractionSummaryRefresh = (
 export const needsPsychologistSessionInsightsRefresh = (
   content: PatientClinicalContent
 ): boolean => {
-  if (!hasPatientChatReports(content) && !hasPsychologistSessionActivity(content)) {
+  if (
+    !hasPatientChatReports(content) &&
+    !hasPsychologistSessionActivity(content)
+  ) {
     return false;
   }
 
@@ -88,7 +97,8 @@ export const needsWeeklyAgenticInsightsRefresh = (
   const actionsBody = findInsightBodyByTitle(content, actionsTitle);
 
   return (
-    isAgenticInsightPending(patternsBody) || isAgenticInsightPending(actionsBody)
+    isAgenticInsightPending(patternsBody) ||
+    isAgenticInsightPending(actionsBody)
   );
 };
 

@@ -115,9 +115,7 @@ export const upsertPatientSessionPayment = async (
     .single();
 
   if (error || !data) {
-    throw new Error(
-      error?.message ?? 'Failed to save patient payment'
-    );
+    throw new Error(error?.message ?? 'Failed to save patient payment');
   }
 
   return mapPayment(data);

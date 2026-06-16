@@ -1,4 +1,8 @@
-export type PatientInteractionChannel = 'text' | 'audio' | 'notification' | 'mood_diary';
+export type PatientInteractionChannel =
+  | 'text'
+  | 'audio'
+  | 'notification'
+  | 'mood_diary';
 
 export type PatientInteractionSource = 'web' | 'app';
 

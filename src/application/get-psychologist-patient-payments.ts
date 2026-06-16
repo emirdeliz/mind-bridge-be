@@ -28,12 +28,18 @@ const mergeAvailableMonths = (
   billingHistoryMonths: string[],
   paymentMonths: string[]
 ): string[] => {
-  const merged = new Set<string>([currentMonth, ...billingHistoryMonths, ...paymentMonths]);
+  const merged = new Set<string>([
+    currentMonth,
+    ...billingHistoryMonths,
+    ...paymentMonths,
+  ]);
   return [...merged].sort();
 };
 
-const monthsUpTo = (availableMonths: string[], billingMonth: string): string[] =>
-  availableMonths.filter((month) => month <= billingMonth);
+const monthsUpTo = (
+  availableMonths: string[],
+  billingMonth: string
+): string[] => availableMonths.filter((month) => month <= billingMonth);
 
 export const getPsychologistPatientPayments = async (
   admin: SupabaseClient,
@@ -47,7 +53,9 @@ export const getPsychologistPatientPayments = async (
     try {
       billingMonth = normalizeBillingMonth(options.billingMonth);
     } catch {
-      throw new BadRequestError('Invalid billing month format. Use YYYY-MM-01.');
+      throw new BadRequestError(
+        'Invalid billing month format. Use YYYY-MM-01.'
+      );
     }
   }
 
@@ -79,7 +87,10 @@ export const getPsychologistPatientPayments = async (
     isDeleted: relationship.isDeleted,
   }));
 
-  const paymentsByPatientMonth = new Map<string, Map<string, (typeof allPayments)[number]>>();
+  const paymentsByPatientMonth = new Map<
+    string,
+    Map<string, (typeof allPayments)[number]>
+  >();
   for (const payment of allPayments) {
     const byMonth = paymentsByPatientMonth.get(payment.patientId) ?? new Map();
     byMonth.set(payment.billingMonth, payment);
@@ -108,7 +119,8 @@ export const getPsychologistPatientPayments = async (
       const hasPayment =
         paymentsByPatientMonth.get(patient.patientId)?.has(month) ?? false;
       if (!hasPayment) {
-        const unpaid = unpaidBillingMonthsByPatient.get(patient.patientId) ?? [];
+        const unpaid =
+          unpaidBillingMonthsByPatient.get(patient.patientId) ?? [];
         unpaid.push(month);
         unpaidBillingMonthsByPatient.set(patient.patientId, unpaid);
       }
@@ -143,10 +155,12 @@ export const getPsychologistPatientPayments = async (
         fullName: null,
         email: null,
       };
-      const isBillableInSelectedMonth = billableInSelectedMonthIds.has(patientId);
+      const isBillableInSelectedMonth =
+        billableInSelectedMonthIds.has(patientId);
       const payment =
         paymentsByPatientMonth.get(patientId)?.get(billingMonth) ?? null;
-      const unpaidBillingMonths = unpaidBillingMonthsByPatient.get(patientId) ?? [];
+      const unpaidBillingMonths =
+        unpaidBillingMonthsByPatient.get(patientId) ?? [];
       const isCompliant = isBillableInSelectedMonth ? payment !== null : false;
 
       return {
@@ -162,7 +176,9 @@ export const getPsychologistPatientPayments = async (
     .sort((left, right) => {
       const leftName = left.fullName?.trim() ?? left.email ?? '';
       const rightName = right.fullName?.trim() ?? right.email ?? '';
-      return leftName.localeCompare(rightName, undefined, { sensitivity: 'base' });
+      return leftName.localeCompare(rightName, undefined, {
+        sensitivity: 'base',
+      });
     });
 
   const billablePatientsInMonth = patients.filter(

@@ -1,7 +1,4 @@
-export const truncateContextText = (
-  text: string,
-  maxChars: number
-): string => {
+export const truncateContextText = (text: string, maxChars: number): string => {
   const trimmed = text.trim();
   if (trimmed.length <= maxChars) {
     return trimmed;

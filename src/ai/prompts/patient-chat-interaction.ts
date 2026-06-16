@@ -103,8 +103,10 @@ export const sanitizePatientChatResponse = (text: string): string => {
 const PATIENT_CHAT_MAX_SENTENCES = 2;
 
 const splitSentences = (text: string): string[] =>
-  text.match(/[^.!?]+[.!?]+|[^.!?]+$/g)?.map((part) => part.trim()).filter(Boolean) ??
-  [text];
+  text
+    .match(/[^.!?]+[.!?]+|[^.!?]+$/g)
+    ?.map((part) => part.trim())
+    .filter(Boolean) ?? [text];
 
 /** Keeps at most two short sentences — no mid-sentence cut. */
 export const compactPatientChatResponse = (
@@ -137,7 +139,9 @@ const FALLBACK_REPLIES: Record<AppLanguage, string> = {
   en: 'I understand. What do you feel right now?',
 };
 
-export const buildPatientChatBrevityGuidance = (language: AppLanguage): string => {
+export const buildPatientChatBrevityGuidance = (
+  language: AppLanguage
+): string => {
   const blocks: Record<AppLanguage, string> = {
     pt: [
       'TAMANHO DA RESPOSTA (obrigatório — prioridade máxima):',
@@ -245,7 +249,9 @@ const LEGACY_CLOSING_MESSAGES: Record<AppLanguage, string> = {
   en: 'Thank you for sharing this information. I remain available to support you whenever needed.',
 };
 
-const LEGACY_CLOSING_MESSAGE_SET = new Set(Object.values(LEGACY_CLOSING_MESSAGES));
+const LEGACY_CLOSING_MESSAGE_SET = new Set(
+  Object.values(LEGACY_CLOSING_MESSAGES)
+);
 
 export const isPatientChatClosingMessage = (text: string): boolean =>
   LEGACY_CLOSING_MESSAGE_SET.has(text.trim());

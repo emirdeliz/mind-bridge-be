@@ -1,6 +1,9 @@
 import type { FastifyPluginAsync } from 'fastify';
 
-import { assertPsychologist, NotFoundError } from '@application/authorization.js';
+import {
+  assertPsychologist,
+  NotFoundError,
+} from '@application/authorization.js';
 import { BadRequestError } from '@http/errors.js';
 import { getPsychologistSchedulingWeek } from '@application/get-psychologist-scheduling.js';
 import { movePsychologistAppointment } from '@application/move-psychologist-appointment.js';
@@ -65,14 +68,18 @@ export const createPsychologistSchedulingRoutes =
           tzOffset: number;
         };
 
-        const result = await updatePsychologistSchedulingSettings(admin, auth.userId, {
-          sessionDurationMinutes: body.sessionDurationMinutes,
-          dayStartTime: body.dayStartTime,
-          dayEndTime: body.dayEndTime,
-          breakIntervals: body.breakIntervals,
-          confirmRemoveConflicts: body.confirmRemoveConflicts,
-          timeZoneOffsetMinutes: body.tzOffset,
-        });
+        const result = await updatePsychologistSchedulingSettings(
+          admin,
+          auth.userId,
+          {
+            sessionDurationMinutes: body.sessionDurationMinutes,
+            dayStartTime: body.dayStartTime,
+            dayEndTime: body.dayEndTime,
+            breakIntervals: body.breakIntervals,
+            confirmRemoveConflicts: body.confirmRemoveConflicts,
+            timeZoneOffsetMinutes: body.tzOffset,
+          }
+        );
 
         return { result };
       }
@@ -95,7 +102,8 @@ export const createPsychologistSchedulingRoutes =
         };
 
         const settings = await getSchedulingSettings(admin, auth.userId);
-        const durationMinutes = body.durationMinutes ?? settings.sessionDurationMinutes;
+        const durationMinutes =
+          body.durationMinutes ?? settings.sessionDurationMinutes;
 
         if (body.isPersonalCommitment) {
           const appointment = await createAppointment(admin, {
@@ -150,19 +158,30 @@ export const createPsychologistSchedulingRoutes =
           personalDescription: string;
         };
 
-        const existing = await getAppointmentById(admin, auth.userId, appointmentId);
+        const existing = await getAppointmentById(
+          admin,
+          auth.userId,
+          appointmentId
+        );
         if (!existing) {
           return reply.status(404).send({ error: 'Appointment not found' });
         }
         if (!existing.isPersonalCommitment) {
-          throw new BadRequestError('Only personal commitments can be updated with this endpoint');
+          throw new BadRequestError(
+            'Only personal commitments can be updated with this endpoint'
+          );
         }
 
-        const appointment = await updatePersonalCommitment(admin, auth.userId, appointmentId, {
-          startsAt: body.startsAt,
-          durationMinutes: body.durationMinutes,
-          notes: body.personalDescription,
-        });
+        const appointment = await updatePersonalCommitment(
+          admin,
+          auth.userId,
+          appointmentId,
+          {
+            startsAt: body.startsAt,
+            durationMinutes: body.durationMinutes,
+            notes: body.personalDescription,
+          }
+        );
 
         return { appointment };
       }

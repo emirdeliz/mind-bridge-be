@@ -25,11 +25,7 @@ export const createPatientInviteCodeRoutes =
         assertPatientSelf(auth, auth.userId);
 
         try {
-          await linkPatientWithInviteCode(
-            admin,
-            auth.userId,
-            body.inviteCode
-          );
+          await linkPatientWithInviteCode(admin, auth.userId, body.inviteCode);
           return reply.status(200).send({ ok: true });
         } catch (error) {
           if (error instanceof InvalidInviteCodeError) {

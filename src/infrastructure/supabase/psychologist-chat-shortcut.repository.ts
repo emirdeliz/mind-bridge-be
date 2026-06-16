@@ -26,7 +26,9 @@ export const listPsychologistChatShortcuts = async (
 ): Promise<PsychologistChatShortcut[]> => {
   const { data, error } = await admin
     .from('psychologist_chat_shortcuts')
-    .select('id, psychologist_id, sort_order, translations, created_at, updated_at')
+    .select(
+      'id, psychologist_id, sort_order, translations, created_at, updated_at'
+    )
     .eq('psychologist_id', psychologistId)
     .order('sort_order', { ascending: true })
     .order('created_at', { ascending: true });
@@ -59,7 +61,9 @@ export const ensureDefaultPsychologistChatShortcuts = async (
   const { data, error } = await admin
     .from('psychologist_chat_shortcuts')
     .insert(rows)
-    .select('id, psychologist_id, sort_order, translations, created_at, updated_at');
+    .select(
+      'id, psychologist_id, sort_order, translations, created_at, updated_at'
+    );
 
   if (error) {
     throw new Error(`Failed to seed default chat shortcuts: ${error.message}`);
@@ -77,16 +81,24 @@ export const seedDefaultPsychologistChatShortcutsForAllPsychologists = async (
     .eq('role', 'psychologist');
 
   if (error) {
-    throw new Error(`Failed to list psychologists for chat shortcut seed: ${error.message}`);
+    throw new Error(
+      `Failed to list psychologists for chat shortcut seed: ${error.message}`
+    );
   }
 
   let seededCount = 0;
   for (const psychologist of psychologists ?? []) {
-    const before = await listPsychologistChatShortcuts(admin, psychologist.id as string);
+    const before = await listPsychologistChatShortcuts(
+      admin,
+      psychologist.id as string
+    );
     if (before.length > 0) {
       continue;
     }
-    await ensureDefaultPsychologistChatShortcuts(admin, psychologist.id as string);
+    await ensureDefaultPsychologistChatShortcuts(
+      admin,
+      psychologist.id as string
+    );
     seededCount += 1;
   }
 
@@ -106,10 +118,13 @@ export const createPsychologistChatShortcut = async (
     .limit(1);
 
   if (lastError) {
-    throw new Error(`Failed to resolve chat shortcut order: ${lastError.message}`);
+    throw new Error(
+      `Failed to resolve chat shortcut order: ${lastError.message}`
+    );
   }
 
-  const nextSortOrder = ((lastRows?.[0]?.sort_order as number | undefined) ?? -1) + 1;
+  const nextSortOrder =
+    ((lastRows?.[0]?.sort_order as number | undefined) ?? -1) + 1;
   const now = new Date().toISOString();
 
   const { data, error } = await admin
@@ -121,7 +136,9 @@ export const createPsychologistChatShortcut = async (
       created_at: now,
       updated_at: now,
     })
-    .select('id, psychologist_id, sort_order, translations, created_at, updated_at')
+    .select(
+      'id, psychologist_id, sort_order, translations, created_at, updated_at'
+    )
     .single();
 
   if (error) {
@@ -145,7 +162,9 @@ export const updatePsychologistChatShortcut = async (
     })
     .eq('id', shortcutId)
     .eq('psychologist_id', psychologistId)
-    .select('id, psychologist_id, sort_order, translations, created_at, updated_at')
+    .select(
+      'id, psychologist_id, sort_order, translations, created_at, updated_at'
+    )
     .maybeSingle();
 
   if (error) {

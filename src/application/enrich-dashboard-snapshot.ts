@@ -1,6 +1,9 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-import type { ClinicalChatMessage, DashboardSnapshot } from '@domain/clinical-content.types.js';
+import type {
+  ClinicalChatMessage,
+  DashboardSnapshot,
+} from '@domain/clinical-content.types.js';
 import type { LogPatientInteractionPayload } from '@domain/patient-interaction.types.js';
 import {
   listPatientInteractionsSince,

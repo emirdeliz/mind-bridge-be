@@ -4,13 +4,13 @@ Backend API for [mind-bridge-web](../mind-bridge-web): Node.js, TypeScript, Fast
 
 ## Stack
 
-| Layer            | Technology                             |
-| ---------------- | -------------------------------------- |
-| HTTP             | Fastify 5                              |
-| Validation       | Joi                                    |
-| Auth             | Supabase JWT (`Authorization: Bearer`) |
-| Data             | Supabase Postgres + RLS                |
-| AI orchestration | LangGraph.js                           |
+| Layer            | Technology                                               |
+| ---------------- | -------------------------------------------------------- |
+| HTTP             | Fastify 5                                                |
+| Validation       | Joi                                                      |
+| Auth             | Supabase JWT (`Authorization: Bearer`)                   |
+| Data             | Supabase Postgres + RLS                                  |
+| AI orchestration | LangGraph.js                                             |
 | LLM              | Gemini API (`@langchain/google-genai`) or Ollama (local) |
 
 ## Path aliases
@@ -64,11 +64,11 @@ npm run seed:cloud        # alias de seed:local quando .env aponta para Supabase
 
 **Supabase Cloud:**
 
-| Comando | O que faz |
-|---------|-----------|
-| `npm run supabase:push:cloud` | Aplica migrations no Cloud |
-| `npm run seed:cloud` | Push migrations + seed idempotente |
-| `npm run supabase:reset` | Igual ao seed quando `.env` aponta para Cloud |
+| Comando                                     | O que faz                                        |
+| ------------------------------------------- | ------------------------------------------------ |
+| `npm run supabase:push:cloud`               | Aplica migrations no Cloud                       |
+| `npm run seed:cloud`                        | Push migrations + seed idempotente               |
+| `npm run supabase:reset`                    | Igual ao seed quando `.env` aponta para Cloud    |
 | `npm run supabase:reset:cloud -- --confirm` | **Reset destrutivo**: `db reset --linked` + seed |
 
 Pré-requisitos para reset Cloud:
@@ -113,18 +113,18 @@ npm run dev
 
 ## API (authenticated unless noted)
 
-| Method | Path                    | Role                                       |
-| ------ | ----------------------- | ------------------------------------------ |
-| GET    | `/health`               | public                                     |
-| GET    | `/me`                   | any                                        |
-| POST   | `/ai/patient/chat`      | patient (self only)                        |
-| POST   | `/ai/psychologist/chat` | psychologist + active `care_relationships` |
-| GET    | `/psychologist/patients` | psychologist (query: `name`, `includeDeleted`) |
-| POST   | `/psychologist/patients` | psychologist (creates Auth user + care link) |
-| PATCH  | `/psychologist/patients/:patientId` | psychologist |
-| DELETE | `/psychologist/patients/:patientId` | psychologist (soft delete: `is_deleted`) |
-| GET    | `/psychologist/patients/:patientId/clinical-content` | psychologist + care link |
-| GET    | `/patient/clinical-content` | patient (self) |
+| Method | Path                                                 | Role                                           |
+| ------ | ---------------------------------------------------- | ---------------------------------------------- |
+| GET    | `/health`                                            | public                                         |
+| GET    | `/me`                                                | any                                            |
+| POST   | `/ai/patient/chat`                                   | patient (self only)                            |
+| POST   | `/ai/psychologist/chat`                              | psychologist + active `care_relationships`     |
+| GET    | `/psychologist/patients`                             | psychologist (query: `name`, `includeDeleted`) |
+| POST   | `/psychologist/patients`                             | psychologist (creates Auth user + care link)   |
+| PATCH  | `/psychologist/patients/:patientId`                  | psychologist                                   |
+| DELETE | `/psychologist/patients/:patientId`                  | psychologist (soft delete: `is_deleted`)       |
+| GET    | `/psychologist/patients/:patientId/clinical-content` | psychologist + care link                       |
+| GET    | `/patient/clinical-content`                          | patient (self)                                 |
 
 ### Example: patient chat
 

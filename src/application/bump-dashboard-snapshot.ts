@@ -8,14 +8,16 @@ const DEFAULT_CLINICAL_THEMES = [
   'Humor',
 ] as const;
 
-const THEME_KEYWORDS: Record<(typeof DEFAULT_CLINICAL_THEMES)[number], string[]> =
-  {
-    Ansiedade: ['ansiedade', 'ansios', 'preocup', 'nervos', 'anxiety'],
-    Sono: ['sono', 'dormir', 'insônia', 'insonia', 'sleep'],
-    Trabalho: ['trabalho', 'laboral', 'emprego', 'reunião', 'reuniao', 'work'],
-    Somatização: ['somatiz', 'peito', 'dor', 'tensão', 'tensao', 'somatic'],
-    Humor: ['humor', 'triste', 'deprim', 'motivação', 'motivacao', 'mood'],
-  };
+const THEME_KEYWORDS: Record<
+  (typeof DEFAULT_CLINICAL_THEMES)[number],
+  string[]
+> = {
+  Ansiedade: ['ansiedade', 'ansios', 'preocup', 'nervos', 'anxiety'],
+  Sono: ['sono', 'dormir', 'insônia', 'insonia', 'sleep'],
+  Trabalho: ['trabalho', 'laboral', 'emprego', 'reunião', 'reuniao', 'work'],
+  Somatização: ['somatiz', 'peito', 'dor', 'tensão', 'tensao', 'somatic'],
+  Humor: ['humor', 'triste', 'deprim', 'motivação', 'motivacao', 'mood'],
+};
 
 const MOOD_SERIES_NAME = 'Humor médio';
 const MOOD_SERIES_COLOR = '#5eead4';
@@ -64,7 +66,15 @@ export const ensureDashboardSnapshotStructure = (
         color: MOOD_SERIES_COLOR,
       },
     ],
-    weeklyInteractionCategories: ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'],
+    weeklyInteractionCategories: [
+      'Seg',
+      'Ter',
+      'Qua',
+      'Qui',
+      'Sex',
+      'Sáb',
+      'Dom',
+    ],
     weeklyInteractionSeries: [
       {
         name: 'Interações',
@@ -93,7 +103,9 @@ export const ensureDashboardSnapshotStructure = (
 const estimateMoodDelta = (sessionText: string): number => {
   const normalized = sessionText.toLowerCase();
 
-  if (/melhor|progresso|positiv|estável|estavel|alívio|alivio/.test(normalized)) {
+  if (
+    /melhor|progresso|positiv|estável|estavel|alívio|alivio/.test(normalized)
+  ) {
     return 0.5;
   }
 
@@ -133,7 +145,10 @@ export const bumpDashboardSnapshotAfterSession = (
   if (moodData.length > 0) {
     const lastIndex = moodData.length - 1;
     const nextValue = moodData[lastIndex] + estimateMoodDelta(sessionText);
-    moodData[lastIndex] = Math.min(10, Math.max(1, Number(nextValue.toFixed(1))));
+    moodData[lastIndex] = Math.min(
+      10,
+      Math.max(1, Number(nextValue.toFixed(1)))
+    );
   }
 
   const clinicalCategories = base.clinicalThemeCategories.length

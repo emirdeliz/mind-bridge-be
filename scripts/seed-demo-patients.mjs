@@ -65,7 +65,9 @@ const main = async () => {
   }
 
   const psychologistId = psychologists[0].id;
-  console.log(`Using psychologist ${psychologists[0].email} (${psychologistId})`);
+  console.log(
+    `Using psychologist ${psychologists[0].email} (${psychologistId})`
+  );
 
   for (const demo of DEMO_PATIENTS) {
     const { data: existingProfile } = await admin
@@ -110,13 +112,15 @@ const main = async () => {
       .maybeSingle();
 
     if (!existingCare) {
-      const { error: careError } = await admin.from('care_relationships').insert({
-        psychologist_id: psychologistId,
-        patient_id: patientId,
-        status: 'active',
-        is_deleted: false,
-        last_consultation_at: demo.lastConsultationAt,
-      });
+      const { error: careError } = await admin
+        .from('care_relationships')
+        .insert({
+          psychologist_id: psychologistId,
+          patient_id: patientId,
+          status: 'active',
+          is_deleted: false,
+          last_consultation_at: demo.lastConsultationAt,
+        });
 
       if (careError) {
         console.warn(`Care link ${demo.email}: ${careError.message}`);

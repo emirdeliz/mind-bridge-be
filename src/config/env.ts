@@ -66,9 +66,7 @@ const envSchema = Joi.object({
       otherwise: Joi.string().allow('').optional(),
     }),
   }),
-  OPENROUTER_CHAT_MODEL: Joi.string().default(
-    'google/gemma-2-9b-it:free'
-  ),
+  OPENROUTER_CHAT_MODEL: Joi.string().default('google/gemma-2-9b-it:free'),
   OLLAMA_BASE_URL: Joi.string().uri().default('http://127.0.0.1:11434'),
   OLLAMA_CHAT_MODEL: Joi.string().default('gemma4'),
   OLLAMA_EMBEDDING_MODEL: Joi.string().default('nomic-embed-text'),
@@ -79,10 +77,22 @@ const envSchema = Joi.object({
   RAG_TOP_K: Joi.number().integer().min(1).max(20).default(5),
   RAG_CHUNK_SIZE: Joi.number().integer().min(200).max(4000).default(800),
   RAG_CHUNK_OVERLAP: Joi.number().integer().min(0).max(1000).default(120),
-  RAG_MAX_CHUNKS_PER_DOCUMENT: Joi.number().integer().min(50).max(10_000).default(1500),
+  RAG_MAX_CHUNKS_PER_DOCUMENT: Joi.number()
+    .integer()
+    .min(50)
+    .max(10_000)
+    .default(1500),
   RAG_EMBEDDING_BATCH_SIZE: Joi.number().integer().min(1).max(256).default(64),
-  RAG_EMBEDDING_TIMEOUT_MS: Joi.number().integer().min(5_000).max(600_000).default(120_000),
-  RAG_CHUNK_INSERT_BATCH_SIZE: Joi.number().integer().min(10).max(500).default(40),
+  RAG_EMBEDDING_TIMEOUT_MS: Joi.number()
+    .integer()
+    .min(5_000)
+    .max(600_000)
+    .default(120_000),
+  RAG_CHUNK_INSERT_BATCH_SIZE: Joi.number()
+    .integer()
+    .min(10)
+    .max(500)
+    .default(40),
   KNOWLEDGE_UPLOAD_ROLE: Joi.string()
     .valid('admin', 'psychologist')
     .default('psychologist'),

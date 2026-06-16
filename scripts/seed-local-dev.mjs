@@ -106,11 +106,17 @@ const assertServiceRoleKey = async () => {
   }
 
   if (isInvalidJwtError(error.message)) {
-    console.error('SUPABASE_SERVICE_ROLE_KEY no .env não confere com SUPABASE_URL (JWT inválido).');
+    console.error(
+      'SUPABASE_SERVICE_ROLE_KEY no .env não confere com SUPABASE_URL (JWT inválido).'
+    );
     if (!isCloudSupabaseUrl(url)) {
-      console.error('Supabase local: com o stack rodando, execute: npm run supabase:env');
+      console.error(
+        'Supabase local: com o stack rodando, execute: npm run supabase:env'
+      );
     } else {
-      console.error('Supabase Cloud: copie a service_role key em Project Settings → API.');
+      console.error(
+        'Supabase Cloud: copie a service_role key em Project Settings → API.'
+      );
     }
     console.error('Depois: npm run seed:local');
     process.exit(1);
@@ -388,13 +394,48 @@ const ALL_PATIENT_SEEDS_BY_EMAIL = new Map(
 );
 
 const EXTRA_DEMO_PSYCHOLOGISTS = [
-  { fullName: 'Dr. Paula Silva', email: 'psicologo01.demo@mindbridge.local', phone: '11990001001', password: 'demo123456' },
-  { fullName: 'Dr. Ricardo Alves', email: 'psicologo02.demo@mindbridge.local', phone: '11990001002', password: 'demo123456' },
-  { fullName: 'Dra. Fernanda Lima', email: 'psicologo03.demo@mindbridge.local', phone: '11990001003', password: 'demo123456' },
-  { fullName: 'Dr. Gustavo Moura', email: 'psicologo04.demo@mindbridge.local', phone: '11990001004', password: 'demo123456' },
-  { fullName: 'Dra. Helena Rocha', email: 'psicologo05.demo@mindbridge.local', phone: '11990001005', password: 'demo123456' },
-  { fullName: 'Dr. Igor Nunes', email: 'psicologo06.demo@mindbridge.local', phone: '11990001006', password: 'demo123456' },
-  { fullName: 'Dra. Juliana Prado', email: 'psicologo07.demo@mindbridge.local', phone: '11990001007', password: 'demo123456' },
+  {
+    fullName: 'Dr. Paula Silva',
+    email: 'psicologo01.demo@mindbridge.local',
+    phone: '11990001001',
+    password: 'demo123456',
+  },
+  {
+    fullName: 'Dr. Ricardo Alves',
+    email: 'psicologo02.demo@mindbridge.local',
+    phone: '11990001002',
+    password: 'demo123456',
+  },
+  {
+    fullName: 'Dra. Fernanda Lima',
+    email: 'psicologo03.demo@mindbridge.local',
+    phone: '11990001003',
+    password: 'demo123456',
+  },
+  {
+    fullName: 'Dr. Gustavo Moura',
+    email: 'psicologo04.demo@mindbridge.local',
+    phone: '11990001004',
+    password: 'demo123456',
+  },
+  {
+    fullName: 'Dra. Helena Rocha',
+    email: 'psicologo05.demo@mindbridge.local',
+    phone: '11990001005',
+    password: 'demo123456',
+  },
+  {
+    fullName: 'Dr. Igor Nunes',
+    email: 'psicologo06.demo@mindbridge.local',
+    phone: '11990001006',
+    password: 'demo123456',
+  },
+  {
+    fullName: 'Dra. Juliana Prado',
+    email: 'psicologo07.demo@mindbridge.local',
+    phone: '11990001007',
+    password: 'demo123456',
+  },
 ];
 
 const buildExtraDemoPatients = (psychologistIndex, patientCount) =>
@@ -453,17 +494,20 @@ const ensureAuthUser = async ({ email, password, role, fullName, phone }) => {
   let userId = existingProfile?.id;
 
   if (!userId) {
-    const { data: authData, error: authError } = await admin.auth.admin.createUser({
-      email,
-      password,
-      email_confirm: true,
-      user_metadata: { role, phone },
-    });
+    const { data: authData, error: authError } =
+      await admin.auth.admin.createUser({
+        email,
+        password,
+        email_confirm: true,
+        user_metadata: { role, phone },
+      });
 
     if (!authError) {
       userId = authData.user.id;
     } else if (isInvalidJwtError(authError.message)) {
-      console.error('SUPABASE_SERVICE_ROLE_KEY no .env não confere com SUPABASE_URL (JWT inválido).');
+      console.error(
+        'SUPABASE_SERVICE_ROLE_KEY no .env não confere com SUPABASE_URL (JWT inválido).'
+      );
       if (!isCloudSupabaseUrl(url)) {
         console.error('Supabase local: execute npm run supabase:env');
       }
@@ -543,11 +587,19 @@ const seedPsychologistScheduling = async (
     .delete()
     .eq('psychologist_id', psychologistId);
 
-  if (deleteAppointmentsError && !isMissingSchedulingTable(deleteAppointmentsError)) {
-    throw new Error(`Scheduling appointments cleanup: ${deleteAppointmentsError.message}`);
+  if (
+    deleteAppointmentsError &&
+    !isMissingSchedulingTable(deleteAppointmentsError)
+  ) {
+    throw new Error(
+      `Scheduling appointments cleanup: ${deleteAppointmentsError.message}`
+    );
   }
 
-  if (deleteAppointmentsError && isMissingSchedulingTable(deleteAppointmentsError)) {
+  if (
+    deleteAppointmentsError &&
+    isMissingSchedulingTable(deleteAppointmentsError)
+  ) {
     console.warn(
       '  Skip scheduling: apply migrations 011_psychologist_scheduling.sql and 012_personal_scheduling_commitments.sql'
     );
@@ -597,7 +649,9 @@ const seedPsychologistScheduling = async (
 
     const patientId = patientIdByEmail[seed.patientEmail];
     if (!patientId) {
-      console.warn(`  Skip appointment: patient not found (${seed.patientEmail})`);
+      console.warn(
+        `  Skip appointment: patient not found (${seed.patientEmail})`
+      );
       continue;
     }
 
@@ -617,7 +671,9 @@ const seedPsychologistScheduling = async (
   }
 
   let insertedRows = rows;
-  let { error: insertError } = await admin.from('psychologist_appointments').insert(rows);
+  let { error: insertError } = await admin
+    .from('psychologist_appointments')
+    .insert(rows);
 
   if (
     insertError &&
@@ -631,7 +687,9 @@ const seedPsychologistScheduling = async (
       '  Compromissos particulares ignorados: aplique a migration 012_personal_scheduling_commitments.sql'
     );
     if (insertedRows.length) {
-      const patientRows = insertedRows.map(({ is_personal_commitment: _flag, ...rest }) => rest);
+      const patientRows = insertedRows.map(
+        ({ is_personal_commitment: _flag, ...rest }) => rest
+      );
       ({ error: insertError } = await admin
         .from('psychologist_appointments')
         .insert(patientRows));
@@ -644,8 +702,12 @@ const seedPsychologistScheduling = async (
     throw new Error(`Scheduling appointments: ${insertError.message}`);
   }
 
-  const patientCount = insertedRows.filter((row) => !row.is_personal_commitment).length;
-  const personalCount = insertedRows.filter((row) => row.is_personal_commitment).length;
+  const patientCount = insertedRows.filter(
+    (row) => !row.is_personal_commitment
+  ).length;
+  const personalCount = insertedRows.filter(
+    (row) => row.is_personal_commitment
+  ).length;
   console.log(
     `  Scheduling: ${insertedRows.length} item(s) na semana atual (${patientCount} consulta(s), ${personalCount} compromisso(s) particular(es))`
   );
@@ -702,7 +764,9 @@ const seedPatientSessionPayments = async (
     return;
   }
 
-  const { error: insertError } = await admin.from('patient_session_payments').insert(rows);
+  const { error: insertError } = await admin
+    .from('patient_session_payments')
+    .insert(rows);
   if (insertError) {
     if (isMissingPatientPaymentsTable(insertError)) {
       console.warn(
@@ -756,7 +820,9 @@ const seedCareBillingEvents = async (
     });
   }
 
-  const { error } = await admin.from('care_relationship_billing_events').insert(events);
+  const { error } = await admin
+    .from('care_relationship_billing_events')
+    .insert(events);
   if (error) {
     throw new Error(`Billing events ${careRelationshipId}: ${error.message}`);
   }
@@ -834,11 +900,14 @@ const billingMonthBoundsFromOffset = (monthOffset) => {
 };
 
 const countBillablePatientsForMonth = (patients, monthOffset) => {
-  const { monthStart, monthEndExclusive } = billingMonthBoundsFromOffset(monthOffset);
+  const { monthStart, monthEndExclusive } =
+    billingMonthBoundsFromOffset(monthOffset);
   const billableEmails = new Set();
 
   for (const patient of patients) {
-    const enabledAt = new Date(linkedAtFromMonthsAgo(patient.enabledSinceMonthsAgo ?? 0));
+    const enabledAt = new Date(
+      linkedAtFromMonthsAgo(patient.enabledSinceMonthsAgo ?? 0)
+    );
     const disabledAt = patient.isDeleted
       ? new Date(linkedAtFromMonthsAgo(patient.disabledSinceMonthsAgo ?? 0))
       : null;
@@ -893,7 +962,9 @@ const seedBillingForPsychologist = async (psychologistId, email, patients) => {
     const patientCount = countBillablePatientsForMonth(patients, offset);
     const grossAmountCents = patientCount * PLATFORM_PRICE_CENTS;
     const discountPercent = discount?.discount_percent ?? 0;
-    const discountAmountCents = Math.round(grossAmountCents * (discountPercent / 100));
+    const discountAmountCents = Math.round(
+      grossAmountCents * (discountPercent / 100)
+    );
     const netAmountCents = grossAmountCents - discountAmountCents;
 
     const { error: monthlyError } = await admin
@@ -915,7 +986,9 @@ const seedBillingForPsychologist = async (psychologistId, email, patients) => {
       );
 
     if (monthlyError) {
-      throw new Error(`Billing monthly ${email} ${billingMonth}: ${monthlyError.message}`);
+      throw new Error(
+        `Billing monthly ${email} ${billingMonth}: ${monthlyError.message}`
+      );
     }
   }
 };
@@ -969,14 +1042,19 @@ const upsertClinical = async (patientId, email) => {
   }
 };
 
-const linkPatientsWithoutCareToPsychologist = async (psychologistId, psychologistEmail) => {
+const linkPatientsWithoutCareToPsychologist = async (
+  psychologistId,
+  psychologistEmail
+) => {
   const { data: patientProfiles, error: patientsError } = await admin
     .from('profiles')
     .select('id, email, full_name, phone')
     .eq('role', 'patient');
 
   if (patientsError) {
-    throw new Error(`Failed to list patient profiles: ${patientsError.message}`);
+    throw new Error(
+      `Failed to list patient profiles: ${patientsError.message}`
+    );
   }
 
   const { data: careRows, error: careError } = await admin
@@ -987,7 +1065,9 @@ const linkPatientsWithoutCareToPsychologist = async (psychologistId, psychologis
     throw new Error(`Failed to list care relationships: ${careError.message}`);
   }
 
-  const linkedPatientIds = new Set((careRows ?? []).map((row) => row.patient_id));
+  const linkedPatientIds = new Set(
+    (careRows ?? []).map((row) => row.patient_id)
+  );
   const unlinkedPatients = (patientProfiles ?? []).filter(
     (profile) => !linkedPatientIds.has(profile.id)
   );
@@ -1015,7 +1095,9 @@ const linkPatientsWithoutCareToPsychologist = async (psychologistId, psychologis
       await seedPatientInteractions(profile.id, profile.email);
     }
 
-    console.log(`  Linked orphan patient to ${psychologistEmail}: ${profile.email}`);
+    console.log(
+      `  Linked orphan patient to ${psychologistEmail}: ${profile.email}`
+    );
   }
 
   return unlinkedPatients.length;
@@ -1048,7 +1130,9 @@ const seedPsychologistChatShortcuts = async (psychologistId) => {
     updated_at: now,
   }));
 
-  const { error: insertError } = await admin.from('psychologist_chat_shortcuts').insert(rows);
+  const { error: insertError } = await admin
+    .from('psychologist_chat_shortcuts')
+    .insert(rows);
   if (insertError) {
     throw new Error(`Failed to seed chat shortcuts: ${insertError.message}`);
   }
@@ -1066,7 +1150,9 @@ const seedPsychologistChatShortcutsForAll = async () => {
     if (error.code === 'PGRST205') {
       return;
     }
-    throw new Error(`Failed to list psychologists for chat shortcuts: ${error.message}`);
+    throw new Error(
+      `Failed to list psychologists for chat shortcuts: ${error.message}`
+    );
   }
 
   for (const psychologist of psychologists ?? []) {
@@ -1108,7 +1194,11 @@ const seedPsychologistAccount = async ({
     console.log(`  Patient: ${demo.fullName} (${demo.email})`);
   }
 
-  await seedBillingForPsychologist(psychologistId, psychologist.email, patients);
+  await seedBillingForPsychologist(
+    psychologistId,
+    psychologist.email,
+    patients
+  );
   await seedPatientSessionPayments(
     psychologistId,
     patientPaymentSeeds,
@@ -1156,7 +1246,9 @@ const main = async () => {
     .maybeSingle();
 
   if (aluizioProfileError) {
-    throw new Error(`Failed to resolve Aluizio profile: ${aluizioProfileError.message}`);
+    throw new Error(
+      `Failed to resolve Aluizio profile: ${aluizioProfileError.message}`
+    );
   }
 
   if (aluizioProfile) {
@@ -1172,15 +1264,30 @@ const main = async () => {
   }
 
   console.log('Done.');
-  console.log('Login demo psychologist:', DEMO_PSYCHOLOGIST.email, '/', DEMO_PSYCHOLOGIST.password);
-  console.log('Login Emir (psychologist):', EMIR_PSYCHOLOGIST.email, '/', EMIR_PSYCHOLOGIST.password);
+  console.log(
+    'Login demo psychologist:',
+    DEMO_PSYCHOLOGIST.email,
+    '/',
+    DEMO_PSYCHOLOGIST.password
+  );
+  console.log(
+    'Login Emir (psychologist):',
+    EMIR_PSYCHOLOGIST.email,
+    '/',
+    EMIR_PSYCHOLOGIST.password
+  );
   console.log(
     'Login Aluizio (psychologist):',
     ALUIZIO_PSYCHOLOGIST.email,
     '/',
     ALUIZIO_PSYCHOLOGIST.password
   );
-  console.log('Login José Carlos (patient):', EMIR_PATIENTS[0].email, '/', EMIR_PATIENTS[0].password);
+  console.log(
+    'Login José Carlos (patient):',
+    EMIR_PATIENTS[0].email,
+    '/',
+    EMIR_PATIENTS[0].password
+  );
   console.log(
     'Login Mauro Souza (patient):',
     ALUIZIO_PATIENTS[0].email,
@@ -1202,7 +1309,12 @@ const main = async () => {
   console.log(
     'Aluizio patients: Mauro, Carlos, Ana, Bruno, Carla, Diego e Elisa (demo) — mais órfãos sem psicólogo no banco'
   );
-  console.log('Login demo patient (Ana):', DEMO_PATIENTS[0].email, '/', DEMO_PATIENTS[0].password);
+  console.log(
+    'Login demo patient (Ana):',
+    DEMO_PATIENTS[0].email,
+    '/',
+    DEMO_PATIENTS[0].password
+  );
 };
 
 main().catch((err) => {

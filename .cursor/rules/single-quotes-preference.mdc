@@ -1,0 +1,23 @@
+---
+description: Prefer single quotes in TypeScript and JavaScript
+globs: **/*.{ts,js,mjs,cjs}
+alwaysApply: false
+---
+
+# Single Quotes Preference
+
+- Use **single quotes** (`'`) for strings in `.ts`, `.js`, `.mjs`, and `.cjs`.
+- Keep **double quotes** only when required:
+  - JSON files (`.json`) — JSON syntax requires double quotes.
+  - Strings that contain a single quote and would need excessive escaping — use a template literal or escape instead.
+- Run `npm run format` after bulk edits; Prettier enforces this via `.prettierrc` (`singleQuote: true`).
+
+```ts
+// ✅
+import { FastifyInstance } from 'fastify';
+const message = 'Paciente não encontrado';
+
+// ❌
+import { FastifyInstance } from "fastify";
+const message = "Paciente não encontrado";
+```

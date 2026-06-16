@@ -1,4 +1,8 @@
-import type { FastifyInstance, FastifyPluginAsync, FastifyRequest } from 'fastify';
+import type {
+  FastifyInstance,
+  FastifyPluginAsync,
+  FastifyRequest,
+} from 'fastify';
 
 import type { Env } from '@config/env.js';
 import type { AuthContext, UserRole } from '@domain/types.js';

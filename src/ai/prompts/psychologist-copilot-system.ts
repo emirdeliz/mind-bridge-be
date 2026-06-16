@@ -50,9 +50,7 @@ const weeklyInteractionTotal = (snapshot: DashboardSnapshot): number =>
     0
   );
 
-const topInteractionChannel = (
-  snapshot: DashboardSnapshot
-): string | null => {
+const topInteractionChannel = (snapshot: DashboardSnapshot): string | null => {
   const channels = [...(snapshot.interactionChannels ?? [])].sort(
     (left, right) => right.value - left.value
   );
@@ -76,8 +74,14 @@ export const buildPsychologistCopilotRetrievalContext = (
   const psychologistSummary = content.psychologistSummary?.trim() ?? '';
   const patientSummary = content.patientSummary?.trim() ?? '';
   const insights = formatInsights(content.sessionInsights ?? []);
-  const likertContext = formatLikertCheckInForContext(language, content.likertCheckIn);
-  const anamnesisContext = formatPatientAnamnesisForContext(language, content.anamnesis);
+  const likertContext = formatLikertCheckInForContext(
+    language,
+    content.likertCheckIn
+  );
+  const anamnesisContext = formatPatientAnamnesisForContext(
+    language,
+    content.anamnesis
+  );
 
   const labels: Record<
     AppLanguage,

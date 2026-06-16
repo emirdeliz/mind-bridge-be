@@ -58,11 +58,15 @@ export const combineLocalDateAndTime = (
   const [year, month, day] = dateKey.split('-').map((part) => Number(part));
   const [hours, minutes] = time.split(':').map((part) => Number(part));
   const utcMs =
-    Date.UTC(year, month - 1, day, hours, minutes) + timeZoneOffsetMinutes * 60_000;
+    Date.UTC(year, month - 1, day, hours, minutes) +
+    timeZoneOffsetMinutes * 60_000;
   return new Date(utcMs);
 };
 
-export const toLocalDateKey = (date: Date, timeZoneOffsetMinutes: number): string => {
+export const toLocalDateKey = (
+  date: Date,
+  timeZoneOffsetMinutes: number
+): string => {
   const local = new Date(date.getTime() - timeZoneOffsetMinutes * 60_000);
   const year = local.getUTCFullYear();
   const month = String(local.getUTCMonth() + 1).padStart(2, '0');
@@ -70,7 +74,10 @@ export const toLocalDateKey = (date: Date, timeZoneOffsetMinutes: number): strin
   return `${year}-${month}-${day}`;
 };
 
-export const toLocalTime = (date: Date, timeZoneOffsetMinutes: number): string => {
+export const toLocalTime = (
+  date: Date,
+  timeZoneOffsetMinutes: number
+): string => {
   const local = new Date(date.getTime() - timeZoneOffsetMinutes * 60_000);
   const hours = String(local.getUTCHours()).padStart(2, '0');
   const minutes = String(local.getUTCMinutes()).padStart(2, '0');
@@ -84,7 +91,11 @@ export const durationMinutesUntilLocalTime = (
 ): number => {
   const startsAt = new Date(startsAtIso);
   const dateKey = toLocalDateKey(startsAt, timeZoneOffsetMinutes);
-  const endAt = combineLocalDateAndTime(dateKey, endTime, timeZoneOffsetMinutes);
+  const endAt = combineLocalDateAndTime(
+    dateKey,
+    endTime,
+    timeZoneOffsetMinutes
+  );
   return Math.round((endAt.getTime() - startsAt.getTime()) / 60_000);
 };
 
@@ -133,7 +144,9 @@ export const findNextAvailableSlotStart = (
       timeZoneOffsetMinutes
     );
     const candidateRange = appointmentRange(candidateStart, durationMinutes);
-    const overlaps = occupiedRanges.some((range) => rangesOverlap(candidateRange, range));
+    const overlaps = occupiedRanges.some((range) =>
+      rangesOverlap(candidateRange, range)
+    );
     if (!overlaps) {
       return candidateStart;
     }

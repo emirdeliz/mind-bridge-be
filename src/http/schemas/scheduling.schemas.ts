@@ -1,6 +1,8 @@
 import Joi from 'joi';
 
-const timeSchema = Joi.string().trim().pattern(/^\d{2}:\d{2}$/);
+const timeSchema = Joi.string()
+  .trim()
+  .pattern(/^\d{2}:\d{2}$/);
 
 export const schedulingWeekQuerySchema = Joi.object({
   weekStart: Joi.string().isoDate().required(),

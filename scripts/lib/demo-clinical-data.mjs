@@ -26,9 +26,21 @@ const minimalPayload = () => ({
 const anaDashboardSnapshot = {
   moodTrendCategories: ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun'],
   moodTrendSeries: [
-    { name: 'Humor médio', data: [5.4, 5.1, 4.7, 4.3, 3.9, 4.2], color: '#5eead4' },
+    {
+      name: 'Humor médio',
+      data: [5.4, 5.1, 4.7, 4.3, 3.9, 4.2],
+      color: '#5eead4',
+    },
   ],
-  weeklyInteractionCategories: ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'],
+  weeklyInteractionCategories: [
+    'Seg',
+    'Ter',
+    'Qua',
+    'Qui',
+    'Sex',
+    'Sáb',
+    'Dom',
+  ],
   weeklyInteractionSeries: [
     { name: 'Interações', data: [2, 1, 0, 1, 1, 0, 1], color: '#818cf8' },
   ],
@@ -38,7 +50,13 @@ const anaDashboardSnapshot = {
     { name: 'Notificação', value: 1, color: '#fbbf24' },
   ],
   moodDiaryAdherencePercent: 29,
-  clinicalThemeCategories: ['Ansiedade', 'Sono', 'Trabalho', 'Somatização', 'Humor'],
+  clinicalThemeCategories: [
+    'Ansiedade',
+    'Sono',
+    'Trabalho',
+    'Somatização',
+    'Humor',
+  ],
   clinicalThemeSeries: [
     { name: 'Menções', data: [12, 9, 8, 6, 5], color: '#a78bfa' },
   ],
@@ -251,9 +269,21 @@ const formatSessionDate = (date) => {
 const buildCarlosDashboardSnapshot = () => ({
   moodTrendCategories: ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun'],
   moodTrendSeries: [
-    { name: 'Humor médio', data: [6.1, 5.8, 5.2, 4.8, 4.5, 4.9], color: '#5eead4' },
+    {
+      name: 'Humor médio',
+      data: [6.1, 5.8, 5.2, 4.8, 4.5, 4.9],
+      color: '#5eead4',
+    },
   ],
-  weeklyInteractionCategories: ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'],
+  weeklyInteractionCategories: [
+    'Seg',
+    'Ter',
+    'Qua',
+    'Qui',
+    'Sex',
+    'Sáb',
+    'Dom',
+  ],
   weeklyInteractionSeries: [
     { name: 'Interações', data: [2, 2, 2, 2, 2, 1, 2], color: '#818cf8' },
   ],

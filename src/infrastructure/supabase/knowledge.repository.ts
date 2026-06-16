@@ -78,8 +78,9 @@ export const findActiveKnowledgeDocumentByFileName = async (
   );
 
   return (
-    documents.find((document) => normalizeFileName(document.fileName) === normalized) ??
-    null
+    documents.find(
+      (document) => normalizeFileName(document.fileName) === normalized
+    ) ?? null
   );
 };
 
@@ -234,7 +235,9 @@ export const archiveKnowledgeDocument = async (
 
   if (!data) {
     if (psychologistId) {
-      throw new ForbiddenError('Knowledge document not found or not owned by you');
+      throw new ForbiddenError(
+        'Knowledge document not found or not owned by you'
+      );
     }
     throw new NotFoundError('Knowledge document not found');
   }

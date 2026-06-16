@@ -50,7 +50,9 @@ export const isPatientChatFarewellReply = (text: string): boolean => {
   }
 
   if (
-    Object.values(INTERACTION_CLOSING_REPLIES).some((reply) => reply === normalized)
+    Object.values(INTERACTION_CLOSING_REPLIES).some(
+      (reply) => reply === normalized
+    )
   ) {
     return true;
   }
@@ -196,7 +198,8 @@ export const getInteractionScopedHistory = (
   if (interactionId === LEGACY_INTERACTION_ID) {
     return history.filter(
       (message) =>
-        !message.interactionId || message.interactionId === LEGACY_INTERACTION_ID
+        !message.interactionId ||
+        message.interactionId === LEGACY_INTERACTION_ID
     );
   }
 

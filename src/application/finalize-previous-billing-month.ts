@@ -11,7 +11,9 @@ export const finalizePreviousBillingMonth = async (
   admin: SupabaseClient,
   referenceDate = new Date()
 ): Promise<{ billingMonth: string; psychologistsProcessed: number }> => {
-  const previousMonth = previousBillingMonth(billingMonthFromDate(referenceDate));
+  const previousMonth = previousBillingMonth(
+    billingMonthFromDate(referenceDate)
+  );
   const psychologistIds = await listPsychologistIdsWithCareRelationships(admin);
 
   for (const psychologistId of psychologistIds) {

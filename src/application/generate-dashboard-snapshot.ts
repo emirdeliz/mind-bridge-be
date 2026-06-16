@@ -98,7 +98,9 @@ export const generateDashboardSnapshotAfterSession = async (
   env: Env,
   input: GenerateDashboardSnapshotInput
 ): Promise<DashboardSnapshot> => {
-  const structuredBase = ensureDashboardSnapshotStructure(input.currentSnapshot);
+  const structuredBase = ensureDashboardSnapshotStructure(
+    input.currentSnapshot
+  );
   const sessionConsiderations = input.sessionConsiderations.trim();
   const sessionText = [sessionConsiderations, input.sessionContext]
     .filter(Boolean)

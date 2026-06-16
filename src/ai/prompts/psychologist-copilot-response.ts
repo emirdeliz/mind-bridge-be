@@ -134,10 +134,7 @@ const extractNumberedList = (text: string): string => {
     return '';
   }
 
-  const lines = cleaned
-    .split('\n')
-    .map(normalizeListLine)
-    .filter(Boolean);
+  const lines = cleaned.split('\n').map(normalizeListLine).filter(Boolean);
 
   const listLines = lines.filter(
     (line) => NUMBERED_LIST_LINE_PATTERN.test(line) && !isMetaLine(line)
@@ -173,10 +170,7 @@ export const compactPsychologistCopilotReply = (
     normalized,
   ];
 
-  return sentenceMatches
-    .slice(0, maxSentences)
-    .join(' ')
-    .trim();
+  return sentenceMatches.slice(0, maxSentences).join(' ').trim();
 };
 
 const FALLBACK_REPLIES: Record<AppLanguage, string> = {

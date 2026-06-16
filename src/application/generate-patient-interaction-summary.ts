@@ -109,21 +109,36 @@ const assembleInteractionSummary = (
       interactionSummaries: string[];
     }) => string
   > = {
-    pt: ({ conversationCount, userCount, agentCount, interactionSummaries }) => {
+    pt: ({
+      conversationCount,
+      userCount,
+      agentCount,
+      interactionSummaries,
+    }) => {
       const parts = [
         `Resumo de ${conversationCount} conversa(s) com o agente (${userCount} mensagem(ns) suas e ${agentCount} resposta(s) do agente).`,
         ...interactionSummaries,
       ];
       return parts.join('\n');
     },
-    es: ({ conversationCount, userCount, agentCount, interactionSummaries }) => {
+    es: ({
+      conversationCount,
+      userCount,
+      agentCount,
+      interactionSummaries,
+    }) => {
       const parts = [
         `Resumen de ${conversationCount} conversación(es) con el agente (${userCount} mensaje(s) suyos y ${agentCount} respuesta(s) del agente).`,
         ...interactionSummaries,
       ];
       return parts.join('\n');
     },
-    en: ({ conversationCount, userCount, agentCount, interactionSummaries }) => {
+    en: ({
+      conversationCount,
+      userCount,
+      agentCount,
+      interactionSummaries,
+    }) => {
       const parts = [
         `Summary of ${conversationCount} conversation(s) with the agent (${userCount} patient message(s) and ${agentCount} agent reply(ies)).`,
         ...interactionSummaries,
@@ -232,4 +247,5 @@ export const generatePatientInteractionSummary = async (
 };
 
 /** @deprecated Use generatePatientInteractionSummary */
-export const buildPatientInteractionSummary = buildHeuristicPatientInteractionSummary;
+export const buildPatientInteractionSummary =
+  buildHeuristicPatientInteractionSummary;

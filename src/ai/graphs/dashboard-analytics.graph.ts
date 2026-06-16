@@ -8,7 +8,10 @@ import {
   buildDashboardAnalyticsHumanPrompt,
   buildDashboardAnalyticsSystemPrompt,
 } from '@ai/prompts/dashboard-analytics-system.js';
-import type { ClinicalChatMessage, DashboardSnapshot } from '@domain/clinical-content.types.js';
+import type {
+  ClinicalChatMessage,
+  DashboardSnapshot,
+} from '@domain/clinical-content.types.js';
 import type { AppLanguage } from '@domain/types.js';
 
 const DashboardAnalyticsAnnotation = Annotation.Root({

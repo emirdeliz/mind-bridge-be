@@ -42,9 +42,7 @@ const normalizePatient = (
   return patient;
 };
 
-const mapListRow = (
-  row: unknown
-): PsychologistPatientListItem | null => {
+const mapListRow = (row: unknown): PsychologistPatientListItem | null => {
   const record = keysToCamel<CareRelationshipRecord>(row);
   const patient = normalizePatient(record.patient);
 
@@ -160,7 +158,9 @@ export const linkPatientToPsychologist = async (
     .maybeSingle();
 
   if (existingError) {
-    throw new Error(`Failed to check care relationship: ${existingError.message}`);
+    throw new Error(
+      `Failed to check care relationship: ${existingError.message}`
+    );
   }
 
   if (existingLink) {
@@ -176,7 +176,9 @@ export const linkPatientToPsychologist = async (
         .eq('id', existingLink.id);
 
       if (restoreError) {
-        throw new Error(`Failed to restore care relationship: ${restoreError.message}`);
+        throw new Error(
+          `Failed to restore care relationship: ${restoreError.message}`
+        );
       }
 
       await recordCareBillingEvent(admin, {
@@ -209,9 +211,7 @@ export const linkPatientToPsychologist = async (
     .single();
 
   if (careError || !careData) {
-    throw new Error(
-      careError?.message ?? 'Failed to create care relationship'
-    );
+    throw new Error(careError?.message ?? 'Failed to create care relationship');
   }
 
   const careRelationship = keysToCamel<{ id: string }>(careData);
@@ -275,7 +275,9 @@ export const registerPatientWithInviteCode = async (
 
   if (profileError) {
     await admin.auth.admin.deleteUser(patientId);
-    throw new Error(`Failed to update patient profile: ${profileError.message}`);
+    throw new Error(
+      `Failed to update patient profile: ${profileError.message}`
+    );
   }
 
   try {
@@ -327,9 +329,7 @@ export const createPatientForPsychologist = async (
     });
 
   if (authError || !authData.user) {
-    throw new Error(
-      authError?.message ?? 'Failed to create patient auth user'
-    );
+    throw new Error(authError?.message ?? 'Failed to create patient auth user');
   }
 
   const patientId = authData.user.id;
@@ -349,7 +349,9 @@ export const createPatientForPsychologist = async (
     .eq('id', patientId);
 
   if (profileError) {
-    throw new Error(`Failed to update patient profile: ${profileError.message}`);
+    throw new Error(
+      `Failed to update patient profile: ${profileError.message}`
+    );
   }
 
   await linkPatientToPsychologist(admin, psychologistId, patientId);

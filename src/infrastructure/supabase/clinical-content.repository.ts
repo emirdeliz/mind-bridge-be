@@ -13,7 +13,9 @@ import type {
 import { emptyPatientAnamnesis } from '@domain/clinical-content.types.js';
 import { keysToCamel, toSnakeRecord } from '@helpers';
 
-const normalizeAnamnesis = (value: Partial<PatientAnamnesis> | null | undefined): PatientAnamnesis => ({
+const normalizeAnamnesis = (
+  value: Partial<PatientAnamnesis> | null | undefined
+): PatientAnamnesis => ({
   ...emptyPatientAnamnesis(),
   ...(value ?? {}),
 });
@@ -57,18 +59,19 @@ export const buildCurrentSessionNote = (): SessionNoteEntry => {
   };
 };
 
-export const defaultClinicalContentPayload = (): ClinicalContentSeedPayload => ({
-  dashboardSnapshot: emptyDashboard(),
-  sessionContext: null,
-  sessionNotes: [buildCurrentSessionNote()],
-  sessionInsights: [],
-  psychologistSummary: null,
-  psychologistChatSeed: [],
-  patientChatSeed: [],
-  patientSummary: null,
-  likertCheckIn: null,
-  anamnesis: emptyPatientAnamnesis(),
-});
+export const defaultClinicalContentPayload =
+  (): ClinicalContentSeedPayload => ({
+    dashboardSnapshot: emptyDashboard(),
+    sessionContext: null,
+    sessionNotes: [buildCurrentSessionNote()],
+    sessionInsights: [],
+    psychologistSummary: null,
+    psychologistChatSeed: [],
+    patientChatSeed: [],
+    patientSummary: null,
+    likertCheckIn: null,
+    anamnesis: emptyPatientAnamnesis(),
+  });
 
 const hasCurrentSessionNote = (notes: SessionNoteEntry[]): boolean =>
   notes.some((entry) => entry.isCurrent === true);

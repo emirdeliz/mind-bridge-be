@@ -1,6 +1,9 @@
 import type { FastifyPluginAsync } from 'fastify';
 
-import { assertPsychologist, NotFoundError } from '@application/authorization.js';
+import {
+  assertPsychologist,
+  NotFoundError,
+} from '@application/authorization.js';
 import type { Env } from '@config/env.js';
 import type { PsychologistPatientSaveBody } from '@domain/patient.types.js';
 import {
@@ -40,14 +43,10 @@ export const createPsychologistPatientsRoutes =
           includeDeleted?: boolean;
         };
 
-        const patients = await listPatientsForPsychologist(
-          admin,
-          auth.userId,
-          {
-            name: query.name,
-            includeDeleted: query.includeDeleted ?? false,
-          }
-        );
+        const patients = await listPatientsForPsychologist(admin, auth.userId, {
+          name: query.name,
+          includeDeleted: query.includeDeleted ?? false,
+        });
 
         return { patients };
       }
@@ -145,11 +144,7 @@ export const createPsychologistPatientsRoutes =
         const { patientId } = request.params as { patientId: string };
 
         try {
-          await softDeletePatientForPsychologist(
-            admin,
-            auth.userId,
-            patientId
-          );
+          await softDeletePatientForPsychologist(admin, auth.userId, patientId);
           return reply.status(204).send();
         } catch (error) {
           if (error instanceof NotFoundError) {

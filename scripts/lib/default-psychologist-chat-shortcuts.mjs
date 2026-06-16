@@ -44,15 +44,18 @@ export const DEFAULT_PSYCHOLOGIST_CHAT_SHORTCUTS = [
     translations: {
       pt: {
         label: 'Resumo da evolução',
-        message: 'Resuma em uma frase a evolução do paciente desde a última sessão.',
+        message:
+          'Resuma em uma frase a evolução do paciente desde a última sessão.',
       },
       en: {
         label: 'Progress summary',
-        message: "Summarize the patient's progress since the last session in one sentence.",
+        message:
+          "Summarize the patient's progress since the last session in one sentence.",
       },
       es: {
         label: 'Resumen de evolución',
-        message: 'Resume en una frase la evolución del paciente desde la última sesión.',
+        message:
+          'Resume en una frase la evolución del paciente desde la última sesión.',
       },
     },
   },

@@ -75,7 +75,11 @@ export const generateChatShortcutTranslations = async (
       ? response.content
       : Array.isArray(response.content)
         ? response.content
-            .map((part) => (typeof part === 'string' ? part : (part as { text?: string }).text ?? ''))
+            .map((part) =>
+              typeof part === 'string'
+                ? part
+                : ((part as { text?: string }).text ?? '')
+            )
             .join('')
         : '';
 

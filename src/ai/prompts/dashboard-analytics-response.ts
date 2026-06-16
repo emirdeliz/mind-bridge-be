@@ -31,7 +31,9 @@ export const parseDashboardAnalyticsResponse = (
   try {
     const parsed = JSON.parse(jsonMatch[0]) as Record<string, unknown>;
     const moodTrendLastValue = Number(parsed.moodTrendLastValue);
-    const clinicalThemeIncrements = toNumberArray(parsed.clinicalThemeIncrements);
+    const clinicalThemeIncrements = toNumberArray(
+      parsed.clinicalThemeIncrements
+    );
 
     if (Number.isNaN(moodTrendLastValue) || !clinicalThemeIncrements?.length) {
       return null;

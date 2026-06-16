@@ -88,7 +88,10 @@ export const updateMoodFromPatientChat = async (
   }
 
   if (input.useHeuristicOnly) {
-    const fallbackScore = estimateMoodFromPatientMessage(userMessage, currentMood);
+    const fallbackScore = estimateMoodFromPatientMessage(
+      userMessage,
+      currentMood
+    );
     return applyMoodScore(base, fallbackScore);
   }
 
@@ -108,6 +111,9 @@ export const updateMoodFromPatientChat = async (
     // Fallback heurístico abaixo.
   }
 
-  const fallbackScore = estimateMoodFromPatientMessage(userMessage, currentMood);
+  const fallbackScore = estimateMoodFromPatientMessage(
+    userMessage,
+    currentMood
+  );
   return applyMoodScore(base, fallbackScore);
 };

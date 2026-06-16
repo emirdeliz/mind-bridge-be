@@ -34,7 +34,9 @@ const createGenerateNode =
         state.sessionContext
       )
     );
-    const human = new HumanMessage(buildPatientChatPatternsHumanPrompt(language));
+    const human = new HumanMessage(
+      buildPatientChatPatternsHumanPrompt(language)
+    );
     const response = await model.invoke([system, human]);
     const content =
       typeof response.content === 'string'

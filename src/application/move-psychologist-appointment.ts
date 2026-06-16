@@ -43,7 +43,12 @@ export const movePsychologistAppointment = async (
   }
 
   const { start, end } = weekRangeIso(weekStartIso);
-  const weekAppointments = await listAppointmentsBetween(admin, psychologistId, start, end);
+  const weekAppointments = await listAppointmentsBetween(
+    admin,
+    psychologistId,
+    start,
+    end
+  );
   const appointments = weekAppointments.some((item) => item.id === moving.id)
     ? weekAppointments
     : [...weekAppointments, moving];
@@ -63,10 +68,14 @@ export const movePsychologistAppointment = async (
     return new Date(appointment.startsAt);
   };
 
-  const buildOccupiedRanges = (excludeIds: Set<string>): ReturnType<typeof appointmentRange>[] =>
+  const buildOccupiedRanges = (
+    excludeIds: Set<string>
+  ): ReturnType<typeof appointmentRange>[] =>
     appointments
       .filter((item) => !excludeIds.has(item.id))
-      .map((item) => appointmentRange(startAtFor(item.id), item.durationMinutes));
+      .map((item) =>
+        appointmentRange(startAtFor(item.id), item.durationMinutes)
+      );
 
   const findConflictingAppointment = (
     id: string,
@@ -95,7 +104,11 @@ export const movePsychologistAppointment = async (
 
     updates.set(id, startAt.toISOString());
 
-    const conflicting = findConflictingAppointment(id, startAt, current.durationMinutes);
+    const conflicting = findConflictingAppointment(
+      id,
+      startAt,
+      current.durationMinutes
+    );
     if (!conflicting) {
       return;
     }

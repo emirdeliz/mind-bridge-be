@@ -8,7 +8,10 @@ import {
   buildPsychologistSessionInsightsHumanPrompt,
   buildPsychologistSessionInsightsSystemPrompt,
 } from '@ai/prompts/psychologist-session-insights-system.js';
-import type { ClinicalChatMessage, DashboardSnapshot } from '@domain/clinical-content.types.js';
+import type {
+  ClinicalChatMessage,
+  DashboardSnapshot,
+} from '@domain/clinical-content.types.js';
 import type { AppLanguage } from '@domain/types.js';
 
 const PsychologistSessionInsightsAnnotation = Annotation.Root({

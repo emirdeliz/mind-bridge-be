@@ -1,4 +1,7 @@
-import type { ClinicalChatMessage, DashboardSnapshot } from '@domain/clinical-content.types.js';
+import type {
+  ClinicalChatMessage,
+  DashboardSnapshot,
+} from '@domain/clinical-content.types.js';
 import type { AppLanguage } from '@domain/types.js';
 
 import { normalizeAppLanguage } from './psychologist-copilot-system.js';
@@ -84,7 +87,9 @@ export const buildDashboardAnalyticsSystemPrompt = (
       `Consideraciones de la sesión (FUENTE PRINCIPAL):\n${considerations || '(vacío)'}`,
       `Panel actual:\n${snapshotSummary(context.currentSnapshot)}`,
       `Contexto clínico (complementario):\n${context.sessionContext.trim() || '(vacío)'}`,
-      ...(chatBlock ? [`Chat psicólogo ↔ agente (complemento):\n${chatBlock}`] : []),
+      ...(chatBlock
+        ? [`Chat psicólogo ↔ agente (complemento):\n${chatBlock}`]
+        : []),
     ],
     en: [
       'You are a clinical agent updating psychologist dashboard metrics after a session ends.',
@@ -100,7 +105,9 @@ export const buildDashboardAnalyticsSystemPrompt = (
       `Session considerations (PRIMARY SOURCE):\n${considerations || '(empty)'}`,
       `Current dashboard:\n${snapshotSummary(context.currentSnapshot)}`,
       `Clinical context (supplementary):\n${context.sessionContext.trim() || '(empty)'}`,
-      ...(chatBlock ? [`Psychologist ↔ agent chat (supplementary):\n${chatBlock}`] : []),
+      ...(chatBlock
+        ? [`Psychologist ↔ agent chat (supplementary):\n${chatBlock}`]
+        : []),
     ],
   };
 

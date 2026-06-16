@@ -30,12 +30,14 @@ const formatKnowledgeRetrievalContext = (
     }
   > = {
     pt: {
-      title: 'Base de conhecimento (trechos relevantes do protocolo/documento):',
+      title:
+        'Base de conhecimento (trechos relevantes do protocolo/documento):',
       source: (value) => `Documento: ${value}`,
       section: (value) => `Seção: ${value}`,
     },
     es: {
-      title: 'Base de conocimiento (fragmentos relevantes del protocolo/documento):',
+      title:
+        'Base de conocimiento (fragmentos relevantes del protocolo/documento):',
       source: (value) => `Documento: ${value}`,
       section: (value) => `Sección: ${value}`,
     },
@@ -97,7 +99,9 @@ export const retrieveKnowledgeContext = async (
     psychologistIds,
   });
 
-  const relevant = matches.filter((match) => match.similarity >= MIN_SIMILARITY);
+  const relevant = matches.filter(
+    (match) => match.similarity >= MIN_SIMILARITY
+  );
   if (!relevant.length) {
     return '';
   }

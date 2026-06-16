@@ -1,4 +1,8 @@
-import type { ClinicalChatMessage, DashboardSnapshot, LikertCheckIn } from '@domain/clinical-content.types.js';
+import type {
+  ClinicalChatMessage,
+  DashboardSnapshot,
+  LikertCheckIn,
+} from '@domain/clinical-content.types.js';
 import type { AppLanguage } from '@domain/types.js';
 
 import { splitChatIntoInteractions } from '../../application/patient-chat-interaction-groups.js';
@@ -14,7 +18,9 @@ type SessionInsightsContext = {
   likertCheckIn?: LikertCheckIn | null;
 };
 
-const formatPsychologistChatHistory = (history: ClinicalChatMessage[]): string => {
+const formatPsychologistChatHistory = (
+  history: ClinicalChatMessage[]
+): string => {
   if (!history.length) {
     return '';
   }
@@ -51,7 +57,9 @@ const snapshotMetrics = (snapshot: DashboardSnapshot): string => {
   const moodData = snapshot.moodTrendSeries[0]?.data ?? [];
   const moodValues = moodData.filter((value) => value > 0);
   const moodAverage = moodValues.length
-    ? (moodValues.reduce((sum, value) => sum + value, 0) / moodValues.length).toFixed(1)
+    ? (
+        moodValues.reduce((sum, value) => sum + value, 0) / moodValues.length
+      ).toFixed(1)
     : null;
   const weeklyTotal = (snapshot.weeklyInteractionSeries[0]?.data ?? []).reduce(
     (sum, value) => sum + value,
@@ -76,9 +84,14 @@ export const buildPsychologistSessionInsightsSystemPrompt = (
 ): string => {
   const language = normalizeAppLanguage(languageInput);
   const considerations = context.sessionConsiderations.trim();
-  const psychologistChatBlock = formatPsychologistChatHistory(context.chatHistory);
+  const psychologistChatBlock = formatPsychologistChatHistory(
+    context.chatHistory
+  );
   const patientChatBlock = formatPatientChatHistory(context.patientChatHistory);
-  const likertBlock = formatLikertCheckInForContext(language, context.likertCheckIn);
+  const likertBlock = formatLikertCheckInForContext(
+    language,
+    context.likertCheckIn
+  );
 
   const blocks: Record<AppLanguage, string[]> = {
     pt: [

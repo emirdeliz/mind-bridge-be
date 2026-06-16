@@ -7,7 +7,10 @@ import type {
 } from '@domain/scheduling.types.js';
 import { keysToCamel, toSnakeRecord } from '@helpers';
 
-const DEFAULT_SETTINGS: Omit<PsychologistSchedulingSettings, 'psychologistId' | 'updatedAt'> = {
+const DEFAULT_SETTINGS: Omit<
+  PsychologistSchedulingSettings,
+  'psychologistId' | 'updatedAt'
+> = {
   sessionDurationMinutes: 50,
   dayStartTime: '08:00:00',
   dayEndTime: '20:00:00',

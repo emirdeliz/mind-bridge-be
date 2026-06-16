@@ -11,9 +11,12 @@ export const billingMonthFromDate = (date: Date): string => {
   return `${date.getUTCFullYear()}-${month}-01`;
 };
 
-export const currentBillingMonth = (): string => billingMonthFromDate(new Date());
+export const currentBillingMonth = (): string =>
+  billingMonthFromDate(new Date());
 
-export const billingMonthBounds = (billingMonth: string): BillingMonthBounds => {
+export const billingMonthBounds = (
+  billingMonth: string
+): BillingMonthBounds => {
   const [yearPart, monthPart] = billingMonth.split('-');
   const year = Number(yearPart);
   const month = Number(monthPart) - 1;
@@ -132,8 +135,7 @@ const resolveIsCurrentlyEnabled = (
 export const countBillablePatientsForMonth = (
   relationships: BillableRelationship[],
   bounds: BillingMonthBounds
-): number =>
-  listBillablePatientsForMonth(relationships, bounds).length;
+): number => listBillablePatientsForMonth(relationships, bounds).length;
 
 export const listBillablePatientsForMonth = (
   relationships: BillableRelationship[],
@@ -157,6 +159,8 @@ export const listBillablePatientsForMonth = (
   return billablePatients.sort((left, right) => {
     const leftName = left.fullName?.trim() ?? left.email ?? '';
     const rightName = right.fullName?.trim() ?? right.email ?? '';
-    return leftName.localeCompare(rightName, undefined, { sensitivity: 'base' });
+    return leftName.localeCompare(rightName, undefined, {
+      sensitivity: 'base',
+    });
   });
 };

@@ -39,7 +39,9 @@ type RawSection = {
   lines: string[];
 };
 
-const splitIntoSections = (text: string): Array<{ heading: string; body: string }> => {
+const splitIntoSections = (
+  text: string
+): Array<{ heading: string; body: string }> => {
   const lines = text.split('\n');
   const sections: RawSection[] = [];
   let current: RawSection = { heading: DEFAULT_SECTION_TITLE, lines: [] };
@@ -77,7 +79,10 @@ const splitIntoSections = (text: string): Array<{ heading: string; body: string 
       heading: section.heading.trim() || DEFAULT_SECTION_TITLE,
       body: normalizeWhitespace(section.lines.join('\n')),
     }))
-    .filter((section) => section.body.length > 0 || section.heading !== DEFAULT_SECTION_TITLE);
+    .filter(
+      (section) =>
+        section.body.length > 0 || section.heading !== DEFAULT_SECTION_TITLE
+    );
 };
 
 const chunkBySize = (
@@ -161,14 +166,17 @@ export const chunkDocumentText = (
   });
 
   if (!documentChunks.length && normalized) {
-    return chunkSectionBody(DEFAULT_SECTION_TITLE, normalized, chunkSize, overlap).map(
-      (content, chunkIndexInSection) => ({
-        content,
-        section: DEFAULT_SECTION_TITLE,
-        sectionIndex: 0,
-        chunkIndexInSection,
-      })
-    );
+    return chunkSectionBody(
+      DEFAULT_SECTION_TITLE,
+      normalized,
+      chunkSize,
+      overlap
+    ).map((content, chunkIndexInSection) => ({
+      content,
+      section: DEFAULT_SECTION_TITLE,
+      sectionIndex: 0,
+      chunkIndexInSection,
+    }));
   }
 
   return documentChunks;
@@ -179,4 +187,5 @@ export const chunkText = (
   text: string,
   chunkSize: number,
   overlap: number
-): string[] => chunkDocumentText(text, chunkSize, overlap).map((chunk) => chunk.content);
+): string[] =>
+  chunkDocumentText(text, chunkSize, overlap).map((chunk) => chunk.content);

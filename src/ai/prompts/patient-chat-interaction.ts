@@ -282,28 +282,28 @@ export const buildPatientChatSimplicityGuidance = (
 export const buildPresentMomentGuidance = (language: AppLanguage): string => {
   const blocks: Record<AppLanguage, string> = {
     pt: [
-      'FOCO NO AGORA (obrigatório):',
-      '- Responda e pergunte sobre o que o paciente sente ou vive NESTE MOMENTO da conversa.',
-      '- PROIBIDO marcas temporais: hoje, ontem, amanhã, esta noite, esta manhã, essa semana, recentemente, ultimamente, no resto do dia, há pouco.',
-      '- Prefira: "agora", "neste momento", "enquanto conversamos", "o que você sente", "o que percebe no corpo".',
-      '- Exemplo RUIM (temporal): "Como a tristeza afetou seu sono hoje à noite?"',
-      '- Exemplo BOM (agora): "Neste momento, além da tristeza, o que mais você sente?"',
+      'FOCO NO RELATO (obrigatório):',
+      '- Responda sobre o que o paciente descreveu: pessoa, lugar, situação ou sensação concreta.',
+      '- Pode explorar o evento que o paciente mencionou, sem fixar em calendário (evite: hoje, ontem, amanhã, essa semana).',
+      '- Prefira: "agora", "neste momento", "quando pensa nisso", "o que sente", "o que percebe no corpo".',
+      '- Exemplo RUIM (genérico): "Como você está?"',
+      '- Exemplo BOM (específico): "Quando pensa nos colegas que mencionou, o que sente no peito?"',
     ].join('\n'),
     es: [
-      'ENFOQUE EN EL AHORA (obligatorio):',
-      '- Responde y pregunta por lo que el paciente siente o vive EN ESTE MOMENTO de la conversa.',
-      '- PROHIBIDO marcas temporales: hoy, ayer, mañana, esta noche, esta mañana, esta semana, recientemente, últimamente, el resto del día.',
-      '- Prefiere: "ahora", "en este momento", "mientras conversamos", "qué siente", "qué nota en el cuerpo".',
-      '- Ejemplo MALO (temporal): "¿Cómo afectó la tristeza su sueño esta noche?"',
-      '- Ejemplo BUENO (ahora): "En este momento, además de la tristeza, ¿qué más siente?"',
+      'ENFOQUE EN EL RELATO (obligatorio):',
+      '- Responde sobre lo que el paciente describió: persona, lugar, situación o sensación concreta.',
+      '- Puede explorar el evento que mencionó, sin fijarse en calendario (evite: hoy, ayer, mañana, esta semana).',
+      '- Prefiere: "ahora", "en este momento", "cuando piensa en eso", "qué siente", "qué nota en el cuerpo".',
+      '- Ejemplo MALO (genérico): "¿Cómo está?"',
+      '- Ejemplo BUENO (específico): "Cuando piensa en los colegas que mencionó, ¿qué siente en el pecho?"',
     ].join('\n'),
     en: [
-      'PRESENT-MOMENT FOCUS (required):',
-      '- Reply and ask about what the patient feels or experiences RIGHT NOW in this conversation.',
-      '- FORBIDDEN time markers: today, yesterday, tomorrow, tonight, this morning, this week, recently, lately, rest of the day.',
-      '- Prefer: "right now", "at this moment", "as we talk", "what you feel", "what you notice in your body".',
-      '- BAD example (temporal): "How did the sadness affect your sleep tonight?"',
-      '- GOOD example (now): "Right now, besides sadness, what else do you feel?"',
+      'REPORT FOCUS (required):',
+      '- Reply about what the patient described: person, place, situation, or concrete sensation.',
+      '- You may explore the event they mentioned without calendar anchors (avoid: today, yesterday, tomorrow, this week).',
+      '- Prefer: "right now", "at this moment", "when you think about it", "what you feel", "what you notice in your body".',
+      '- BAD example (generic): "How are you?"',
+      '- GOOD example (specific): "When you think about the colleagues you mentioned, what do you feel in your chest?"',
     ].join('\n'),
   };
 
@@ -362,6 +362,252 @@ export const extractRecentAgentQuestions = (
     )
     .slice(-limit)
     .map((message) => message.text);
+
+export const PATIENT_CHAT_SIMILARITY_THRESHOLD = 0.62;
+export const PATIENT_CHAT_MAX_SIMILARITY_RETRIES = 2;
+
+export const tokenizeForSimilarity = (text: string): string[] => {
+  const normalized = text
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/\p{M}/gu, '')
+    .replace(/[^\p{L}\p{N}\s]/gu, ' ')
+    .split(/\s+/)
+    .map((token) => token.trim())
+    .filter((token) => token.length > 2);
+
+  return [...new Set(normalized)];
+};
+
+const jaccardSimilarity = (left: string[], right: string[]): number => {
+  if (!left.length || !right.length) {
+    return 0;
+  }
+
+  const leftSet = new Set(left);
+  const rightSet = new Set(right);
+  let intersection = 0;
+
+  for (const token of leftSet) {
+    if (rightSet.has(token)) {
+      intersection += 1;
+    }
+  }
+
+  const union = new Set([...leftSet, ...rightSet]).size;
+  return union === 0 ? 0 : intersection / union;
+};
+
+export const isSimilarPatientChatReply = (
+  candidate: string,
+  priorReplies: string[],
+  threshold = PATIENT_CHAT_SIMILARITY_THRESHOLD
+): boolean => {
+  const normalizedCandidate = candidate.trim();
+  if (!normalizedCandidate || !priorReplies.length) {
+    return false;
+  }
+
+  const candidateTokens = tokenizeForSimilarity(normalizedCandidate);
+  if (!candidateTokens.length) {
+    return false;
+  }
+
+  return priorReplies.some((priorReply) => {
+    const normalizedPrior = priorReply.trim();
+    if (!normalizedPrior) {
+      return false;
+    }
+
+    if (normalizedCandidate === normalizedPrior) {
+      return true;
+    }
+
+    const priorTokens = tokenizeForSimilarity(normalizedPrior);
+    return jaccardSimilarity(candidateTokens, priorTokens) >= threshold;
+  });
+};
+
+export const buildQuestionAngleGuidance = (
+  language: AppLanguage,
+  questionCount: number
+): string => {
+  const angles: Record<AppLanguage, string[]> = {
+    pt: [
+      'ÂNGULO DESTA PERGUNTA: valide o relato e explore uma SENSAÇÃO física concreta (peito, garganta, barriga, respiração).',
+      'ÂNGULO DESTA PERGUNTA: explore um PENSAMENTO ou imagem que surgiu na mente do paciente.',
+      'ÂNGULO DESTA PERGUNTA: explore uma PESSOA envolvida e o que muda quando pensa nela.',
+      'ÂNGULO DESTA PERGUNTA: explore o que o paciente gostaria que fosse diferente nessa situação.',
+      'ÂNGULO DESTA PERGUNTA: explore uma CONSEQUÊNCIA prática no dia a dia (sono, trabalho, relações).',
+    ],
+    es: [
+      'ÁNGULO DE ESTA PREGUNTA: valide el relato y explore una SENSACIÓN física concreta (pecho, garganta, respiración).',
+      'ÁNGULO DE ESTA PREGUNTA: explore un PENSAMIENTO o imagen que surgió en la mente del paciente.',
+      'ÁNGULO DE ESTA PREGUNTA: explore una PERSONA involucrada y qué cambia al pensar en ella.',
+      'ÁNGULO DE ESTA PREGUNTA: explore qué le gustaría que fuera diferente en esa situación.',
+      'ÁNGULO DE ESTA PREGUNTA: explore una CONSECUENCIA práctica en el día a día (sueño, trabajo, relaciones).',
+    ],
+    en: [
+      'ANGLE FOR THIS QUESTION: validate the report and explore a concrete BODY sensation (chest, throat, breathing).',
+      'ANGLE FOR THIS QUESTION: explore a THOUGHT or image that arose in the patient\'s mind.',
+      'ANGLE FOR THIS QUESTION: explore a PERSON involved and what shifts when thinking about them.',
+      'ANGLE FOR THIS QUESTION: explore what the patient would like to be different in that situation.',
+      'ANGLE FOR THIS QUESTION: explore a practical CONSEQUENCE in daily life (sleep, work, relationships).',
+    ],
+  };
+
+  const options = angles[language] ?? angles.pt;
+  return options[questionCount % options.length] ?? options[0]!;
+};
+
+export const buildPatientChatRetryGuidance = (
+  language: AppLanguage,
+  rejectedReply: string,
+  priorReplies: string[],
+  attempt: number
+): string => {
+  const listedQuestions = priorReplies
+    .map((question, index) => `${index + 1}. "${question}"`)
+    .join('\n');
+
+  const blocks: Record<AppLanguage, string> = {
+    pt: [
+      `RETRY ${attempt} — A resposta "${rejectedReply}" foi REJEITADA por ser similar a perguntas anteriores.`,
+      'Perguntas anteriores nesta interação:',
+      listedQuestions,
+      'Gere UMA pergunta NOVA com ângulo diferente (corpo, pensamento, pessoa, consequência ou mudança desejada).',
+      'PROIBIDO reformular a mesma pergunta com poucas palavras trocadas.',
+    ].join('\n'),
+    es: [
+      `REINTENTO ${attempt} — La respuesta "${rejectedReply}" fue RECHAZADA por ser similar a preguntas anteriores.`,
+      'Preguntas anteriores en esta interacción:',
+      listedQuestions,
+      'Genere UNA pregunta NUEVA con ángulo diferente (cuerpo, pensamiento, persona, consecuencia o cambio deseado).',
+      'PROHIBIDO reformular la misma pregunta con pocas palabras cambiadas.',
+    ].join('\n'),
+    en: [
+      `RETRY ${attempt} — The reply "${rejectedReply}" was REJECTED for being similar to prior questions.`,
+      'Prior questions in this interaction:',
+      listedQuestions,
+      'Generate ONE NEW question from a different angle (body, thought, person, consequence, or desired change).',
+      'FORBIDDEN to lightly rephrase the same question.',
+    ].join('\n'),
+  };
+
+  return blocks[language] ?? blocks.pt;
+};
+
+const extractTopicSnippetForFallback = (userMessage: string | undefined): string => {
+  const normalized = userMessage?.replace(/\s+/g, ' ').trim() ?? '';
+  if (!normalized) {
+    return '';
+  }
+
+  const words = normalized
+    .replace(/[^\p{L}\p{N}\s'-]/gu, ' ')
+    .split(/\s+/)
+    .filter((word) => word.length > 2)
+    .slice(0, 5);
+
+  if (!words.length) {
+    return normalized.slice(0, 40).trim();
+  }
+
+  let snippet = words.join(' ');
+  if (snippet.length > 40) {
+    snippet = `${snippet.slice(0, 37).trim()}…`;
+  }
+
+  return snippet;
+};
+
+export const buildDistinctPatientChatFallback = (
+  language: AppLanguage,
+  userMessage: string | undefined,
+  questionCount: number,
+  priorReplies: string[]
+): string => {
+  const snippet = extractTopicSnippetForFallback(userMessage);
+  const angleTemplates: Record<AppLanguage, Array<(topic: string) => string>> = {
+    pt: [
+      (topic) =>
+        topic
+          ? `Entendo. Qual pensamento veio primeiro quando pensou em ${topic}?`
+          : 'Entendo. Qual pensamento veio primeiro?',
+      (topic) =>
+        topic
+          ? `Entendo. Quem mais estava envolvido nessa situação com ${topic}?`
+          : 'Entendo. Quem mais estava envolvido nessa situação?',
+      (topic) =>
+        topic
+          ? `Entendo. O que muda no seu corpo quando pensa em ${topic}?`
+          : 'Entendo. O que muda no seu corpo quando pensa nisso?',
+      (topic) =>
+        topic
+          ? `Entendo. O que você gostaria que fosse diferente em relação a ${topic}?`
+          : 'Entendo. O que você gostaria que fosse diferente?',
+      (topic) =>
+        topic
+          ? `Entendo. O que mais te preocupa quando lembra de ${topic}?`
+          : 'Entendo. O que mais te preocupa nessa lembrança?',
+    ],
+    es: [
+      (topic) =>
+        topic
+          ? `Entiendo. ¿Qué pensamiento vino primero al pensar en ${topic}?`
+          : 'Entiendo. ¿Qué pensamiento vino primero?',
+      (topic) =>
+        topic
+          ? `Entiendo. ¿Quién más estuvo involucrado en esa situación con ${topic}?`
+          : 'Entiendo. ¿Quién más estuvo involucrado en esa situación?',
+      (topic) =>
+        topic
+          ? `Entiendo. ¿Qué cambia en su cuerpo cuando piensa en ${topic}?`
+          : 'Entiendo. ¿Qué cambia en su cuerpo cuando piensa en eso?',
+      (topic) =>
+        topic
+          ? `Entiendo. ¿Qué le gustaría que fuera diferente respecto a ${topic}?`
+          : 'Entiendo. ¿Qué le gustaría que fuera diferente?',
+      (topic) =>
+        topic
+          ? `Entiendo. ¿Qué más le preocupa cuando recuerda ${topic}?`
+          : 'Entiendo. ¿Qué más le preocupa en ese recuerdo?',
+    ],
+    en: [
+      (topic) =>
+        topic
+          ? `I understand. What thought came first when you thought about ${topic}?`
+          : 'I understand. What thought came first?',
+      (topic) =>
+        topic
+          ? `I understand. Who else was involved in that situation with ${topic}?`
+          : 'I understand. Who else was involved in that situation?',
+      (topic) =>
+        topic
+          ? `I understand. What changes in your body when you think about ${topic}?`
+          : 'I understand. What changes in your body when you think about it?',
+      (topic) =>
+        topic
+          ? `I understand. What would you like to be different about ${topic}?`
+          : 'I understand. What would you like to be different?',
+      (topic) =>
+        topic
+          ? `I understand. What worries you most when you remember ${topic}?`
+          : 'I understand. What worries you most about that memory?',
+    ],
+  };
+
+  const templates = angleTemplates[language] ?? angleTemplates.pt;
+  for (let offset = 0; offset < templates.length; offset += 1) {
+    const template = templates[(questionCount + offset) % templates.length]!;
+    const candidate = template(snippet);
+    if (!isSimilarPatientChatReply(candidate, priorReplies, 0.5)) {
+      return candidate;
+    }
+  }
+
+  return getPatientChatFallbackReply(language, userMessage);
+};
 
 export const buildAntiRepetitionGuidance = (
   language: AppLanguage,

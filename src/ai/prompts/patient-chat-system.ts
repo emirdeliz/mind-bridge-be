@@ -16,6 +16,8 @@ type PatientChatPromptContext = {
   chatHistory: ClinicalChatMessage[];
   questionCount: number;
   retrievalContext?: string;
+  /** When false, history is supplied as multi-turn chat messages instead. */
+  includeChatHistory?: boolean;
 };
 
 const notProvided = (language: AppLanguage): string => {
@@ -111,7 +113,10 @@ export const buildPatientChatSystemPrompt = (
   const language = normalizeAppLanguage(languageInput);
   const psychologistContext =
     context.psychologistContext.trim() || notProvided(language);
-  const history = formatChatHistory(language, context.chatHistory);
+  const includeChatHistory = context.includeChatHistory !== false;
+  const history = includeChatHistory
+    ? formatChatHistory(language, context.chatHistory)
+    : '';
   const hasContext = Boolean(context.psychologistContext.trim());
   const questionCount = context.questionCount;
 
@@ -145,7 +150,7 @@ export const buildPatientChatSystemPrompt = (
       knowledgeBlock
         ? `${knowledgeBlock}\nUse somente como referência interna. Não cite o documento nem termos técnicos ao paciente.`
         : '',
-      `Histórico recente:\n${history}`,
+      includeChatHistory ? `Histórico recente:\n${history}` : '',
       'PROIBIDO: raciocínio interno, análise, "Thinking Process", listas numeradas ou blocos de raciocínio. Envie SOMENTE a mensagem final ao paciente.',
       'Lembrete final: 1–2 frases curtas, palavras simples, uma pergunta, sem repetir o paciente.',
     ],
@@ -163,7 +168,7 @@ export const buildPatientChatSystemPrompt = (
       knowledgeBlock
         ? `${knowledgeBlock}\nÚsalo solo como referencia interna. No cites el documento ni términos técnicos al paciente.`
         : '',
-      `Historial reciente:\n${history}`,
+      includeChatHistory ? `Historial reciente:\n${history}` : '',
       'PROHIBIDO: razonamiento interno, análisis, "Thinking Process", listas numeradas o bloques de razonamiento. Envía SOLO el mensaje final al paciente.',
       'Recordatorio final: 1–2 frases cortas, palabras simples, una pregunta, sin repetir al paciente.',
     ],
@@ -181,7 +186,7 @@ export const buildPatientChatSystemPrompt = (
       knowledgeBlock
         ? `${knowledgeBlock}\nUse only as internal reference. Do not cite the document or technical terms to the patient.`
         : '',
-      `Recent history:\n${history}`,
+      includeChatHistory ? `Recent history:\n${history}` : '',
       'FORBIDDEN: internal reasoning, analysis, "Thinking Process", numbered lists, or reasoning blocks. Send ONLY the final message to the patient.',
       'Final reminder: 1–2 short sentences, simple words, one question, do not repeat the patient.',
     ],

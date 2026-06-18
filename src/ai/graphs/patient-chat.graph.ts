@@ -1,5 +1,4 @@
 import { END, START, StateGraph } from '@langchain/langgraph';
-import { HumanMessage, SystemMessage } from '@langchain/core/messages';
 
 import type { Env } from '@config/env.js';
 import {
@@ -8,18 +7,23 @@ import {
   PATIENT_CHAT_TEMPERATURE,
 } from '@ai/llm.js';
 import {
-  invokeOpenRouterChat,
   streamOpenRouterChat,
 } from '@ai/openrouter/openrouter-chat.js';
 import {
+  buildDistinctPatientChatFallback,
   countAgentQuestionsInChat,
+  extractRecentAgentQuestions,
   finalizePatientChatResponse,
   getPatientChatFallbackReply,
   isLeakedPatientChatReasoning,
+  isSimilarPatientChatReply,
+  PATIENT_CHAT_MAX_SIMILARITY_RETRIES,
 } from '@ai/prompts/patient-chat-interaction.js';
-import { buildPatientChatHumanPrompt } from '@ai/prompts/patient-chat-context-focus.js';
-import { buildPatientChatSystemPrompt } from '@ai/prompts/patient-chat-system.js';
-import { resolveLanguageInstruction } from '@ai/prompts/response-language.js';
+import {
+  buildPatientChatLangChainMessages,
+  buildPatientChatOpenRouterMessages,
+  type PatientChatGenerationContext,
+} from '@ai/prompts/patient-chat-messages.js';
 import type { ClinicalChatMessage } from '@domain/clinical-content.types.js';
 import type { AppLanguage } from '@domain/types.js';
 import { extractStreamChunkContent } from '@ai/stream-chunk-content.js';
@@ -28,45 +32,28 @@ import {
   type PatientChatState,
 } from '@ai/state/patient-chat.state.js';
 
-const buildPatientChatMessages = (
-  state: PatientChatState
-): {
-  language: AppLanguage;
-  system: SystemMessage;
-  human: HumanMessage;
-} => {
-  const language = (state.responseLanguage as AppLanguage) ?? 'pt';
-  const questionCount = countAgentQuestionsInChat(state.chatHistory);
-  const system = new SystemMessage(
-    [
-      buildPatientChatSystemPrompt(language, {
-        psychologistContext: state.careContext,
-        chatHistory: state.chatHistory,
-        questionCount,
-        retrievalContext: state.retrievalContext,
-      }),
-      resolveLanguageInstruction(language),
-    ]
-      .filter(Boolean)
-      .join('\n\n')
-  );
-  const human = new HumanMessage(
-    buildPatientChatHumanPrompt(
-      language,
-      state.userMessage,
-      state.careContext,
-      questionCount,
-      state.chatHistory
-    )
+const MAX_RETRY_TEMPERATURE = 0.55;
+const RETRY_TEMPERATURE_STEP = 0.12;
+
+const resolveGenerationTemperature = (retryAttempt: number): number =>
+  Math.min(
+    PATIENT_CHAT_TEMPERATURE + retryAttempt * RETRY_TEMPERATURE_STEP,
+    MAX_RETRY_TEMPERATURE
   );
 
-  return { language, system, human };
-};
-
-const messageContent = (message: SystemMessage | HumanMessage): string =>
-  typeof message.content === 'string'
-    ? message.content
-    : String(message.content ?? '');
+const buildGenerationContext = (
+  state: PatientChatState,
+  retryAttempt = 0,
+  rejectedReply?: string
+): PatientChatGenerationContext => ({
+  language: (state.responseLanguage as AppLanguage) ?? 'pt',
+  userMessage: state.userMessage,
+  psychologistContext: state.careContext ?? '',
+  chatHistory: state.chatHistory ?? [],
+  retrievalContext: state.retrievalContext ?? '',
+  retryAttempt,
+  rejectedReply,
+});
 
 const finalizePatientChatAssistantMessage = (
   raw: string,
@@ -81,6 +68,90 @@ const finalizePatientChatAssistantMessage = (
   return assistantMessage;
 };
 
+const streamPatientChatModelRaw = async (
+  env: Env,
+  context: PatientChatGenerationContext
+): Promise<string> => {
+  const retryAttempt = context.retryAttempt ?? 0;
+  const temperature = resolveGenerationTemperature(retryAttempt);
+
+  if (env.LLM_PROVIDER === 'openrouter') {
+    return streamOpenRouterChat(
+      env,
+      buildPatientChatOpenRouterMessages(context),
+      {
+        temperature,
+        maxTokens: PATIENT_CHAT_MAX_OUTPUT_TOKENS,
+      },
+      () => {
+        // Buffer raw output; only the sanitized reply is streamed to the patient.
+      }
+    );
+  }
+
+  const model = createPatientChatModel(env);
+  let raw = '';
+  const stream = await model.stream(buildPatientChatLangChainMessages(context));
+  for await (const chunk of stream) {
+    const piece = extractStreamChunkContent(chunk.content);
+    if (piece) {
+      raw += piece;
+    }
+  }
+
+  return raw;
+};
+
+const generatePatientChatReply = async (
+  env: Env,
+  state: PatientChatState,
+  onDelta?: (delta: string) => void
+): Promise<string> => {
+  const language = (state.responseLanguage as AppLanguage) ?? 'pt';
+  const priorReplies = extractRecentAgentQuestions(state.chatHistory ?? []);
+  const questionCount = countAgentQuestionsInChat(state.chatHistory ?? []);
+  let lastCandidate = '';
+
+  for (
+    let attempt = 0;
+    attempt <= PATIENT_CHAT_MAX_SIMILARITY_RETRIES;
+    attempt += 1
+  ) {
+    const raw = await streamPatientChatModelRaw(
+      env,
+      buildGenerationContext(state, attempt, lastCandidate || undefined)
+    );
+    const candidate = finalizePatientChatAssistantMessage(
+      raw,
+      language,
+      state.userMessage
+    );
+
+    if (
+      !priorReplies.length ||
+      !isSimilarPatientChatReply(candidate, priorReplies)
+    ) {
+      if (onDelta && candidate) {
+        onDelta(candidate);
+      }
+      return candidate;
+    }
+
+    lastCandidate = candidate;
+  }
+
+  const distinctFallback = buildDistinctPatientChatFallback(
+    language,
+    state.userMessage,
+    questionCount,
+    priorReplies
+  );
+  if (onDelta && distinctFallback) {
+    onDelta(distinctFallback);
+  }
+  return distinctFallback;
+};
+
 const buildRetrievalContext = (state: PatientChatState): string =>
   state.retrievalContext?.trim() ?? '';
 
@@ -92,39 +163,9 @@ const retrieveNode = async (
 
 const createRespondNode =
   (env: Env) =>
-  async (state: PatientChatState): Promise<Partial<PatientChatState>> => {
-    const { language, system, human } = buildPatientChatMessages(state);
-    let content: string;
-
-    if (env.LLM_PROVIDER === 'openrouter') {
-      content = await invokeOpenRouterChat(
-        env,
-        [
-          { role: 'system', content: messageContent(system) },
-          { role: 'user', content: messageContent(human) },
-        ],
-        {
-          temperature: PATIENT_CHAT_TEMPERATURE,
-          maxTokens: PATIENT_CHAT_MAX_OUTPUT_TOKENS,
-        }
-      );
-    } else {
-      const model = createPatientChatModel(env);
-      const response = await model.invoke([system, human]);
-      content =
-        typeof response.content === 'string'
-          ? response.content
-          : String(response.content);
-    }
-
-    return {
-      assistantMessage: finalizePatientChatAssistantMessage(
-        content,
-        language,
-        state.userMessage
-      ),
-    };
-  };
+  async (state: PatientChatState): Promise<Partial<PatientChatState>> => ({
+    assistantMessage: await generatePatientChatReply(env, state),
+  });
 
 export const createPatientChatGraph = (env: Env) => {
   const graph = new StateGraph(PatientChatAnnotation)
@@ -148,65 +189,20 @@ export const streamPatientChatGraph = async (
     language?: AppLanguage;
   },
   onDelta: (delta: string) => void
-): Promise<string> => {
-  const { language, system, human } = buildPatientChatMessages({
-    patientId: input.patientId,
-    userMessage: input.userMessage,
-    careContext: input.psychologistContext ?? '',
-    chatHistory: input.chatHistory ?? [],
-    responseLanguage: input.language ?? 'pt',
-    retrievalContext: input.retrievalContext ?? '',
-    assistantMessage: '',
-  });
-
-  if (env.LLM_PROVIDER === 'openrouter') {
-    const raw = await streamOpenRouterChat(
-      env,
-      [
-        { role: 'system', content: messageContent(system) },
-        { role: 'user', content: messageContent(human) },
-      ],
-      {
-        temperature: PATIENT_CHAT_TEMPERATURE,
-        maxTokens: PATIENT_CHAT_MAX_OUTPUT_TOKENS,
-      },
-      () => {
-        // Buffer raw output; stream only the sanitized patient-facing reply.
-      }
-    );
-    const finalized = finalizePatientChatAssistantMessage(
-      raw,
-      language,
-      input.userMessage
-    );
-    if (finalized) {
-      onDelta(finalized);
-    }
-    return finalized;
-  }
-
-  const model = createPatientChatModel(env);
-  let raw = '';
-  const stream = await model.stream([system, human]);
-  for await (const chunk of stream) {
-    const piece = extractStreamChunkContent(chunk.content);
-    if (!piece) {
-      continue;
-    }
-
-    raw += piece;
-  }
-
-  const finalized = finalizePatientChatAssistantMessage(
-    raw,
-    language,
-    input.userMessage
+): Promise<string> =>
+  generatePatientChatReply(
+    env,
+    {
+      patientId: input.patientId,
+      userMessage: input.userMessage,
+      careContext: input.psychologistContext ?? '',
+      chatHistory: input.chatHistory ?? [],
+      responseLanguage: input.language ?? 'pt',
+      retrievalContext: input.retrievalContext ?? '',
+      assistantMessage: '',
+    },
+    onDelta
   );
-  if (finalized) {
-    onDelta(finalized);
-  }
-  return finalized;
-};
 
 export const runPatientChatGraph = async (
   env: Env,

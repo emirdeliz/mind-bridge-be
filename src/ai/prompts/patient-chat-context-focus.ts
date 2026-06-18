@@ -4,7 +4,9 @@ import type { AppLanguage } from '@domain/types.js';
 import {
   buildAntiRepetitionGuidance,
   buildPatientChatBrevityGuidance,
+  buildPatientChatRetryGuidance,
   buildPatientChatSimplicityGuidance,
+  buildQuestionAngleGuidance,
   extractRecentAgentQuestions,
 } from './patient-chat-interaction.js';
 
@@ -40,17 +42,6 @@ export const resolveQuestionFocusHint = (
   }
 
   return focusPoints[questionCount % focusPoints.length] ?? '';
-};
-
-const formatRecentPatientMessages = (
-  chatHistory: ClinicalChatMessage[]
-): string => {
-  const patientMessages = chatHistory
-    .filter((message) => message.sender === 'user')
-    .slice(-3)
-    .map((message) => message.text);
-
-  return patientMessages.length ? patientMessages.join(' | ') : '';
 };
 
 const specificQuestionRules: Record<AppLanguage, string> = {
@@ -117,80 +108,100 @@ export const buildContextFocusBlock = (
   return blocks[language] ?? blocks.pt;
 };
 
-export const buildPatientChatHumanPrompt = (
+export const buildPatientChatTurnGuidance = (
   language: AppLanguage,
   userMessage: string,
   context: string,
   questionCount: number,
-  chatHistory: ClinicalChatMessage[] = []
+  chatHistory: ClinicalChatMessage[] = [],
+  retryAttempt = 0,
+  rejectedReply?: string
 ): string => {
   const focusHint = resolveQuestionFocusHint(context, questionCount);
-  const priorPatientMessages = formatRecentPatientMessages(chatHistory);
   const priorAgentQuestions = extractRecentAgentQuestions(chatHistory);
   const antiRepetitionBlock = buildAntiRepetitionGuidance(
     language,
     priorAgentQuestions
   );
+  const angleGuidance = buildQuestionAngleGuidance(language, questionCount);
+  const retryBlock =
+    retryAttempt > 0 && rejectedReply
+      ? buildPatientChatRetryGuidance(
+          language,
+          rejectedReply,
+          priorAgentQuestions,
+          retryAttempt
+        )
+      : '';
 
   const stepHints: Record<AppLanguage, string> = {
     pt:
       questionCount === 0
-        ? 'Valide o relato e pergunte sobre UM momento ou situação específica ligada ao que o paciente disse.'
-        : 'Com base no que já foi dito, faça UMA pergunta com ângulo NOVO — aspecto, pessoa ou consequência ainda não explorados.',
+        ? 'Primeira pergunta: valide o relato e pergunte sobre UM detalhe concreto (pessoa, lugar ou situação) da mensagem atual.'
+        : 'Faça UMA pergunta com ângulo NOVO — diferente das anteriores nesta interação.',
     es:
       questionCount === 0
-        ? 'Valide el relato y pregunte por UN momento o situación específica ligada a lo que el paciente dijo.'
-        : 'Con base en lo ya dicho, haz UNA pregunta con ángulo NUEVO — aspecto, persona o consecuencia aún no explorados.',
+        ? 'Primera pregunta: valide el relato y pregunte por UN detalle concreto (persona, lugar o situación) del mensaje actual.'
+        : 'Haga UNA pregunta con ángulo NUEVO — diferente de las anteriores en esta interacción.',
     en:
       questionCount === 0
-        ? 'Validate the report and ask about ONE specific moment or situation tied to what the patient said.'
-        : 'Based on what was already said, ask ONE question from a NEW angle — unexplored aspect, person, or consequence.',
+        ? 'First question: validate the report and ask about ONE concrete detail (person, place, or situation) from the current message.'
+        : 'Ask ONE question from a NEW angle — different from prior ones in this interaction.',
   };
 
   const blocks: Record<AppLanguage, string[]> = {
     pt: [
-      `Mensagem atual do paciente: "${userMessage}"`,
-      priorPatientMessages
-        ? `Relatos anteriores do paciente: ${priorPatientMessages}`
-        : '',
-      `Perguntas do agente até agora nesta conversa: ${questionCount}`,
+      retryBlock,
+      angleGuidance,
+      `Perguntas do agente nesta interação: ${questionCount}`,
       antiRepetitionBlock,
       specificQuestionRules.pt,
       focusHint ? `Tema do psicólogo (uso interno): ${focusHint}` : '',
       stepHints.pt,
       buildPatientChatBrevityGuidance('pt'),
       buildPatientChatSimplicityGuidance('pt'),
-      'Responda em 1–2 frases curtas. Exemplo: "Entendo. O que você sente agora ao pensar nisso?"',
+      `Responda à mensagem atual do paciente: "${userMessage}"`,
     ],
     es: [
-      `Mensaje actual del paciente: "${userMessage}"`,
-      priorPatientMessages
-        ? `Relatos anteriores del paciente: ${priorPatientMessages}`
-        : '',
-      `Preguntas del agente hasta ahora en esta conversación: ${questionCount}`,
+      retryBlock,
+      angleGuidance,
+      `Preguntas del agente en esta interacción: ${questionCount}`,
       antiRepetitionBlock,
       specificQuestionRules.es,
       focusHint ? `Tema del psicólogo (uso interno): ${focusHint}` : '',
       stepHints.es,
       buildPatientChatBrevityGuidance('es'),
       buildPatientChatSimplicityGuidance('es'),
-      'Responde en 1–2 frases cortas. Ejemplo: "Entiendo. ¿Qué siente ahora al pensar en eso?"',
+      `Responda al mensaje actual del paciente: "${userMessage}"`,
     ],
     en: [
-      `Current patient message: "${userMessage}"`,
-      priorPatientMessages
-        ? `Prior patient reports: ${priorPatientMessages}`
-        : '',
-      `Agent questions so far in this conversation: ${questionCount}`,
+      retryBlock,
+      angleGuidance,
+      `Agent questions in this interaction: ${questionCount}`,
       antiRepetitionBlock,
       specificQuestionRules.en,
       focusHint ? `Psychologist theme (internal): ${focusHint}` : '',
       stepHints.en,
       buildPatientChatBrevityGuidance('en'),
       buildPatientChatSimplicityGuidance('en'),
-      'Reply in 1–2 short sentences. Example: "I understand. What do you feel right now when you think about that?"',
+      `Reply to the patient's current message: "${userMessage}"`,
     ],
   };
 
   return (blocks[language] ?? blocks.pt).filter(Boolean).join('\n');
 };
+
+/** @deprecated Use buildPatientChatTurnGuidance with multi-turn history instead. */
+export const buildPatientChatHumanPrompt = (
+  language: AppLanguage,
+  userMessage: string,
+  context: string,
+  questionCount: number,
+  chatHistory: ClinicalChatMessage[] = []
+): string => buildPatientChatTurnGuidance(
+  language,
+  userMessage,
+  context,
+  questionCount,
+  chatHistory
+);

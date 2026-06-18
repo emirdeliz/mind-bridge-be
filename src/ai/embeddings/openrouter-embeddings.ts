@@ -1,4 +1,4 @@
-import { OpenAIEmbeddings } from '@langchain/openai';
+import OpenAI from 'openai';
 
 import type { Env } from '@config/env.js';
 
@@ -12,16 +12,37 @@ export type EmbedTextsProgress = {
   durationMs: number;
 };
 
-export const createOpenRouterEmbeddings = (env: Env): OpenAIEmbeddings =>
-  new OpenAIEmbeddings({
+const normalizeEmbeddingInput = (text: string): string => text.replace(/\n/g, ' ');
+
+const createOpenRouterEmbeddingClient = (env: Env): OpenAI =>
+  new OpenAI({
     apiKey: env.OPENROUTER_API_KEY,
-    model: env.OPENROUTER_EMBEDDING_MODEL,
+    baseURL: OPENROUTER_BASE_URL,
     timeout: env.RAG_EMBEDDING_TIMEOUT_MS,
     maxRetries: 2,
-    configuration: {
-      baseURL: OPENROUTER_BASE_URL,
+    defaultHeaders: {
+      'HTTP-Referer': env.CORS_ORIGIN,
+      'X-Title': 'Mind Bridge',
     },
   });
+
+const embedBatch = async (
+  client: OpenAI,
+  model: string,
+  texts: string[]
+): Promise<number[][]> => {
+  const { data } = await client.embeddings.create({
+    model,
+    input: texts.map(normalizeEmbeddingInput),
+    // OpenRouter does not reliably support the OpenAI SDK's default base64 path.
+    encoding_format: 'float',
+  });
+
+  return data
+    .slice()
+    .sort((left, right) => left.index - right.index)
+    .map((item) => item.embedding);
+};
 
 export const embedTexts = async (
   env: Env,
@@ -34,14 +55,18 @@ export const embedTexts = async (
     return [];
   }
 
-  const embeddings = createOpenRouterEmbeddings(env);
+  const client = createOpenRouterEmbeddingClient(env);
   const vectors: number[][] = [];
   const batchSize = env.RAG_EMBEDDING_BATCH_SIZE;
 
   for (let index = 0; index < texts.length; index += batchSize) {
     const batchStartedAt = Date.now();
     const batch = texts.slice(index, index + batchSize);
-    const batchVectors = await embeddings.embedDocuments(batch);
+    const batchVectors = await embedBatch(
+      client,
+      env.OPENROUTER_EMBEDDING_MODEL,
+      batch
+    );
     vectors.push(...batchVectors);
 
     options?.onBatchComplete?.({
@@ -60,6 +85,9 @@ export const embedQuery = async (
   env: Env,
   query: string
 ): Promise<number[]> => {
-  const embeddings = createOpenRouterEmbeddings(env);
-  return embeddings.embedQuery(query);
+  const client = createOpenRouterEmbeddingClient(env);
+  const [vector] = await embedBatch(client, env.OPENROUTER_EMBEDDING_MODEL, [
+    query,
+  ]);
+  return vector!;
 };

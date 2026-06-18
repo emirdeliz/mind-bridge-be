@@ -92,7 +92,18 @@ export const retrieveKnowledgeContext = async (
   }
 
   const language = normalizeAppLanguage(options?.languageInput);
-  const queryEmbedding = await embedQuery(env, normalizedQuery);
+
+  let queryEmbedding: number[];
+  try {
+    queryEmbedding = await embedQuery(env, normalizedQuery);
+  } catch (error) {
+    console.error(
+      '[rag] Failed to embed patient query; continuing without knowledge context.',
+      error instanceof Error ? error.message : error
+    );
+    return '';
+  }
+
   const matches = await matchKnowledgeChunks(admin, {
     queryEmbedding,
     matchCount: env.RAG_TOP_K,

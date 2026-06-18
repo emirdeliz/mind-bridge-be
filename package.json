@@ -39,6 +39,7 @@
     "@supabase/supabase-js": "^2.49.1",
     "fastify": "^5.2.1",
     "joi": "^17.13.3",
+    "openai": "^4.104.0",
     "pdf-parse": "^1.1.1"
   },
   "devDependencies": {

@@ -19,7 +19,7 @@ import { createPsychologistPatientPaymentsRoutes } from '@http/routes/psychologi
 import { createPsychologistPatientsRoutes } from '@http/routes/psychologist-patients.routes.js';
 import { createPsychologistSchedulingRoutes } from '@http/routes/psychologist-scheduling.routes.js';
 import { createKnowledgeRoutes } from '@http/routes/knowledge.routes.js';
-import { healthRoutes } from '@http/routes/health.routes.js';
+import { createHealthRoutes } from '@http/routes/health.routes.js';
 import { meRoutes } from '@http/routes/me.routes.js';
 
 export const buildServer = async (env: Env) => {
@@ -39,7 +39,7 @@ export const buildServer = async (env: Env) => {
 
   registerAuthHook(app, env);
 
-  await app.register(healthRoutes);
+  await app.register(createHealthRoutes(env));
   await app.register(createAuthRoutes(env));
   await app.register(meRoutes);
   await app.register(createAdminRoutes(env));

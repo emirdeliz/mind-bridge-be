@@ -4,6 +4,10 @@ import { HumanMessage, SystemMessage } from '@langchain/core/messages';
 import type { Env } from '@config/env.js';
 import { createPatientChatModel } from '@ai/llm.js';
 import {
+  invokeOpenRouterChat,
+  streamOpenRouterChat,
+} from '@ai/openrouter/openrouter-chat.js';
+import {
   countAgentQuestionsInChat,
   finalizePatientChatResponse,
   getPatientChatFallbackReply,
@@ -55,6 +59,11 @@ const buildPatientChatMessages = (
   return { language, system, human };
 };
 
+const messageContent = (message: SystemMessage | HumanMessage): string =>
+  typeof message.content === 'string'
+    ? message.content
+    : String(message.content ?? '');
+
 const finalizePatientChatAssistantMessage = (
   raw: string,
   language: AppLanguage
@@ -79,13 +88,29 @@ const retrieveNode = async (
 const createRespondNode =
   (env: Env) =>
   async (state: PatientChatState): Promise<Partial<PatientChatState>> => {
-    const model = createPatientChatModel(env);
     const { language, system, human } = buildPatientChatMessages(state);
-    const response = await model.invoke([system, human]);
-    const content =
-      typeof response.content === 'string'
-        ? response.content
-        : String(response.content);
+    let content: string;
+
+    if (env.LLM_PROVIDER === 'openrouter') {
+      content = await invokeOpenRouterChat(
+        env,
+        [
+          { role: 'system', content: messageContent(system) },
+          { role: 'user', content: messageContent(human) },
+        ],
+        {
+          temperature: 0.15,
+          maxTokens: 256,
+        }
+      );
+    } else {
+      const model = createPatientChatModel(env);
+      const response = await model.invoke([system, human]);
+      content =
+        typeof response.content === 'string'
+          ? response.content
+          : String(response.content);
+    }
 
     return {
       assistantMessage: finalizePatientChatAssistantMessage(content, language),
@@ -115,7 +140,6 @@ export const streamPatientChatGraph = async (
   },
   onDelta: (delta: string) => void
 ): Promise<string> => {
-  const model = createPatientChatModel(env);
   const { language, system, human } = buildPatientChatMessages({
     patientId: input.patientId,
     userMessage: input.userMessage,
@@ -126,6 +150,23 @@ export const streamPatientChatGraph = async (
     assistantMessage: '',
   });
 
+  if (env.LLM_PROVIDER === 'openrouter') {
+    const raw = await streamOpenRouterChat(
+      env,
+      [
+        { role: 'system', content: messageContent(system) },
+        { role: 'user', content: messageContent(human) },
+      ],
+      {
+        temperature: 0.15,
+        maxTokens: 256,
+      },
+      onDelta
+    );
+    return finalizePatientChatAssistantMessage(raw, language);
+  }
+
+  const model = createPatientChatModel(env);
   let raw = '';
   const stream = await model.stream([system, human]);
   for await (const chunk of stream) {

@@ -44,8 +44,14 @@ const createOpenRouterChatModel = (
     model: env.OPENROUTER_CHAT_MODEL,
     temperature,
     maxTokens: maxOutputTokens,
+    timeout: 90_000,
+    maxRetries: 1,
     configuration: {
       baseURL: OPENROUTER_BASE_URL,
+      defaultHeaders: {
+        'HTTP-Referer': env.CORS_ORIGIN,
+        'X-Title': 'Mind Bridge',
+      },
     },
   });
 

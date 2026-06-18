@@ -101,6 +101,12 @@ const envSchema = Joi.object({
     .min(1024)
     .max(52_428_800)
     .default(10_485_760),
+  ASSEMBLYAI_API_KEY: Joi.string().allow('').default(''),
+  SPEECH_MAX_FILE_BYTES: Joi.number()
+    .integer()
+    .min(1024)
+    .max(52_428_800)
+    .default(5_242_880),
 }).unknown(true);
 
 export type Env = {
@@ -129,6 +135,8 @@ export type Env = {
   RAG_CHUNK_INSERT_BATCH_SIZE: number;
   KNOWLEDGE_UPLOAD_ROLE: 'admin' | 'psychologist';
   KNOWLEDGE_MAX_FILE_BYTES: number;
+  ASSEMBLYAI_API_KEY: string;
+  SPEECH_MAX_FILE_BYTES: number;
 };
 
 export const loadEnv = (): Env => {

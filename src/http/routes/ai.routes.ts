@@ -258,24 +258,24 @@ export const createAiRoutes =
           if (forcedClosing) {
             startAiStream(reply);
           }
+
+          await persistPatientChatExchange(env, admin, request.log, {
+            patientId: auth.userId,
+            userMessage: body.message,
+            reply: agentReply,
+            language,
+            interactionId,
+            isNewInteraction,
+            isInteractionEnd,
+            userMessageId,
+            agentMessageId,
+          });
+
           finishAiStream(reply, {
             type: 'done',
             message: agentReply,
             messages: persistedMessages,
           });
-          runInBackground(request.log, 'patient-chat-persist', () =>
-            persistPatientChatExchange(env, admin, request.log, {
-              patientId: auth.userId,
-              userMessage: body.message,
-              reply: agentReply,
-              language,
-              interactionId,
-              isNewInteraction,
-              isInteractionEnd,
-              userMessageId,
-              agentMessageId,
-            })
-          );
           return reply;
         }
 

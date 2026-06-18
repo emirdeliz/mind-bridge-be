@@ -7,6 +7,12 @@ import type { Env } from '@config/env.js';
 
 const OPENROUTER_BASE_URL = 'https://openrouter.ai/api/v1';
 
+/** Patient chat — balance between variety and brief, on-format replies. */
+export const PATIENT_CHAT_TEMPERATURE = 0.3;
+
+/** Patient chat generation budget; sentence cap applied in post-processing. */
+export const PATIENT_CHAT_MAX_OUTPUT_TOKENS = 256;
+
 type ChatModelOptions = {
   temperature: number;
   maxOutputTokens?: number;
@@ -83,8 +89,8 @@ export const createPsychologistCopilotModel = (env: Env) =>
 /** Patient ↔ AI chat — brief replies; sentence cap applied in post-processing. */
 export const createPatientChatModel = (env: Env) =>
   createChatModelForProvider(env, {
-    temperature: 0.15,
-    maxOutputTokens: 256,
+    temperature: PATIENT_CHAT_TEMPERATURE,
+    maxOutputTokens: PATIENT_CHAT_MAX_OUTPUT_TOKENS,
   });
 
 /** Structured JSON output for dashboard analytics after session end. */

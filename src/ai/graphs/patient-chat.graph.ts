@@ -2,7 +2,11 @@ import { END, START, StateGraph } from '@langchain/langgraph';
 import { HumanMessage, SystemMessage } from '@langchain/core/messages';
 
 import type { Env } from '@config/env.js';
-import { createPatientChatModel } from '@ai/llm.js';
+import {
+  createPatientChatModel,
+  PATIENT_CHAT_MAX_OUTPUT_TOKENS,
+  PATIENT_CHAT_TEMPERATURE,
+} from '@ai/llm.js';
 import {
   invokeOpenRouterChat,
   streamOpenRouterChat,
@@ -66,11 +70,12 @@ const messageContent = (message: SystemMessage | HumanMessage): string =>
 
 const finalizePatientChatAssistantMessage = (
   raw: string,
-  language: AppLanguage
+  language: AppLanguage,
+  userMessage?: string
 ): string => {
   let assistantMessage = finalizePatientChatResponse(raw);
   if (!assistantMessage || isLeakedPatientChatReasoning(assistantMessage)) {
-    assistantMessage = getPatientChatFallbackReply(language);
+    assistantMessage = getPatientChatFallbackReply(language, userMessage);
   }
 
   return assistantMessage;
@@ -99,8 +104,8 @@ const createRespondNode =
           { role: 'user', content: messageContent(human) },
         ],
         {
-          temperature: 0.15,
-          maxTokens: 256,
+          temperature: PATIENT_CHAT_TEMPERATURE,
+          maxTokens: PATIENT_CHAT_MAX_OUTPUT_TOKENS,
         }
       );
     } else {
@@ -113,7 +118,11 @@ const createRespondNode =
     }
 
     return {
-      assistantMessage: finalizePatientChatAssistantMessage(content, language),
+      assistantMessage: finalizePatientChatAssistantMessage(
+        content,
+        language,
+        state.userMessage
+      ),
     };
   };
 
@@ -158,12 +167,22 @@ export const streamPatientChatGraph = async (
         { role: 'user', content: messageContent(human) },
       ],
       {
-        temperature: 0.15,
-        maxTokens: 256,
+        temperature: PATIENT_CHAT_TEMPERATURE,
+        maxTokens: PATIENT_CHAT_MAX_OUTPUT_TOKENS,
       },
-      onDelta
+      () => {
+        // Buffer raw output; stream only the sanitized patient-facing reply.
+      }
     );
-    return finalizePatientChatAssistantMessage(raw, language);
+    const finalized = finalizePatientChatAssistantMessage(
+      raw,
+      language,
+      input.userMessage
+    );
+    if (finalized) {
+      onDelta(finalized);
+    }
+    return finalized;
   }
 
   const model = createPatientChatModel(env);
@@ -176,10 +195,17 @@ export const streamPatientChatGraph = async (
     }
 
     raw += piece;
-    onDelta(piece);
   }
 
-  return finalizePatientChatAssistantMessage(raw, language);
+  const finalized = finalizePatientChatAssistantMessage(
+    raw,
+    language,
+    input.userMessage
+  );
+  if (finalized) {
+    onDelta(finalized);
+  }
+  return finalized;
 };
 
 export const runPatientChatGraph = async (

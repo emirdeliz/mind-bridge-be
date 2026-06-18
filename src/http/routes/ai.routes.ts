@@ -289,33 +289,38 @@ export const createAiRoutes =
         if (useStream) {
           if (forcedClosing) {
             startAiStream(reply);
+            writeAiStreamEvent(reply, { type: 'delta', delta: agentReply });
+          }
+
+          try {
+            await persistPatientChatExchange(env, admin, request.log, {
+              patientId: auth.userId,
+              userMessage: body.message,
+              reply: agentReply,
+              language,
+              interactionId,
+              isNewInteraction,
+              isInteractionEnd,
+              userMessageId,
+              agentMessageId,
+            });
+          } catch (error) {
+            request.log.error(
+              { err: error, patientId: auth.userId },
+              'patient-chat-persist failed'
+            );
+            writeAiStreamEvent(reply, {
+              type: 'error',
+              error: 'Failed to save chat message',
+            });
+            endAiStream(reply);
+            throw error;
           }
 
           finishAiStream(reply, {
             type: 'done',
             message: agentReply,
             messages: persistedMessages,
-          });
-
-          runInBackground(request.log, 'patient-chat-persist', async () => {
-            try {
-              await persistPatientChatExchange(env, admin, request.log, {
-                patientId: auth.userId,
-                userMessage: body.message,
-                reply: agentReply,
-                language,
-                interactionId,
-                isNewInteraction,
-                isInteractionEnd,
-                userMessageId,
-                agentMessageId,
-              });
-            } catch (error) {
-              request.log.error(
-                { err: error, patientId: auth.userId },
-                'patient-chat-persist failed'
-              );
-            }
           });
           return reply;
         }

@@ -7,7 +7,7 @@ const ANALYSIS_LINE_PATTERN =
   /^\s*(\d+\.\s*)?(\*{1,2})?(analyze|analysis|constraints|role|step|reasoning)/i;
 
 const PATIENT_RESPONSE_STARTERS =
-  /\b(comprendo|agradeço|agradezco|thank you|i understand|poderia|could you|gostaria|em que|na conversa|durante|quando você|how did|en la conversación|en qué momento)\b/i;
+  /\b(entendo|entiendo|i understand|comprendo|agradeço|agradezco|thank you|poderia|could you|gostaria|em que|na conversa|durante|quando você|how did|en la conversación|en qué momento|o que você|what do you|qué siente)\b/i;
 
 const OPEN_THINK_TAG = '\u003cthink\u003e';
 const CLOSE_THINK_TAG = '\u003c/think\u003e';
@@ -36,11 +36,69 @@ export const isLeakedPatientChatReasoning = (text: string): boolean => {
   }
 
   const firstLine = cleaned.split('\n')[0] ?? '';
+  const looksLikeShortReply =
+    cleaned.length <= 160 &&
+    !THINKING_PROCESS_PATTERN.test(cleaned) &&
+    !ANALYSIS_LINE_PATTERN.test(firstLine) &&
+    !/^\d+\.\s*\*\*/.test(cleaned);
+
+  if (looksLikeShortReply) {
+    return false;
+  }
+
   return (
     THINKING_PROCESS_PATTERN.test(cleaned) ||
     ANALYSIS_LINE_PATTERN.test(firstLine) ||
     /^\d+\.\s*\*\*/.test(cleaned)
   );
+};
+
+/** Last patient-facing question in raw model output (before compacting). */
+export const extractLastQuestionFromRaw = (text: string): string => {
+  const cleaned = stripThinkTags(text.trim());
+  if (!cleaned) {
+    return '';
+  }
+
+  const questionSentences =
+    cleaned.match(/[^?\n]{8,}\?/g)?.map((part) => part.trim()) ?? [];
+
+  for (let index = questionSentences.length - 1; index >= 0; index -= 1) {
+    const candidate = questionSentences[index] ?? '';
+    if (!candidate || ANALYSIS_LINE_PATTERN.test(candidate)) {
+      continue;
+    }
+    if (/^\d+\.\s*\*\*/.test(candidate)) {
+      continue;
+    }
+    return candidate;
+  }
+
+  return '';
+};
+
+const extractTopicSnippet = (userMessage: string | undefined): string => {
+  const normalized = userMessage?.replace(/\s+/g, ' ').trim() ?? '';
+  if (!normalized) {
+    return '';
+  }
+
+  const words = normalized
+    .replace(/[^\p{L}\p{N}\s'-]/gu, ' ')
+    .split(/\s+/)
+    .filter((word) => word.length > 2)
+    .slice(0, 6);
+
+  if (!words.length) {
+    return normalized.slice(0, 48).trim();
+  }
+
+  let snippet = words.join(' ');
+  if (snippet.length > 48) {
+    snippet = `${snippet.slice(0, 45).trim()}…`;
+  }
+
+  return snippet;
 };
 
 /** Removes leaked chain-of-thought before showing text to the patient. */
@@ -130,8 +188,21 @@ export const compactPatientChatResponse = (
   return splitSentences(normalized).slice(0, maxSentences).join(' ').trim();
 };
 
-export const finalizePatientChatResponse = (text: string): string =>
-  compactPatientChatResponse(sanitizePatientChatResponse(text));
+export const finalizePatientChatResponse = (text: string): string => {
+  const sanitized = compactPatientChatResponse(sanitizePatientChatResponse(text));
+  if (sanitized) {
+    return sanitized;
+  }
+
+  const recoveredQuestion = compactPatientChatResponse(
+    extractLastQuestionFromRaw(text)
+  );
+  if (recoveredQuestion && !isLeakedPatientChatReasoning(recoveredQuestion)) {
+    return recoveredQuestion;
+  }
+
+  return '';
+};
 
 const FALLBACK_REPLIES: Record<AppLanguage, string> = {
   pt: 'Entendo. O que você sente agora?',
@@ -239,8 +310,23 @@ export const buildPresentMomentGuidance = (language: AppLanguage): string => {
   return blocks[language] ?? blocks.pt;
 };
 
-export const getPatientChatFallbackReply = (language: AppLanguage): string =>
-  FALLBACK_REPLIES[language] ?? FALLBACK_REPLIES.pt;
+export const getPatientChatFallbackReply = (
+  language: AppLanguage,
+  userMessage?: string
+): string => {
+  const snippet = extractTopicSnippet(userMessage);
+
+  if (snippet) {
+    const contextual: Record<AppLanguage, string> = {
+      pt: `Entendo. O que você sente agora sobre ${snippet}?`,
+      es: `Entiendo. ¿Qué siente ahora sobre ${snippet}?`,
+      en: `I understand. What do you feel right now about ${snippet}?`,
+    };
+    return contextual[language] ?? contextual.pt;
+  }
+
+  return FALLBACK_REPLIES[language] ?? FALLBACK_REPLIES.pt;
+};
 
 /** @deprecated Legacy closing messages still recognized in old chat history. */
 const LEGACY_CLOSING_MESSAGES: Record<AppLanguage, string> = {

@@ -166,23 +166,15 @@ export const updatePatientDashboardSnapshot = async (
   patientId: string,
   dashboardSnapshot: DashboardSnapshot
 ): Promise<PatientClinicalContent> => {
-  const content = await ensurePatientClinicalContent(admin, patientId);
+  await ensurePatientClinicalContent(admin, patientId);
+  await patchPatientClinicalContent(admin, patientId, { dashboardSnapshot });
 
-  const nextPayload: ClinicalContentSeedPayload = {
-    dashboardSnapshot,
-    sessionContext: content.sessionContext,
-    sessionNotes: content.sessionNotes,
-    sessionInsights: content.sessionInsights,
-    psychologistSummary: content.psychologistSummary,
-    psychologistChatSeed: content.psychologistChatSeed,
-    patientChatSeed: content.patientChatSeed,
-    patientSummary: content.patientSummary,
-    anamnesis: content.anamnesis,
-  };
+  const content = await getPatientClinicalContent(admin, patientId);
+  if (!content) {
+    throw new Error('Failed to load clinical content after dashboard update');
+  }
 
-  await upsertPatientClinicalContent(admin, patientId, nextPayload);
-
-  return { patientId, ...nextPayload };
+  return content;
 };
 
 export const appendPatientChatMessages = async (
@@ -197,21 +189,9 @@ export const appendPatientChatMessages = async (
   const content = await ensurePatientClinicalContent(admin, patientId);
   const patientChatSeed = [...content.patientChatSeed, ...messages];
 
-  const nextPayload: ClinicalContentSeedPayload = {
-    dashboardSnapshot: content.dashboardSnapshot,
-    sessionContext: content.sessionContext,
-    sessionNotes: content.sessionNotes,
-    sessionInsights: content.sessionInsights,
-    psychologistSummary: content.psychologistSummary,
-    psychologistChatSeed: content.psychologistChatSeed,
-    patientChatSeed,
-    patientSummary: content.patientSummary,
-    anamnesis: content.anamnesis,
-  };
+  await patchPatientClinicalContent(admin, patientId, { patientChatSeed });
 
-  await upsertPatientClinicalContent(admin, patientId, nextPayload);
-
-  return { patientId, ...nextPayload };
+  return { ...content, patientChatSeed };
 };
 
 export const appendPsychologistChatMessages = async (
@@ -260,29 +240,24 @@ export const updatePatientInteractionSummary = async (
     patientSummaryUserMessageCount ??
     content.patientChatSeed.filter((entry) => entry.sender === 'user').length;
 
-  const nextPayload: ClinicalContentSeedPayload = {
-    dashboardSnapshot: content.dashboardSnapshot,
-    sessionContext: content.sessionContext,
-    sessionNotes: content.sessionNotes,
-    sessionInsights: content.sessionInsights,
-    psychologistSummary: content.psychologistSummary,
-    psychologistChatSeed: content.psychologistChatSeed,
-    patientChatSeed: content.patientChatSeed,
-    patientSummary,
-    anamnesis: content.anamnesis,
-  };
-
-  await upsertPatientClinicalContent(admin, patientId, nextPayload);
-  await admin
+  await patchPatientClinicalContent(admin, patientId, { patientSummary });
+  const { error: countError } = await admin
     .from('patient_clinical_content')
     .update({
       patient_summary_user_message_count: summaryUserMessageCount,
+      updated_at: new Date().toISOString(),
     })
     .eq('patient_id', patientId);
 
+  if (countError) {
+    throw new Error(
+      `Failed to update patient summary cursor: ${countError.message}`
+    );
+  }
+
   return {
-    patientId,
-    ...nextPayload,
+    ...content,
+    patientSummary,
     patientSummaryUserMessageCount: summaryUserMessageCount,
   };
 };
@@ -292,23 +267,22 @@ export const updatePsychologistSessionInsights = async (
   patientId: string,
   payload: UpdatePsychologistSessionInsightsPayload
 ): Promise<PatientClinicalContent> => {
-  const content = await ensurePatientClinicalContent(admin, patientId);
+  await ensurePatientClinicalContent(admin, patientId);
 
-  const nextPayload: ClinicalContentSeedPayload = {
-    dashboardSnapshot: payload.dashboardSnapshot ?? content.dashboardSnapshot,
-    sessionContext: content.sessionContext,
-    sessionNotes: content.sessionNotes,
-    sessionInsights: payload.sessionInsights,
+  await patchPatientClinicalContent(admin, patientId, {
+    ...(payload.dashboardSnapshot
+      ? { dashboardSnapshot: payload.dashboardSnapshot }
+      : {}),
     psychologistSummary: payload.psychologistSummary,
-    psychologistChatSeed: content.psychologistChatSeed,
-    patientChatSeed: content.patientChatSeed,
-    patientSummary: content.patientSummary,
-    anamnesis: content.anamnesis,
-  };
+    sessionInsights: payload.sessionInsights,
+  });
 
-  await upsertPatientClinicalContent(admin, patientId, nextPayload);
+  const refreshed = await getPatientClinicalContent(admin, patientId);
+  if (!refreshed) {
+    throw new Error('Failed to load clinical content after insights update');
+  }
 
-  return { patientId, ...nextPayload };
+  return refreshed;
 };
 
 export const updatePsychologistPatientClinicalSession = async (
@@ -458,6 +432,24 @@ export const upsertPatientClinicalContent = async (
 
   if (error) {
     throw new Error(`Failed to upsert clinical content: ${error.message}`);
+  }
+};
+
+const patchPatientClinicalContent = async (
+  admin: SupabaseClient,
+  patientId: string,
+  patch: Record<string, unknown>
+): Promise<void> => {
+  const { error } = await admin
+    .from('patient_clinical_content')
+    .update({
+      ...toSnakeRecord(patch),
+      updated_at: new Date().toISOString(),
+    })
+    .eq('patient_id', patientId);
+
+  if (error) {
+    throw new Error(`Failed to patch clinical content: ${error.message}`);
   }
 };
 

@@ -88,6 +88,12 @@ const envSchema = Joi.object({
     .min(5_000)
     .max(600_000)
     .default(120_000),
+  RAG_EMBEDDING_MAX_RETRIES: Joi.number().integer().min(1).max(8).default(4),
+  RAG_RETRIEVAL_TIMEOUT_MS: Joi.number()
+    .integer()
+    .min(1_000)
+    .max(120_000)
+    .default(12_000),
   RAG_CHUNK_INSERT_BATCH_SIZE: Joi.number()
     .integer()
     .min(10)
@@ -132,6 +138,8 @@ export type Env = {
   RAG_MAX_CHUNKS_PER_DOCUMENT: number;
   RAG_EMBEDDING_BATCH_SIZE: number;
   RAG_EMBEDDING_TIMEOUT_MS: number;
+  RAG_EMBEDDING_MAX_RETRIES: number;
+  RAG_RETRIEVAL_TIMEOUT_MS: number;
   RAG_CHUNK_INSERT_BATCH_SIZE: number;
   KNOWLEDGE_UPLOAD_ROLE: 'admin' | 'psychologist';
   KNOWLEDGE_MAX_FILE_BYTES: number;

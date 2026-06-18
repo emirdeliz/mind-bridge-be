@@ -91,23 +91,46 @@ export const retrieveKnowledgeContext = async (
     return '';
   }
 
-  const language = normalizeAppLanguage(options?.languageInput);
-
-  let queryEmbedding: number[];
   try {
-    queryEmbedding = await embedQuery(env, normalizedQuery);
+    return await Promise.race([
+      retrieveKnowledgeContextInternal(env, admin, normalizedQuery, {
+        languageInput: options?.languageInput,
+        psychologistIds,
+      }),
+      new Promise<string>((_, reject) => {
+        setTimeout(() => {
+          reject(
+            new Error(
+              `Knowledge retrieval timed out after ${env.RAG_RETRIEVAL_TIMEOUT_MS}ms`
+            )
+          );
+        }, env.RAG_RETRIEVAL_TIMEOUT_MS);
+      }),
+    ]);
   } catch (error) {
     console.error(
-      '[rag] Failed to embed patient query; continuing without knowledge context.',
+      '[rag] Knowledge retrieval failed; continuing without context.',
       error instanceof Error ? error.message : error
     );
     return '';
   }
+};
 
+const retrieveKnowledgeContextInternal = async (
+  env: Env,
+  admin: SupabaseClient,
+  normalizedQuery: string,
+  options: {
+    languageInput?: unknown;
+    psychologistIds: string[];
+  }
+): Promise<string> => {
+  const language = normalizeAppLanguage(options.languageInput);
+  const queryEmbedding = await embedQuery(env, normalizedQuery);
   const matches = await matchKnowledgeChunks(admin, {
     queryEmbedding,
     matchCount: env.RAG_TOP_K,
-    psychologistIds,
+    psychologistIds: options.psychologistIds,
   });
 
   const relevant = matches.filter(

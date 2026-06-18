@@ -77,7 +77,7 @@ export const retrieveKnowledgeContext = async (
     psychologistIds?: string[];
   }
 ): Promise<string> => {
-  if (!env.RAG_ENABLED) {
+  if (!env.RAG_ENABLED || !env.RAG_CHAT_ENABLED) {
     return '';
   }
 
@@ -126,7 +126,9 @@ const retrieveKnowledgeContextInternal = async (
   }
 ): Promise<string> => {
   const language = normalizeAppLanguage(options.languageInput);
-  const queryEmbedding = await embedQuery(env, normalizedQuery);
+  const queryEmbedding = await embedQuery(env, normalizedQuery, {
+    timeoutMs: env.RAG_CHAT_EMBEDDING_TIMEOUT_MS,
+  });
   const matches = await matchKnowledgeChunks(admin, {
     queryEmbedding,
     matchCount: env.RAG_TOP_K,

@@ -159,6 +159,37 @@ const joinRetrievalContexts = (
     .filter((section): section is string => Boolean(section))
     .join('\n\n');
 
+const loadKnowledgeRetrievalContext = async (
+  env: Env,
+  admin: ReturnType<typeof createAdminSupabaseClient>,
+  logger: FastifyBaseLogger,
+  input: {
+    query: string;
+    language: AppLanguage;
+    psychologistIds: string[];
+  }
+): Promise<string> => {
+  if (!env.RAG_ENABLED || !env.RAG_CHAT_ENABLED || !input.psychologistIds.length) {
+    return '';
+  }
+
+  try {
+    return await retrieveKnowledgeContext(env, admin, input.query, {
+      languageInput: input.language,
+      psychologistIds: input.psychologistIds,
+    });
+  } catch (error) {
+    logger.warn(
+      {
+        err: error instanceof Error ? error.message : error,
+        psychologistCount: input.psychologistIds.length,
+      },
+      'patient knowledge retrieval failed; continuing without RAG'
+    );
+    return '';
+  }
+};
+
 export const createAiRoutes =
   (env: Env): FastifyPluginAsync =>
   async (app) => {
@@ -202,8 +233,9 @@ export const createAiRoutes =
           await listActivePsychologistIdsForPatient(admin, auth.userId);
         const knowledgeRetrieval = forcedClosing
           ? ''
-          : await retrieveKnowledgeContext(env, admin, body.message, {
-              languageInput: language,
+          : await loadKnowledgeRetrievalContext(env, admin, request.log, {
+              query: body.message,
+              language,
               psychologistIds: patientPsychologistIds,
             });
 
@@ -358,15 +390,13 @@ export const createAiRoutes =
             anamnesis: clinicalContent.anamnesis,
           }
         );
-        const knowledgeRetrieval = await retrieveKnowledgeContext(
-          env,
-          admin,
-          body.message,
-          {
-            languageInput: psychologistLanguage,
-            psychologistIds: [auth.userId],
-          }
-        );
+        const knowledgeRetrieval = env.RAG_CHAT_ENABLED
+          ? await loadKnowledgeRetrievalContext(env, admin, request.log, {
+              query: body.message,
+              language: psychologistLanguage,
+              psychologistIds: [auth.userId],
+            })
+          : '';
         const retrievalContext = joinRetrievalContexts(
           clinicalRetrieval,
           knowledgeRetrieval

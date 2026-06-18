@@ -71,6 +71,7 @@ const envSchema = Joi.object({
   OLLAMA_CHAT_MODEL: Joi.string().default('gemma4'),
   OLLAMA_EMBEDDING_MODEL: Joi.string().default('nomic-embed-text'),
   RAG_ENABLED: Joi.boolean().truthy('true').falsy('false').default(false),
+  RAG_CHAT_ENABLED: Joi.boolean().truthy('true').falsy('false').default(true),
   OPENROUTER_EMBEDDING_MODEL: Joi.string().default(
     'openai/text-embedding-3-small'
   ),
@@ -88,12 +89,22 @@ const envSchema = Joi.object({
     .min(5_000)
     .max(600_000)
     .default(120_000),
-  RAG_EMBEDDING_MAX_RETRIES: Joi.number().integer().min(1).max(8).default(4),
+  RAG_EMBEDDING_MAX_RETRIES: Joi.number().integer().min(1).max(8).default(3),
+  RAG_CHAT_EMBEDDING_TIMEOUT_MS: Joi.number()
+    .integer()
+    .min(2_000)
+    .max(60_000)
+    .default(8_000),
+  RAG_EMBEDDING_CIRCUIT_MS: Joi.number()
+    .integer()
+    .min(10_000)
+    .max(3_600_000)
+    .default(300_000),
   RAG_RETRIEVAL_TIMEOUT_MS: Joi.number()
     .integer()
     .min(1_000)
     .max(120_000)
-    .default(12_000),
+    .default(8_000),
   RAG_CHUNK_INSERT_BATCH_SIZE: Joi.number()
     .integer()
     .min(10)
@@ -131,6 +142,7 @@ export type Env = {
   OLLAMA_CHAT_MODEL: string;
   OLLAMA_EMBEDDING_MODEL: string;
   RAG_ENABLED: boolean;
+  RAG_CHAT_ENABLED: boolean;
   OPENROUTER_EMBEDDING_MODEL: string;
   RAG_TOP_K: number;
   RAG_CHUNK_SIZE: number;
@@ -139,6 +151,8 @@ export type Env = {
   RAG_EMBEDDING_BATCH_SIZE: number;
   RAG_EMBEDDING_TIMEOUT_MS: number;
   RAG_EMBEDDING_MAX_RETRIES: number;
+  RAG_CHAT_EMBEDDING_TIMEOUT_MS: number;
+  RAG_EMBEDDING_CIRCUIT_MS: number;
   RAG_RETRIEVAL_TIMEOUT_MS: number;
   RAG_CHUNK_INSERT_BATCH_SIZE: number;
   KNOWLEDGE_UPLOAD_ROLE: 'admin' | 'psychologist';

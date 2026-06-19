@@ -37,7 +37,7 @@ export const isLeakedPatientChatReasoning = (text: string): boolean => {
 
   const firstLine = cleaned.split('\n')[0] ?? '';
   const looksLikeShortReply =
-    cleaned.length <= 160 &&
+    cleaned.length <= 220 &&
     !THINKING_PROCESS_PATTERN.test(cleaned) &&
     !ANALYSIS_LINE_PATTERN.test(firstLine) &&
     !/^\d+\.\s*\*\*/.test(cleaned);
@@ -158,7 +158,7 @@ export const sanitizePatientChatResponse = (text: string): string => {
   return cleaned;
 };
 
-const PATIENT_CHAT_MAX_SENTENCES = 2;
+const PATIENT_CHAT_MAX_SENTENCES = 3;
 
 const splitSentences = (text: string): string[] =>
   text
@@ -205,9 +205,9 @@ export const finalizePatientChatResponse = (text: string): string => {
 };
 
 const FALLBACK_REPLIES: Record<AppLanguage, string> = {
-  pt: 'Entendo. O que você sente agora?',
-  es: 'Entiendo. ¿Qué siente ahora?',
-  en: 'I understand. What do you feel right now?',
+  pt: 'O que mais ficou com você depois do que contou?',
+  es: '¿Qué fue lo que más se quedó con usted después de lo que contó?',
+  en: 'What stayed with you most after what you shared?',
 };
 
 export const buildPatientChatBrevityGuidance = (
@@ -215,28 +215,31 @@ export const buildPatientChatBrevityGuidance = (
 ): string => {
   const blocks: Record<AppLanguage, string> = {
     pt: [
-      'TAMANHO DA RESPOSTA (obrigatório — prioridade máxima):',
-      '- NO MÁXIMO 2 frases curtas. Ideal: 1 frase só.',
-      '- Formato padrão: UMA pergunta curta — ou só a pergunta.',
-      '- PROIBIDO: parágrafos, listas, repetir o relato, validações longas.',
-      'Exemplo RUIM: "Compreendo que compartilhar isso deve ser difícil; quando você pensa nessa situação com os colegas, o que sente no corpo neste momento?"',
-      'Exemplo BOM: "Entendo. O que você sente agora ao pensar nos colegas?"',
+      'FORMATO DA RESPOSTA:',
+      '- Até 3 frases curtas. Pode começar com acolhimento breve (1 frase) + UMA pergunta aberta.',
+      '- A pergunta deve convidar o paciente a elaborar — não apenas confirmar com sim/não.',
+      '- PROIBIDO: parágrafos, listas, repetir o relato inteiro, validações longas.',
+      'Exemplo RUIM (fechado e formulaico): "O que você sente agora?"',
+      'Exemplo BOM (aberto): "Quando pensa na conversa com seus colegas, o que mais pesa para você nessa situação?"',
+      'Exemplo BOM (aberto): "Como você descreveria o que passou dentro de você naquele momento?"',
     ].join('\n'),
     es: [
-      'TAMAÑO DE LA RESPUESTA (obligatorio — máxima prioridad):',
-      '- COMO MÁXIMO 2 frases cortas. Ideal: 1 sola frase.',
-      '- Formato estándar: UNA pregunta corta — o solo la pregunta.',
-      '- PROHIBIDO: párrafos, listas, repetir el relato, validaciones largas.',
-      'Ejemplo MALO: "Comprendo que compartir esto debe ser difícil; cuando piensa en esa situación con los colegas, ¿qué siente en el cuerpo en este momento?"',
-      'Ejemplo BUENO: "Entiendo. ¿Qué siente ahora al pensar en los colegas?"',
+      'FORMATO DE LA RESPUESTA:',
+      '- Hasta 3 frases cortas. Puede empezar con acogida breve (1 frase) + UNA pregunta abierta.',
+      '- La pregunta debe invitar a elaborar — no solo confirmar con sí/no.',
+      '- PROHIBIDO: párrafos, listas, repetir todo el relato, validaciones largas.',
+      'Ejemplo MALO (cerrado y formulaico): "¿Qué siente ahora?"',
+      'Ejemplo BUENO (abierto): "Cuando piensa en la conversación con sus colegas, ¿qué pesa más para usted en esa situación?"',
+      'Ejemplo BUENO (abierto): "¿Cómo describiría lo que pasó dentro de usted en ese momento?"',
     ].join('\n'),
     en: [
-      'REPLY LENGTH (required — top priority):',
-      '- AT MOST 2 short sentences. Ideal: 1 sentence only.',
-      '- Default format: ONE short question — or just the question.',
-      '- FORBIDDEN: paragraphs, lists, repeating the report, long validations.',
-      'BAD example: "I understand that sharing this must be hard; when you think about that situation with colleagues, what do you feel in your body right now?"',
-      'GOOD example: "I understand. What do you feel right now when you think about your colleagues?"',
+      'REPLY FORMAT:',
+      '- Up to 3 short sentences. You may start with brief acknowledgment (1 sentence) + ONE open question.',
+      '- The question should invite the patient to elaborate — not just confirm with yes/no.',
+      '- FORBIDDEN: paragraphs, lists, repeating the full report, long validations.',
+      'BAD example (closed and formulaic): "What do you feel right now?"',
+      'GOOD example (open): "When you think about the conversation with your colleagues, what weighs on you most in that situation?"',
+      'GOOD example (open): "How would you describe what went on inside you in that moment?"',
     ].join('\n'),
   };
 
@@ -249,24 +252,63 @@ export const buildPatientChatSimplicityGuidance = (
   const blocks: Record<AppLanguage, string> = {
     pt: [
       'LINGUAGEM SIMPLES (obrigatório):',
-      '- Palavras do dia a dia. Frases diretas.',
-      '- PROIBIDO: termos clínicos, siglas, frases compostas longas, conectores em excesso (além disso, nesse sentido, por outro lado).',
-      '- PROIBIDO começar com: "Agradeço por compartilhar", "Compreendo que isso deve ser", "Entendo como deve ser difícil".',
-      '- Uma ideia por frase. Sem explicações.',
+      '- Palavras do dia a dia, como numa conversa de consultório acolhedora.',
+      '- PROIBIDO: termos clínicos, siglas, diagnósticos, nomes de terapias.',
+      '- Evite frases de manual ("Agradeço por compartilhar", "Compreendo que deve ser difícil").',
+      '- Prefira curiosidade genuína: "O que isso despertou em você?", "Como foi para você?", "O que mais te chamou atenção?".',
     ].join('\n'),
     es: [
       'LENGUAJE SIMPLE (obligatorio):',
-      '- Palabras cotidianas. Frases directas.',
-      '- PROHIBIDO: términos clínicos, siglas, frases compuestas largas, conectores en exceso.',
-      '- PROHIBIDO empezar con: "Agradezco que comparta", "Comprendo que esto debe ser", "Entiendo lo difícil que es".',
-      '- Una idea por frase. Sin explicaciones.',
+      '- Palabras cotidianas, como en una conversación acogedora de consulta.',
+      '- PROHIBIDO: términos clínicos, siglas, diagnósticos, nombres de terapias.',
+      '- Evite frases de manual ("Agradezco que comparta", "Comprendo que debe ser difícil").',
+      '- Prefiera curiosidad genuina: "¿Qué le despertó esto?", "¿Cómo fue para usted?", "¿Qué más le llamó la atención?".',
     ].join('\n'),
     en: [
       'SIMPLE LANGUAGE (required):',
-      '- Everyday words. Direct sentences.',
-      '- FORBIDDEN: clinical terms, acronyms, long compound sentences, excess connectors.',
-      '- FORBIDDEN openings: "Thank you for sharing", "I understand this must be", "I can imagine how hard".',
-      '- One idea per sentence. No explanations.',
+      '- Everyday words, like a warm session conversation.',
+      '- FORBIDDEN: clinical terms, acronyms, diagnoses, therapy names.',
+      '- Avoid scripted phrases ("Thank you for sharing", "I understand this must be hard").',
+      '- Prefer genuine curiosity: "What did that stir in you?", "What was that like for you?", "What stood out most?"',
+    ].join('\n'),
+  };
+
+  return blocks[language] ?? blocks.pt;
+};
+
+export const buildPsychologistStanceGuidance = (
+  language: AppLanguage
+): string => {
+  const blocks: Record<AppLanguage, string> = {
+    pt: [
+      'POSTURA CLÍNICA (pense como psicólogo em escuta inicial):',
+      '- Ouça o relato com curiosidade, não com roteiro fixo.',
+      '- Faça perguntas ABERTAS que ampliem o entendimento — convidem o paciente a contar mais.',
+      '- Inícios úteis: "O que...", "Como...", "De que forma...", "O que isso representa...", "O que você notou...".',
+      '- Evite perguntas fechadas repetidas ("O que sente agora?", "Está triste?") — variar é essencial.',
+      '- Aprofunde o que o paciente JÁ trouxe antes de mudar de tema.',
+      '- Não diagnostique, não interprete em voz alta, não prescreva — apenas explore com respeito.',
+      '- Uma pergunta por vez. Deixe espaço para o paciente pensar e responder.',
+    ].join('\n'),
+    es: [
+      'POSTURA CLÍNICA (piense como psicólogo en escucha inicial):',
+      '- Escuche el relato con curiosidad, no con guion fijo.',
+      '- Haga preguntas ABIERTAS que amplíen la comprensión — inviten a contar más.',
+      '- Inicios útiles: "¿Qué...", "¿Cómo...", "¿De qué forma...", "¿Qué representa...", "¿Qué notó...".',
+      '- Evite preguntas cerradas repetidas ("¿Qué siente ahora?", "¿Está triste?") — variar es esencial.',
+      '- Profundice lo que el paciente YA trajo antes de cambiar de tema.',
+      '- No diagnostique, no interprete en voz alta, no prescriba — solo explore con respeto.',
+      '- Una pregunta a la vez. Deje espacio para que el paciente piense y responda.',
+    ].join('\n'),
+    en: [
+      'CLINICAL STANCE (think like a psychologist in initial listening):',
+      '- Listen with curiosity, not a fixed script.',
+      '- Ask OPEN questions that broaden understanding — invite the patient to say more.',
+      '- Useful openings: "What...", "How...", "In what way...", "What does this represent...", "What did you notice...".',
+      '- Avoid repeated closed questions ("What do you feel now?", "Are you sad?") — variety is essential.',
+      '- Deepen what the patient ALREADY shared before changing topic.',
+      '- Do not diagnose, interpret aloud, or prescribe — only explore with respect.',
+      '- One question at a time. Leave room for the patient to think and answer.',
     ].join('\n'),
   };
 
@@ -279,22 +321,22 @@ export const buildPresentMomentGuidance = (language: AppLanguage): string => {
       'FOCO NO RELATO (obrigatório):',
       '- Responda sobre o que o paciente descreveu: pessoa, lugar, situação ou sensação concreta.',
       '- Pode explorar o evento que o paciente mencionou, sem fixar em calendário (evite: hoje, ontem, amanhã, essa semana).',
-      '- Exemplo RUIM (genérico): "Como você está?"',
-      '- Exemplo BOM (específico): "Quando pensa nos colegas que mencionou, o que sente no peito?"',
+      '- Exemplo RUIM (genérico e fechado): "Como você está?"',
+      '- Exemplo BOM (aberto e específico): "O que mais ficou com você depois dessa conversa com os colegas?"',
     ].join('\n'),
     es: [
       'ENFOQUE EN EL RELATO (obligatorio):',
       '- Responde sobre lo que el paciente describió: persona, lugar, situación o sensación concreta.',
       '- Puede explorar el evento que mencionó, sin fijarse en calendario (evite: hoy, ayer, mañana, esta semana).',
-      '- Ejemplo MALO (genérico): "¿Cómo está?"',
-      '- Ejemplo BUENO (específico): "Cuando piensa en los colegas que mencionó, ¿qué siente en el pecho?"',
+      '- Ejemplo MALO (genérico y cerrado): "¿Cómo está?"',
+      '- Ejemplo BUENO (abierto y específico): "¿Qué fue lo que más se quedó con usted después de esa conversación con los colegas?"',
     ].join('\n'),
     en: [
       'REPORT FOCUS (required):',
       '- Reply about what the patient described: person, place, situation, or concrete sensation.',
       '- You may explore the event they mentioned without calendar anchors (avoid: today, yesterday, tomorrow, this week).',
-      '- BAD example (generic): "How are you?"',
-      '- GOOD example (specific): "When you think about the colleagues you mentioned, what do you feel in your chest?"',
+      '- BAD example (generic and closed): "How are you?"',
+      '- GOOD example (open and specific): "What stayed with you most after that conversation with your colleagues?"',
     ].join('\n'),
   };
 
@@ -309,9 +351,9 @@ export const getPatientChatFallbackReply = (
 
   if (snippet) {
     const contextual: Record<AppLanguage, string> = {
-      pt: `Entendo. O que você sente agora sobre ${snippet}?`,
-      es: `Entiendo. ¿Qué siente ahora sobre ${snippet}?`,
-      en: `I understand. What do you feel right now about ${snippet}?`,
+      pt: `O que mais pesa para você quando pensa em ${snippet}?`,
+      es: `¿Qué pesa más para usted cuando piensa en ${snippet}?`,
+      en: `What weighs on you most when you think about ${snippet}?`,
     };
     return contextual[language] ?? contextual.pt;
   }
@@ -354,7 +396,7 @@ export const extractRecentAgentQuestions = (
     .slice(-limit)
     .map((message) => message.text);
 
-export const PATIENT_CHAT_SIMILARITY_THRESHOLD = 0.62;
+export const PATIENT_CHAT_SIMILARITY_THRESHOLD = 0.72;
 export const PATIENT_CHAT_MAX_SIMILARITY_RETRIES = 2;
 
 export const tokenizeForSimilarity = (text: string): string[] => {
@@ -425,46 +467,46 @@ export const buildQuestionAngleGuidance = (
 ): string => {
   const angles: Record<AppLanguage, string[]> = {
     pt: [
-      'ÂNGULO DESTA PERGUNTA: valide o relato e explore uma SENSAÇÃO física concreta (peito, garganta, barriga, respiração, tensão).',
-      'ÂNGULO DESTA PERGUNTA: explore um PENSAMENTO, frase ou imagem que surgiu na mente do paciente.',
-      'ÂNGULO DESTA PERGUNTA: explore uma PESSOA envolvida e o que muda emocionalmente ao pensar nela.',
-      'ÂNGULO DESTA PERGUNTA: explore o que o paciente gostaria que fosse diferente nessa situação.',
-      'ÂNGULO DESTA PERGUNTA: explore uma CONSEQUÊNCIA prática no dia a dia (sono, trabalho, relações, rotina).',
-      'ÂNGULO DESTA PERGUNTA: explore a EMOÇÃO predominante — qual sentimento pesa mais e como o paciente a nomeia.',
-      'ÂNGULO DESTA PERGUNTA: explore o SIGNIFICADO pessoal — o que essa situação representa ou diz sobre o paciente.',
-      'ÂNGULO DESTA PERGUNTA: explore o que o paciente FEZ ou EVITOU fazer quando a situação aconteceu (enfrentamento).',
-      'ÂNGULO DESTA PERGUNTA: explore o DIÁLOGO INTERNO — o que o paciente disse ou pensou sobre si mesmo(a).',
-      'ÂNGULO DESTA PERGUNTA: explore uma NECESSIDADE não atendida — o que o paciente precisava e não recebeu.',
-      'ÂNGULO DESTA PERGUNTA: explore o que aconteceu LOGO ANTES do desconforto (gatilho ou momento que antecedeu).',
-      'ÂNGULO DESTA PERGUNTA: explore APOIO — de quem o paciente gostaria de ajuda ou com quem gostaria de falar.',
+      'ÂNGULO DESTA PERGUNTA — faça UMA pergunta aberta sobre sensações no corpo (peito, garganta, tensão, respiração). Ex.: "O que você percebe no corpo quando pensa nisso?"',
+      'ÂNGULO DESTA PERGUNTA — explore pensamentos ou imagens que surgiram. Ex.: "Que pensamento ou imagem veio à sua mente?"',
+      'ÂNGULO DESTA PERGUNTA — explore uma pessoa envolvida e o impacto relacional. Ex.: "Como foi para você na relação com essa pessoa?"',
+      'ÂNGULO DESTA PERGUNTA — explore o que o paciente gostaria que fosse diferente. Ex.: "O que você gostaria que fosse diferente nessa situação?"',
+      'ÂNGULO DESTA PERGUNTA — explore impacto na rotina (sono, trabalho, relações). Ex.: "De que forma isso tem afetado seu dia a dia?"',
+      'ÂNGULO DESTA PERGUNTA — explore a emoção predominante com as palavras do paciente. Ex.: "Como você nomearia o que sentiu naquele momento?"',
+      'ÂNGULO DESTA PERGUNTA — explore o significado pessoal do evento. Ex.: "O que essa situação representa para você?"',
+      'ÂNGULO DESTA PERGUNTA — explore o que fez ou evitou fazer (enfrentamento). Ex.: "O que você fez ou deixou de fazer quando isso aconteceu?"',
+      'ÂNGULO DESTA PERGUNTA — explore o diálogo interno. Ex.: "O que você disse a si mesmo(a) na hora?"',
+      'ÂNGULO DESTA PERGUNTA — explore necessidade não atendida. Ex.: "O que você precisava naquele momento e não teve?"',
+      'ÂNGULO DESTA PERGUNTA — explore o que antecedeu o desconforto. Ex.: "O que estava acontecendo logo antes de se sentir assim?"',
+      'ÂNGULO DESTA PERGUNTA — explore rede de apoio. Ex.: "Com quem você gostaria de falar sobre isso?"',
     ],
     es: [
-      'ÁNGULO DE ESTA PREGUNTA: valide el relato y explore una SENSACIÓN física concreta (pecho, garganta, respiración, tensión).',
-      'ÁNGULO DE ESTA PREGUNTA: explore un PENSAMIENTO, frase o imagen que surgió en la mente del paciente.',
-      'ÁNGULO DE ESTA PREGUNTA: explore una PERSONA involucrada y qué cambia emocionalmente al pensar en ella.',
-      'ÁNGULO DE ESTA PREGUNTA: explore qué le gustaría que fuera diferente en esa situación.',
-      'ÁNGULO DE ESTA PREGUNTA: explore una CONSECUENCIA práctica en el día a día (sueño, trabajo, relaciones, rutina).',
-      'ÁNGULO DE ESTA PREGUNTA: explore la EMOCIÓN predominante — qué sentimiento pesa más y cómo lo nombra.',
-      'ÁNGULO DE ESTA PREGUNTA: explore el SIGNIFICADO personal — qué representa esa situación para el paciente.',
-      'ÁNGULO DE ESTA PREGUNTA: explore qué HIZO o EVITÓ hacer el paciente cuando ocurrió (afrontamiento).',
-      'ÁNGULO DE ESTA PREGUNTA: explore el DIÁLOGO INTERNO — qué se dijo o pensó sobre sí mismo(a).',
-      'ÁNGULO DE ESTA PREGUNTA: explore una NECESIDAD no atendida — qué necesitaba y no recibió.',
-      'ÁNGULO DE ESTA PREGUNTA: explore qué pasó JUSTO ANTES del malestar (disparador o momento previo).',
-      'ÁNGULO DE ESTA PREGUNTA: explore APOYO — de quién le gustaría ayuda o con quién le gustaría hablar.',
+      'ÁNGULO DE ESTA PREGUNTA — haga UNA pregunta abierta sobre sensaciones corporales. Ej.: "¿Qué nota en el cuerpo cuando piensa en esto?"',
+      'ÁNGULO DE ESTA PREGUNTA — explore pensamientos o imágenes. Ej.: "¿Qué pensamiento o imagen vino a su mente?"',
+      'ÁNGULO DE ESTA PREGUNTA — explore una persona involucrada y el vínculo. Ej.: "¿Cómo fue para usted en la relación con esa persona?"',
+      'ÁNGULO DE ESTA PREGUNTA — explore qué le gustaría que fuera diferente. Ej.: "¿Qué le gustaría que fuera diferente en esa situación?"',
+      'ÁNGULO DE ESTA PREGUNTA — explore impacto en la rutina. Ej.: "¿De qué forma ha afectado su día a día?"',
+      'ÁNGULO DE ESTA PREGUNTA — explore la emoción predominante. Ej.: "¿Cómo nombraría lo que sintió en ese momento?"',
+      'ÁNGULO DE ESTA PREGUNTA — explore el significado personal. Ej.: "¿Qué representa esa situación para usted?"',
+      'ÁNGULO DE ESTA PREGUNTA — explore qué hizo o evitó hacer. Ej.: "¿Qué hizo o dejó de hacer cuando ocurrió?"',
+      'ÁNGULO DE ESTA PREGUNTA — explore el diálogo interno. Ej.: "¿Qué se dijo a sí mismo(a) en ese momento?"',
+      'ÁNGULO DE ESTA PREGUNTA — explore necesidad no atendida. Ej.: "¿Qué necesitaba en ese momento y no tuvo?"',
+      'ÁNGULO DE ESTA PREGUNTA — explore qué antecedió al malestar. Ej.: "¿Qué estaba pasando justo antes de sentirse así?"',
+      'ÁNGULO DE ESTA PREGUNTA — explore red de apoyo. Ej.: "¿Con quién le gustaría hablar sobre esto?"',
     ],
     en: [
-      'ANGLE FOR THIS QUESTION: validate the report and explore a concrete BODY sensation (chest, throat, breathing, tension).',
-      'ANGLE FOR THIS QUESTION: explore a THOUGHT, phrase, or image that arose in the patient\'s mind.',
-      'ANGLE FOR THIS QUESTION: explore a PERSON involved and what shifts emotionally when thinking about them.',
-      'ANGLE FOR THIS QUESTION: explore what the patient would like to be different in that situation.',
-      'ANGLE FOR THIS QUESTION: explore a practical CONSEQUENCE in daily life (sleep, work, relationships, routine).',
-      'ANGLE FOR THIS QUESTION: explore the predominant EMOTION — which feeling weighs most and how the patient names it.',
-      'ANGLE FOR THIS QUESTION: explore personal MEANING — what this situation represents for the patient.',
-      'ANGLE FOR THIS QUESTION: explore what the patient DID or AVOIDED doing when it happened (coping).',
-      'ANGLE FOR THIS QUESTION: explore INNER DIALOGUE — what the patient said or thought about themselves.',
-      'ANGLE FOR THIS QUESTION: explore an unmet NEED — what the patient needed and did not receive.',
-      'ANGLE FOR THIS QUESTION: explore what happened RIGHT BEFORE the distress (trigger or preceding moment).',
-      'ANGLE FOR THIS QUESTION: explore SUPPORT — who the patient would want help from or to talk to.',
+      'ANGLE FOR THIS QUESTION — ask ONE open question about body sensations. E.g.: "What do you notice in your body when you think about this?"',
+      'ANGLE FOR THIS QUESTION — explore thoughts or images. E.g.: "What thought or image came to your mind?"',
+      'ANGLE FOR THIS QUESTION — explore a person involved and the relationship. E.g.: "What was that like for you with that person?"',
+      'ANGLE FOR THIS QUESTION — explore what they would like to be different. E.g.: "What would you like to be different in that situation?"',
+      'ANGLE FOR THIS QUESTION — explore impact on daily routine. E.g.: "In what way has this affected your daily life?"',
+      'ANGLE FOR THIS QUESTION — explore the predominant emotion in the patient\'s words. E.g.: "How would you name what you felt in that moment?"',
+      'ANGLE FOR THIS QUESTION — explore personal meaning. E.g.: "What does this situation represent for you?"',
+      'ANGLE FOR THIS QUESTION — explore what they did or avoided. E.g.: "What did you do or avoid doing when it happened?"',
+      'ANGLE FOR THIS QUESTION — explore inner dialogue. E.g.: "What did you tell yourself at the time?"',
+      'ANGLE FOR THIS QUESTION — explore unmet need. E.g.: "What did you need in that moment and not have?"',
+      'ANGLE FOR THIS QUESTION — explore what preceded the distress. E.g.: "What was going on right before you felt this way?"',
+      'ANGLE FOR THIS QUESTION — explore support network. E.g.: "Who would you like to talk to about this?"',
     ],
   };
 
@@ -544,152 +586,152 @@ export const buildDistinctPatientChatFallback = (
     pt: [
       (topic) =>
         topic
-          ? `Entendo. Qual pensamento veio primeiro quando pensou em ${topic}?`
-          : 'Entendo. Qual pensamento veio primeiro?',
+          ? `Qual pensamento veio primeiro quando pensou em ${topic}?`
+          : 'Qual pensamento veio primeiro?',
       (topic) =>
         topic
-          ? `Entendo. Quem mais estava envolvido nessa situação com ${topic}?`
-          : 'Entendo. Quem mais estava envolvido nessa situação?',
+          ? `Quem mais estava envolvido nessa situação com ${topic}?`
+          : 'Quem mais estava envolvido nessa situação?',
       (topic) =>
         topic
-          ? `Entendo. O que muda no seu corpo quando pensa em ${topic}?`
-          : 'Entendo. O que muda no seu corpo quando pensa nisso?',
+          ? `O que muda no seu corpo quando pensa em ${topic}?`
+          : 'O que muda no seu corpo quando pensa nisso?',
       (topic) =>
         topic
-          ? `Entendo. O que você gostaria que fosse diferente em relação a ${topic}?`
-          : 'Entendo. O que você gostaria que fosse diferente?',
+          ? `O que você gostaria que fosse diferente em relação a ${topic}?`
+          : 'O que você gostaria que fosse diferente?',
       (topic) =>
         topic
-          ? `Entendo. Como isso com ${topic} tem afetado seu sono ou sua rotina?`
-          : 'Entendo. Como isso tem afetado seu sono ou sua rotina?',
+          ? `Como isso com ${topic} tem afetado seu sono ou sua rotina?`
+          : 'Como isso tem afetado seu sono ou sua rotina?',
       (topic) =>
         topic
-          ? `Entendo. Qual sentimento pesa mais quando pensa em ${topic}?`
-          : 'Entendo. Qual sentimento pesa mais agora?',
+          ? `Qual sentimento pesa mais quando pensa em ${topic}?`
+          : 'Qual sentimento pesa mais agora?',
       (topic) =>
         topic
-          ? `Entendo. O que essa situação com ${topic} significa para você?`
-          : 'Entendo. O que essa situação significa para você?',
+          ? `O que essa situação com ${topic} significa para você?`
+          : 'O que essa situação significa para você?',
       (topic) =>
         topic
-          ? `Entendo. O que você fez ou deixou de fazer quando pensou em ${topic}?`
-          : 'Entendo. O que você fez ou deixou de fazer na hora?',
+          ? `O que você fez ou deixou de fazer quando pensou em ${topic}?`
+          : 'O que você fez ou deixou de fazer na hora?',
       (topic) =>
         topic
-          ? `Entendo. O que você disse a si mesmo(a) quando isso com ${topic} aconteceu?`
-          : 'Entendo. O que você disse a si mesmo(a) na hora?',
+          ? `O que você disse a si mesmo(a) quando isso com ${topic} aconteceu?`
+          : 'O que você disse a si mesmo(a) na hora?',
       (topic) =>
         topic
-          ? `Entendo. O que você precisava e não conseguiu em relação a ${topic}?`
-          : 'Entendo. O que você precisava e não conseguiu?',
+          ? `O que você precisava e não conseguiu em relação a ${topic}?`
+          : 'O que você precisava e não conseguiu?',
       (topic) =>
         topic
-          ? `Entendo. O que aconteceu logo antes de se sentir assim por causa de ${topic}?`
-          : 'Entendo. O que aconteceu logo antes de se sentir assim?',
+          ? `O que aconteceu logo antes de se sentir assim por causa de ${topic}?`
+          : 'O que aconteceu logo antes de se sentir assim?',
       (topic) =>
         topic
-          ? `Entendo. De quem você gostaria de apoio para lidar com ${topic}?`
-          : 'Entendo. De quem você gostaria de apoio agora?',
+          ? `De quem você gostaria de apoio para lidar com ${topic}?`
+          : 'De quem você gostaria de apoio agora?',
     ],
     es: [
       (topic) =>
         topic
-          ? `Entiendo. ¿Qué pensamiento vino primero al pensar en ${topic}?`
-          : 'Entiendo. ¿Qué pensamiento vino primero?',
+          ? `¿Qué pensamiento vino primero al pensar en ${topic}?`
+          : '¿Qué pensamiento vino primero?',
       (topic) =>
         topic
-          ? `Entiendo. ¿Quién más estuvo involucrado en esa situación con ${topic}?`
-          : 'Entiendo. ¿Quién más estuvo involucrado en esa situación?',
+          ? `¿Quién más estuvo involucrado en esa situación con ${topic}?`
+          : '¿Quién más estuvo involucrado en esa situación?',
       (topic) =>
         topic
-          ? `Entiendo. ¿Qué cambia en su cuerpo cuando piensa en ${topic}?`
-          : 'Entiendo. ¿Qué cambia en su cuerpo cuando piensa en eso?',
+          ? `¿Qué cambia en su cuerpo cuando piensa en ${topic}?`
+          : '¿Qué cambia en su cuerpo cuando piensa en eso?',
       (topic) =>
         topic
-          ? `Entiendo. ¿Qué le gustaría que fuera diferente respecto a ${topic}?`
-          : 'Entiendo. ¿Qué le gustaría que fuera diferente?',
+          ? `¿Qué le gustaría que fuera diferente respecto a ${topic}?`
+          : '¿Qué le gustaría que fuera diferente?',
       (topic) =>
         topic
-          ? `Entiendo. ¿Cómo ha afectado esto de ${topic} su sueño o su rutina?`
-          : 'Entiendo. ¿Cómo ha afectado esto su sueño o su rutina?',
+          ? `¿Cómo ha afectado esto de ${topic} su sueño o su rutina?`
+          : '¿Cómo ha afectado esto su sueño o su rutina?',
       (topic) =>
         topic
-          ? `Entiendo. ¿Qué sentimiento pesa más cuando piensa en ${topic}?`
-          : 'Entiendo. ¿Qué sentimiento pesa más ahora?',
+          ? `¿Qué sentimiento pesa más cuando piensa en ${topic}?`
+          : '¿Qué sentimiento pesa más ahora?',
       (topic) =>
         topic
-          ? `Entiendo. ¿Qué significa para usted esa situación con ${topic}?`
-          : 'Entiendo. ¿Qué significa para usted esa situación?',
+          ? `¿Qué significa para usted esa situación con ${topic}?`
+          : '¿Qué significa para usted esa situación?',
       (topic) =>
         topic
-          ? `Entiendo. ¿Qué hizo o dejó de hacer cuando pensó en ${topic}?`
-          : 'Entiendo. ¿Qué hizo o dejó de hacer en ese momento?',
+          ? `¿Qué hizo o dejó de hacer cuando pensó en ${topic}?`
+          : '¿Qué hizo o dejó de hacer en ese momento?',
       (topic) =>
         topic
-          ? `Entiendo. ¿Qué se dijo a sí mismo(a) cuando pasó lo de ${topic}?`
-          : 'Entiendo. ¿Qué se dijo a sí mismo(a) en ese momento?',
+          ? `¿Qué se dijo a sí mismo(a) cuando pasó lo de ${topic}?`
+          : '¿Qué se dijo a sí mismo(a) en ese momento?',
       (topic) =>
         topic
-          ? `Entiendo. ¿Qué necesitaba y no recibió respecto a ${topic}?`
-          : 'Entiendo. ¿Qué necesitaba y no recibió?',
+          ? `¿Qué necesitaba y no recibió respecto a ${topic}?`
+          : '¿Qué necesitaba y no recibió?',
       (topic) =>
         topic
-          ? `Entiendo. ¿Qué pasó justo antes de sentirse así por ${topic}?`
-          : 'Entiendo. ¿Qué pasó justo antes de sentirse así?',
+          ? `¿Qué pasó justo antes de sentirse así por ${topic}?`
+          : '¿Qué pasó justo antes de sentirse así?',
       (topic) =>
         topic
-          ? `Entiendo. ¿De quién le gustaría apoyo para lidiar con ${topic}?`
-          : 'Entiendo. ¿De quién le gustaría apoyo ahora?',
+          ? `¿De quién le gustaría apoyo para lidiar con ${topic}?`
+          : '¿De quién le gustaría apoyo ahora?',
     ],
     en: [
       (topic) =>
         topic
-          ? `I understand. What thought came first when you thought about ${topic}?`
-          : 'I understand. What thought came first?',
+          ? `What thought came first when you thought about ${topic}?`
+          : 'What thought came first?',
       (topic) =>
         topic
-          ? `I understand. Who else was involved in that situation with ${topic}?`
-          : 'I understand. Who else was involved in that situation?',
+          ? `Who else was involved in that situation with ${topic}?`
+          : 'Who else was involved in that situation?',
       (topic) =>
         topic
-          ? `I understand. What changes in your body when you think about ${topic}?`
-          : 'I understand. What changes in your body when you think about it?',
+          ? `What changes in your body when you think about ${topic}?`
+          : 'What changes in your body when you think about it?',
       (topic) =>
         topic
-          ? `I understand. What would you like to be different about ${topic}?`
-          : 'I understand. What would you like to be different?',
+          ? `What would you like to be different about ${topic}?`
+          : 'What would you like to be different?',
       (topic) =>
         topic
-          ? `I understand. How has this about ${topic} affected your sleep or daily routine?`
-          : 'I understand. How has this affected your sleep or daily routine?',
+          ? `How has this about ${topic} affected your sleep or daily routine?`
+          : 'How has this affected your sleep or daily routine?',
       (topic) =>
         topic
-          ? `I understand. Which feeling weighs most when you think about ${topic}?`
-          : 'I understand. Which feeling weighs most right now?',
+          ? `Which feeling weighs most when you think about ${topic}?`
+          : 'Which feeling weighs most right now?',
       (topic) =>
         topic
-          ? `I understand. What does this situation with ${topic} mean to you?`
-          : 'I understand. What does this situation mean to you?',
+          ? `What does this situation with ${topic} mean to you?`
+          : 'What does this situation mean to you?',
       (topic) =>
         topic
-          ? `I understand. What did you do or avoid doing when you thought about ${topic}?`
-          : 'I understand. What did you do or avoid doing at the time?',
+          ? `What did you do or avoid doing when you thought about ${topic}?`
+          : 'What did you do or avoid doing at the time?',
       (topic) =>
         topic
-          ? `I understand. What did you tell yourself when this about ${topic} happened?`
-          : 'I understand. What did you tell yourself at the time?',
+          ? `What did you tell yourself when this about ${topic} happened?`
+          : 'What did you tell yourself at the time?',
       (topic) =>
         topic
-          ? `I understand. What did you need and not receive regarding ${topic}?`
-          : 'I understand. What did you need and not receive?',
+          ? `What did you need and not receive regarding ${topic}?`
+          : 'What did you need and not receive?',
       (topic) =>
         topic
-          ? `I understand. What happened right before you felt this way about ${topic}?`
-          : 'I understand. What happened right before you felt this way?',
+          ? `What happened right before you felt this way about ${topic}?`
+          : 'What happened right before you felt this way?',
       (topic) =>
         topic
-          ? `I understand. Who would you want support from to cope with ${topic}?`
-          : 'I understand. Who would you want support from now?',
+          ? `Who would you want support from to cope with ${topic}?`
+          : 'Who would you want support from now?',
     ],
   };
 
@@ -726,8 +768,8 @@ export const buildAntiRepetitionGuidance = (
       '- PROIBIDO fazer perguntas muito similares (mesmo tema, mesmo momento, mesma pessoa, mesma sensação).',
       '- Mude o ângulo: outra sensação no corpo, outra pessoa envolvida, outro pensamento que surge agora.',
       '- Se o paciente já respondeu um ponto, avance para outro ainda não explorado ou encerre com acolhimento.',
-      'Exemplo RUIM (similar): já perguntou "o que sente agora de tristeza?" → não pergunte "a tristeza é forte neste momento?".',
-      'Exemplo BOM (ângulo novo): após explorar a tristeza, pergunte o que mais surge no corpo ou na mente agora.',
+      'Exemplo RUIM (similar): já perguntou sobre tristeza no corpo → não pergunte de novo "o que sente de tristeza".',
+      'Exemplo BOM (ângulo novo e aberto): após falar da tristeza, pergunte "O que essa tristeza representa para você nessa situação?"',
     ].join('\n'),
     es: [
       'ANTI-REPETICIÓN (obligatorio):',
@@ -737,8 +779,8 @@ export const buildAntiRepetitionGuidance = (
       '- PROHIBIDO hacer preguntas muy similares (mismo tema, mismo momento, misma persona, misma sensación).',
       '- Cambia el ángulo: otra sensación en el cuerpo, otra persona involucrada, otro pensamiento que surge ahora.',
       '- Si el paciente ya respondió un punto, avanza a otro aún no explorado o cierra con contención.',
-      'Ejemplo MALO (similar): ya preguntó "¿qué siente ahora de tristeza?" → no pregunte "¿la tristeza es fuerte en este momento?".',
-      'Ejemplo BUENO (ángulo nuevo): tras explorar la tristeza, pregunte qué más surge en el cuerpo o la mente ahora.',
+      'Ejemplo MALO (similar): ya preguntó sobre tristeza en el cuerpo → no pregunte de nuevo "qué siente de tristeza".',
+      'Ejemplo BUENO (ángulo nuevo y abierto): tras hablar de la tristeza, pregunte "¿Qué representa esa tristeza para usted en esa situación?"',
     ].join('\n'),
     en: [
       'ANTI-REPETITION (required):',
@@ -748,8 +790,8 @@ export const buildAntiRepetitionGuidance = (
       '- FORBIDDEN to ask very similar questions (same theme, moment, person, or sensation).',
       '- Change the angle: another body sensation, another person involved, another thought arising now.',
       '- If the patient already answered a point, move to another unexplored aspect or close warmly.',
-      'BAD example (similar): already asked "what sadness do you feel now?" → do not ask "is the sadness strong right now?".',
-      'GOOD example (new angle): after exploring sadness, ask what else arises in the body or mind now.',
+      'BAD example (similar): already asked about sadness in the body → do not ask again "what sadness do you feel".',
+      'GOOD example (new open angle): after sadness, ask "What does that sadness represent for you in that situation?"',
     ].join('\n'),
   };
 
@@ -773,16 +815,16 @@ export const buildPatientChatPacingGuidance = (
       questionsRemaining > 0
         ? `- Restam ${questionsRemaining} pergunta(s) nesta interação — use com parcimônia.`
         : '- Limite atingido: encerre com acolhimento breve, SEM nova pergunta.',
-      '- Cada resposta: no máximo 2 frases curtas (ideal: 1 frase + 1 pergunta).',
-      '- Priorize UMA pergunta bem formulada; evite interrogatório.',
-      '- Evite perguntas muito similares às anteriores: mude o ângulo a cada nova pergunta.',
+      '- Cada resposta: até 3 frases curtas (acolhimento opcional + pergunta aberta).',
+      '- Priorize UMA pergunta aberta que aprofunde o relato; evite interrogatório.',
+      '- Varie o tipo de pergunta a cada turno — não repita estrutura ("o que sente", "o que pensa").',
       questionCount === 0
-        ? 'Primeira pergunta: valide o relato e peça UM detalhe concreto.'
+        ? 'Primeira pergunta: acolha brevemente e convide o paciente a elaborar UM aspecto do relato.'
         : questionsRemaining === 1
-          ? 'ÚLTIMA pergunta desta interação: faça UMA pergunta objetiva e essencial.'
+          ? 'ÚLTIMA pergunta desta interação: uma pergunta aberta essencial que una o que já foi dito.'
           : questionCount <= 2
-            ? 'Aprofunde com UMA pergunta nova sobre detalhe ainda não esclarecido.'
-            : 'Já houve várias trocas: faça UMA pergunta que una os pontos em aberto ou encerre com: "Obrigado por conversar. Quando quiser retomar, é só escrever." (sem pergunta).',
+            ? 'Aprofunde com UMA pergunta aberta sobre algo que o paciente mencionou mas ainda não explorou.'
+            : 'Já houve várias trocas: faça UMA pergunta aberta que una os pontos em aberto ou encerre com acolhimento (sem pergunta).',
     ],
     es: [
       `RITMO DE LA CONVERSACIÓN (máximo ${maxQuestionsPerInteraction} preguntas por interacción):`,
@@ -790,16 +832,16 @@ export const buildPatientChatPacingGuidance = (
       questionsRemaining > 0
         ? `- Quedan ${questionsRemaining} pregunta(s) en esta interacción — úselas con moderación.`
         : '- Límite alcanzado: cierre con contención breve, SIN nueva pregunta.',
-      '- Cada respuesta: como máximo 2 frases cortas (ideal: 1 frase + 1 pregunta).',
-      '- Priorice UNA pregunta bien formulada; evite interrogatorio.',
-      '- Evite preguntas muy similares a las anteriores: cambie el ángulo en cada nueva pregunta.',
+      '- Cada respuesta: hasta 3 frases cortas (acogida opcional + pregunta abierta).',
+      '- Priorice UNA pregunta abierta que profundice el relato; evite interrogatorio.',
+      '- Varíe el tipo de pregunta en cada turno — no repita estructura ("qué siente", "qué piensa").',
       questionCount === 0
-        ? 'Primera pregunta: valide el relato y pida UN detalle concreto.'
+        ? 'Primera pregunta: acoja brevemente e invite a elaborar UN aspecto del relato.'
         : questionsRemaining === 1
-          ? 'ÚLTIMA pregunta de esta interacción: haga UNA pregunta objetiva y esencial.'
+          ? 'ÚLTIMA pregunta de esta interacción: una pregunta abierta esencial que una lo ya dicho.'
           : questionCount <= 2
-            ? 'Profundice con UNA pregunta nueva sobre un detalle aún no aclarado.'
-            : 'Ya hubo varios intercambios: haga UNA pregunta que una los puntos abiertos o cierre con: "Gracias por conversar. Cuando quiera retomar, solo escriba." (sin pregunta).',
+            ? 'Profundice con UNA pregunta abierta sobre algo mencionado pero aún no explorado.'
+            : 'Ya hubo varios intercambios: haga UNA pregunta abierta que una los puntos abiertos o cierre con contención (sin pregunta).',
     ],
     en: [
       `CONVERSATION PACING (max ${maxQuestionsPerInteraction} questions per interaction):`,
@@ -807,16 +849,16 @@ export const buildPatientChatPacingGuidance = (
       questionsRemaining > 0
         ? `- ${questionsRemaining} question(s) left in this interaction — use them sparingly.`
         : '- Limit reached: close warmly in one short sentence, with NO new question.',
-      '- Each reply: at most 2 short sentences (ideal: 1 sentence + 1 question).',
-      '- Prioritize ONE well-formed question; avoid interrogation.',
-      '- Avoid questions very similar to prior ones: change the angle with each new question.',
+      '- Each reply: up to 3 short sentences (optional acknowledgment + open question).',
+      '- Prioritize ONE open question that deepens the report; avoid interrogation.',
+      '- Vary question type each turn — do not repeat structure ("what you feel", "what you think").',
       questionCount === 0
-        ? 'First question: validate the report and ask for ONE concrete detail.'
+        ? 'First question: briefly acknowledge and invite the patient to elaborate on ONE aspect of their report.'
         : questionsRemaining === 1
-          ? 'LAST question in this interaction: ask ONE essential, objective question.'
+          ? 'LAST question in this interaction: one essential open question tying together what was said.'
           : questionCount <= 2
-            ? 'Deepen with ONE new question about a detail still not clear.'
-            : 'Several exchanges already: ask ONE question tying open points or close with: "Thank you for talking. Whenever you want to continue, just write again." (no question).',
+            ? 'Deepen with ONE open question about something mentioned but not yet explored.'
+            : 'Several exchanges already: ask ONE open question tying open points or close warmly (no question).',
     ],
   };
 

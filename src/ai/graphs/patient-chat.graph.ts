@@ -32,8 +32,8 @@ import {
   type PatientChatState,
 } from '@ai/state/patient-chat.state.js';
 
-const MAX_RETRY_TEMPERATURE = 0.55;
-const RETRY_TEMPERATURE_STEP = 0.12;
+const MAX_RETRY_TEMPERATURE = 0.75;
+const RETRY_TEMPERATURE_STEP = 0.1;
 
 const resolveGenerationTemperature = (retryAttempt: number): number =>
   Math.min(

@@ -3,9 +3,7 @@ import type { AppLanguage } from '@domain/types.js';
 
 import {
   buildAntiRepetitionGuidance,
-  buildPatientChatSimplicityGuidance,
   buildPatientChatRetryGuidance,
-  buildPsychologistStanceGuidance,
   buildQuestionAngleGuidance,
   extractRecentAgentQuestions,
 } from './patient-chat-interaction.js';
@@ -31,53 +29,17 @@ export const extractContextFocusPoints = (context: string): string[] => {
   return [normalized.slice(0, 220)];
 };
 
-export const resolveQuestionFocusHint = (
-  context: string,
-  questionCount: number
-): string => {
-  const focusPoints = extractContextFocusPoints(context);
-
-  if (!focusPoints.length) {
-    return '';
-  }
-
-  return focusPoints[questionCount % focusPoints.length] ?? '';
-};
-
-const specificQuestionRules: Record<AppLanguage, string> = {
-  pt: [
-    'PERGUNTA (aberta e contextualizada):',
-    '- Ancore na mensagem do paciente (pessoa, situação, sentimento que ele trouxe).',
-    '- PROIBIDO: "Como você está?", perguntas sobre ontem/hoje, termos clínicos, fórmulas ("o que sente agora").',
-    '- Exemplo BOM: "Quando pensa na conversa com seus colegas, o que mais pesa para você nessa situação?"',
-  ].join('\n'),
-  es: [
-    'PREGUNTA (abierta y contextualizada):',
-    '- Ancle en el mensaje del paciente (persona, situación, sentimiento que trajo).',
-    '- PROHIBIDO: "¿Cómo estás?", preguntas sobre ayer/hoy, términos clínicos, fórmulas ("qué siente ahora").',
-    '- Ejemplo BUENO: "Cuando piensa en la conversación con sus colegas, ¿qué pesa más para usted en esa situación?"',
-  ].join('\n'),
-  en: [
-    'QUESTION (open and contextual):',
-    '- Anchor on the patient message (person, situation, feeling they brought up).',
-    '- FORBIDDEN: "How are you?", yesterday/today questions, clinical terms, formulas ("what you feel now").',
-    '- GOOD example: "When you think about the conversation with your colleagues, what weighs on you most in that situation?"',
-  ].join('\n'),
-};
-
 export const buildContextFocusBlock = (
   language: AppLanguage,
-  context: string,
-  questionCount: number
+  context: string
 ): string => {
   const focusPoints = extractContextFocusPoints(context);
-  const focusHint = resolveQuestionFocusHint(context, questionCount);
 
   if (!focusPoints.length) {
     const empty: Record<AppLanguage, string> = {
-      pt: 'Sem contexto do psicólogo. Explore o relato do paciente com curiosidade — convide-o a elaborar um aspecto que mencionou.',
-      es: 'Sin contexto del psicólogo. Explore el relato del paciente con curiosidad — invítelo a elaborar un aspecto que mencionó.',
-      en: 'No psychologist context. Explore the patient report with curiosity — invite them to elaborate on an aspect they mentioned.',
+      pt: 'Sem contexto do psicólogo. Siga o relato do paciente com curiosidade.',
+      es: 'Sin contexto del psicólogo. Siga el relato del paciente con curiosidad.',
+      en: 'No psychologist context. Follow the patient report with curiosity.',
     };
     return empty[language];
   }
@@ -86,22 +48,19 @@ export const buildContextFocusBlock = (
 
   const blocks: Record<AppLanguage, string> = {
     pt: [
-      'Temas do contexto do psicólogo:',
+      'Temas do contexto do psicólogo (referência interna):',
       listedThemes,
-      `Tema sugerido nesta pergunta: ${focusHint}`,
-      'Use o tema só internamente. Na pergunta ao paciente, sintetize em linguagem simples sobre situações do dia a dia.',
+      'Use os temas só internamente; na resposta, traduza para linguagem simples e siga o que o paciente acabou de dizer.',
     ].join('\n'),
     es: [
-      'Temas del contexto del psicólogo:',
+      'Temas del contexto del psicólogo (referencia interna):',
       listedThemes,
-      `Tema sugerido en esta pregunta: ${focusHint}`,
-      'Usa el tema solo internamente. En la pregunta al paciente, sintetiza con palabras simples sobre situaciones del día a día.',
+      'Use los temas solo internamente; en la respuesta, traduzca a lenguaje simple y siga lo que el paciente acaba de decir.',
     ].join('\n'),
     en: [
-      'Themes from psychologist context:',
+      'Themes from psychologist context (internal reference):',
       listedThemes,
-      `Suggested theme for this question: ${focusHint}`,
-      'Use the theme internally only. In the question to the patient, synthesize with simple words about everyday situations.',
+      'Use themes internally only; in the reply, translate to simple language and follow what the patient just said.',
     ].join('\n'),
   };
 
@@ -111,25 +70,28 @@ export const buildContextFocusBlock = (
 export const buildPatientChatTurnGuidance = (
   language: AppLanguage,
   userMessage: string,
-  context: string,
+  _context: string,
   questionCount: number,
   chatHistory: ClinicalChatMessage[] = [],
   retryAttempt = 0,
   rejectedReply?: string
 ): string => {
-  const focusHint = resolveQuestionFocusHint(context, questionCount);
-  const priorAgentQuestions = extractRecentAgentQuestions(chatHistory);
+  const priorAgentReplies = extractRecentAgentQuestions(chatHistory);
   const antiRepetitionBlock = buildAntiRepetitionGuidance(
     language,
-    priorAgentQuestions
+    priorAgentReplies
   );
-  const angleGuidance = buildQuestionAngleGuidance(language, questionCount);
+  const angleGuidance = buildQuestionAngleGuidance(
+    language,
+    userMessage,
+    priorAgentReplies
+  );
   const retryBlock =
     retryAttempt > 0 && rejectedReply
       ? buildPatientChatRetryGuidance(
           language,
           rejectedReply,
-          priorAgentQuestions,
+          priorAgentReplies,
           retryAttempt
         )
       : '';
@@ -137,56 +99,42 @@ export const buildPatientChatTurnGuidance = (
   const stepHints: Record<AppLanguage, string> = {
     pt:
       questionCount === 0
-        ? 'Primeira pergunta: acolha brevemente e convide o paciente a elaborar UM aspecto do relato atual.'
-        : 'Faça UMA pergunta aberta com ângulo NOVO — diferente das anteriores nesta interação.',
+        ? 'Responda à mensagem atual — acolha e, se couber, convide a elaborar.'
+        : 'Responda ao que o paciente acabou de dizer; pergunta ou reflexão breve, conforme fizer sentido.',
     es:
       questionCount === 0
-        ? 'Primera pregunta: acoja brevemente e invite al paciente a elaborar UN aspecto del relato actual.'
-        : 'Haga UNA pregunta abierta con ángulo NUEVO — diferente de las anteriores en esta interacción.',
+        ? 'Responda al mensaje actual — acoja e, si encaja, invite a elaborar.'
+        : 'Responda a lo que el paciente acaba de decir; pregunta o reflexión breve, según tenga sentido.',
     en:
       questionCount === 0
-        ? 'First question: briefly acknowledge and invite the patient to elaborate on ONE aspect of the current report.'
-        : 'Ask ONE open question from a NEW angle — different from prior ones in this interaction.',
+        ? 'Reply to the current message — acknowledge and, if it fits, invite elaboration.'
+        : 'Reply to what the patient just said; question or brief reflection, as appropriate.',
   };
-
-  const psychologistStance = buildPsychologistStanceGuidance(language);
 
   const blocks: Record<AppLanguage, string[]> = {
     pt: [
       retryBlock,
-      psychologistStance,
       angleGuidance,
-      `Perguntas do agente nesta interação: ${questionCount}`,
       antiRepetitionBlock,
-      specificQuestionRules.pt,
-      focusHint ? `Tema do psicólogo (uso interno): ${focusHint}` : '',
+      `Perguntas feitas nesta interação: ${questionCount}`,
       stepHints.pt,
-      buildPatientChatSimplicityGuidance('pt'),
-      `Responda à mensagem atual do paciente: "${userMessage}"`,
+      `Mensagem atual do paciente: "${userMessage}"`,
     ],
     es: [
       retryBlock,
-      psychologistStance,
       angleGuidance,
-      `Preguntas del agente en esta interacción: ${questionCount}`,
       antiRepetitionBlock,
-      specificQuestionRules.es,
-      focusHint ? `Tema del psicólogo (uso interno): ${focusHint}` : '',
+      `Preguntas hechas en esta interacción: ${questionCount}`,
       stepHints.es,
-      buildPatientChatSimplicityGuidance('es'),
-      `Responda al mensaje actual del paciente: "${userMessage}"`,
+      `Mensaje actual del paciente: "${userMessage}"`,
     ],
     en: [
       retryBlock,
-      psychologistStance,
       angleGuidance,
-      `Agent questions in this interaction: ${questionCount}`,
       antiRepetitionBlock,
-      specificQuestionRules.en,
-      focusHint ? `Psychologist theme (internal): ${focusHint}` : '',
+      `Questions asked in this interaction: ${questionCount}`,
       stepHints.en,
-      buildPatientChatSimplicityGuidance('en'),
-      `Reply to the patient's current message: "${userMessage}"`,
+      `Patient's current message: "${userMessage}"`,
     ],
   };
 

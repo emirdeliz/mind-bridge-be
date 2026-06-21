@@ -279,31 +279,110 @@ export const buildPatientChatSimplicityGuidance = (
   return blocks[language] ?? blocks.pt;
 };
 
+export const buildPatientChatPurposeGuidance = (
+  language: AppLanguage
+): string => {
+  const blocks: Record<AppLanguage, string> = {
+    pt: [
+      'OBJETIVO DESTA CONVERSA:',
+      '- Ajudar o paciente a fazer relatos do dia a dia — situações, sentimentos e experiências vividas entre sessões.',
+      '- Esses relatos serão usados pelo psicólogo na próxima sessão; você está facilitando esse registro, não conduzindo a terapia.',
+      '- Faça perguntas abertas para direcionar o paciente no meio do relato: ajude-o a contar mais, com clareza e detalhes úteis.',
+      '- Use o contexto configurado pelo psicólogo (texto + documentos) para orientar QUAIS aspectos do relato vale a pena explorar.',
+    ].join('\n'),
+    es: [
+      'OBJETIVO DE ESTA CONVERSACIÓN:',
+      '- Ayudar al paciente a hacer relatos del día a día — situaciones, sentimientos y experiencias vividas entre sesiones.',
+      '- Esos relatos serán usados por el psicólogo en la próxima sesión; usted facilita ese registro, no conduce la terapia.',
+      '- Haga preguntas abiertas para orientar al paciente en medio del relato: ayúdelo a contar más, con claridad y detalles útiles.',
+      '- Use el contexto configurado por el psicólogo (texto + documentos) para orientar QUÉ aspectos del relato conviene explorar.',
+    ].join('\n'),
+    en: [
+      'PURPOSE OF THIS CONVERSATION:',
+      '- Help the patient share day-to-day reports — situations, feelings, and experiences between sessions.',
+      '- These reports will be used by the psychologist in the next session; you are facilitating that record, not running therapy.',
+      '- Ask open questions to guide the patient through their report: help them say more, with clarity and useful detail.',
+      '- Use the context configured by the psychologist (text + documents) to guide WHICH aspects of the report are worth exploring.',
+    ].join('\n'),
+  };
+
+  return blocks[language] ?? blocks.pt;
+};
+
+export const buildPsychologistContextUsageGuidance = (
+  language: AppLanguage,
+  options: {
+    hasTextContext: boolean;
+    hasKnowledgeContext: boolean;
+  }
+): string => {
+  const blocks: Record<AppLanguage, string[]> = {
+    pt: [
+      'CONTEXTO DO PSICÓLOGO (como usar nas perguntas):',
+      '- O psicólogo fornece contexto de duas formas: (1) texto de orientação da sessão e (2) documentos PDF indexados (protocolos, orientações).',
+      options.hasTextContext
+        ? '- Texto da sessão: indica temas, foco clínico e o que o psicólogo quer acompanhar — traduza para linguagem simples ao perguntar.'
+        : '- Texto da sessão: não informado — baseie-se no relato do paciente e nos documentos, se houver.',
+      options.hasKnowledgeContext
+        ? '- Documentos PDF (RAG): ampliam seu entendimento interno sobre abordagem e protocolo — use para formular perguntas mais pertinentes, sem citar o documento ao paciente.'
+        : '- Documentos PDF: nenhum trecho relevante nesta mensagem — use o texto da sessão e o relato do paciente.',
+      '- As perguntas devem ajudar o paciente a relatar experiências do dia a dia alinhadas a esse contexto, sempre com palavras simples.',
+    ],
+    es: [
+      'CONTEXTO DEL PSICÓLOGO (cómo usarlo en las preguntas):',
+      '- El psicólogo proporciona contexto de dos formas: (1) texto de orientación de la sesión y (2) documentos PDF indexados (protocolos, orientaciones).',
+      options.hasTextContext
+        ? '- Texto de la sesión: indica temas, foco clínico y qué quiere acompañar el psicólogo — traduzca a lenguaje simple al preguntar.'
+        : '- Texto de la sesión: no informado — base en el relato del paciente y en los documentos, si hay.',
+      options.hasKnowledgeContext
+        ? '- Documentos PDF (RAG): amplían su comprensión interna sobre enfoque y protocolo — úselos para formular preguntas más pertinentes, sin citar el documento al paciente.'
+        : '- Documentos PDF: ningún fragmento relevante en este mensaje — use el texto de la sesión y el relato del paciente.',
+      '- Las preguntas deben ayudar al paciente a relatar experiencias del día a día alineadas con ese contexto, siempre con palabras simples.',
+    ],
+    en: [
+      'PSYCHOLOGIST CONTEXT (how to use it in questions):',
+      '- The psychologist provides context in two ways: (1) session guidance text and (2) indexed PDF documents (protocols, guidance).',
+      options.hasTextContext
+        ? '- Session text: indicates themes, clinical focus, and what the psychologist wants to track — translate to simple language when asking.'
+        : '- Session text: not provided — rely on the patient report and documents, if any.',
+      options.hasKnowledgeContext
+        ? '- PDF documents (RAG): broaden your internal understanding of approach and protocol — use them to ask more relevant questions, without citing the document to the patient.'
+        : '- PDF documents: no relevant excerpt for this message — use session text and the patient report.',
+      '- Questions should help the patient report day-to-day experiences aligned with that context, always in simple words.',
+    ],
+  };
+
+  return (blocks[language] ?? blocks.pt).join('\n');
+};
+
 export const buildPsychologistStanceGuidance = (
   language: AppLanguage
 ): string => {
   const blocks: Record<AppLanguage, string> = {
     pt: [
       'POSTURA CLÍNICA:',
-      '- Escute com curiosidade genuína — sem roteiro fixo nem checklist.',
-      '- Aprofunde o que o paciente acabou de dizer antes de mudar de tema.',
-      '- Perguntas abertas quando fizer sentido; às vezes basta acolher ou refletir brevemente.',
+      '- Seu papel é facilitar relatos do dia a dia que ajudarão o psicólogo na sessão.',
+      '- Faça perguntas abertas para direcionar o paciente no meio do relato — convide a contar situações, sentimentos e detalhes concretos.',
+      '- Use o contexto do psicólogo (texto + documentos) para decidir o que explorar; traduza tudo para linguagem simples.',
+      '- Aprofunde o que o paciente acabou de dizer antes de mudar de tema; às vezes basta acolher ou refletir brevemente.',
       '- Não diagnostique, não interprete em voz alta, não prescreva.',
       '- PROIBIDO: TCC, CBT, sintoma, transtorno, diagnóstico, marcas temporais (hoje, ontem).',
     ].join('\n'),
     es: [
       'POSTURA CLÍNICA:',
-      '- Escuche con curiosidad genuina — sin guion fijo ni checklist.',
-      '- Profundice lo que el paciente acaba de decir antes de cambiar de tema.',
-      '- Preguntas abiertas cuando tenga sentido; a veces basta acoger o reflexionar brevemente.',
+      '- Su papel es facilitar relatos del día a día que ayudarán al psicólogo en la sesión.',
+      '- Haga preguntas abiertas para orientar al paciente en medio del relato — invite a contar situaciones, sentimientos y detalles concretos.',
+      '- Use el contexto del psicólogo (texto + documentos) para decidir qué explorar; traduzca todo a lenguaje simple.',
+      '- Profundice lo que el paciente acaba de decir antes de cambiar de tema; a veces basta acoger o reflexionar brevemente.',
       '- No diagnostique, no interprete en voz alta, no prescriba.',
       '- PROHIBIDO: TCC, CBT, síntoma, trastorno, diagnóstico, marcas temporales (hoy, ayer).',
     ].join('\n'),
     en: [
       'CLINICAL STANCE:',
-      '- Listen with genuine curiosity — no fixed script or checklist.',
-      '- Deepen what the patient just said before changing topic.',
-      '- Open questions when it fits; sometimes brief acknowledgment or reflection is enough.',
+      '- Your role is to facilitate day-to-day reports that will help the psychologist in session.',
+      '- Ask open questions to guide the patient through their report — invite them to share situations, feelings, and concrete details.',
+      '- Use the psychologist context (text + documents) to decide what to explore; translate everything into simple language.',
+      '- Deepen what the patient just said before changing topic; sometimes brief acknowledgment or reflection is enough.',
       '- Do not diagnose, interpret aloud, or prescribe.',
       '- FORBIDDEN: CBT, symptom, disorder, diagnosis, time anchors (today, yesterday).',
     ].join('\n'),
@@ -312,11 +391,11 @@ export const buildPsychologistStanceGuidance = (
   return blocks[language] ?? blocks.pt;
 };
 
-/** Consolidated system guidance — brevity, language, and clinical stance in one block. */
 export const buildPatientChatCoreGuidance = (
   language: AppLanguage
 ): string =>
   [
+    buildPatientChatPurposeGuidance(language),
     buildPsychologistStanceGuidance(language),
     buildPatientChatBrevityGuidance(language),
     buildPatientChatSimplicityGuidance(language),
@@ -325,19 +404,22 @@ export const buildPatientChatCoreGuidance = (
 export const buildPresentMomentGuidance = (language: AppLanguage): string => {
   const blocks: Record<AppLanguage, string> = {
     pt: [
-      'FOCO NO RELATO:',
-      '- Responda sobre o que o paciente descreveu, com as palavras dele.',
-      '- Não pergunte o que ele já disse; avance ou acolha.',
+      'FOCO NO RELATO DO DIA A DIA:',
+      '- Ajude o paciente a relatar situações vividas, com as palavras dele.',
+      '- Suas perguntas devem direcionar o relato — não repetir o que já foi dito.',
+      '- Pense: o que ajudaria o psicólogo a entender melhor essa experiência na sessão?',
     ].join('\n'),
     es: [
-      'ENFOQUE EN EL RELATO:',
-      '- Responda sobre lo que el paciente describió, con sus palabras.',
-      '- No pregunte lo que ya dijo; avance o acoja.',
+      'ENFOQUE EN EL RELATO DEL DÍA A DÍA:',
+      '- Ayude al paciente a relatar situaciones vividas, con sus palabras.',
+      '- Sus preguntas deben orientar el relato — no repetir lo ya dicho.',
+      '- Piense: ¿qué ayudaría al psicólogo a entender mejor esta experiencia en la sesión?',
     ].join('\n'),
     en: [
-      'REPORT FOCUS:',
-      '- Respond about what the patient described, in their words.',
-      '- Do not ask what they already said; move forward or acknowledge.',
+      'DAY-TO-DAY REPORT FOCUS:',
+      '- Help the patient report lived situations, in their own words.',
+      '- Your questions should guide the report — do not repeat what was already said.',
+      '- Ask yourself: what would help the psychologist understand this experience better in session?',
     ].join('\n'),
   };
 
@@ -580,7 +662,11 @@ const detectExploredDimensionIds = (
 export const buildQuestionAngleGuidance = (
   language: AppLanguage,
   userMessage: string,
-  priorAgentReplies: string[] = []
+  priorAgentReplies: string[] = [],
+  options?: {
+    hasTextContext?: boolean;
+    hasKnowledgeContext?: boolean;
+  }
 ): string => {
   const dimensions = EXPLORATION_DIMENSIONS[language] ?? EXPLORATION_DIMENSIONS.pt;
   const labels = DIMENSION_LABELS[language] ?? DIMENSION_LABELS.pt;
@@ -599,7 +685,11 @@ export const buildQuestionAngleGuidance = (
 
   const blocks: Record<AppLanguage, string[]> = {
     pt: [
-      'EXPLORAÇÃO (sugestão — não é roteiro):',
+      'DIRECIONAMENTO DO RELATO (sugestão — não é roteiro):',
+      '- Suas perguntas ajudam o paciente a elaborar relatos úteis para a sessão com o psicólogo.',
+      options?.hasTextContext || options?.hasKnowledgeContext
+        ? '- Alinhe as perguntas ao contexto do psicólogo (texto e/ou documentos), traduzindo para linguagem do dia a dia.'
+        : '- Baseie-se no relato atual do paciente para direcionar as perguntas.',
       '- Escolha o que fizer sentido para a mensagem atual; não siga ordem fixa.',
       mentionedInMessage.length
         ? `- O paciente mencionou: ${mentionedInMessage.join(', ')} — pode aprofundar isso.`
@@ -610,7 +700,11 @@ export const buildQuestionAngleGuidance = (
       '- Se o paciente trouxe algo novo, priorize isso em vez de mudar de tema.',
     ],
     es: [
-      'EXPLORACIÓN (sugerencia — no es guion):',
+      'ORIENTACIÓN DEL RELATO (sugerencia — no es guion):',
+      '- Sus preguntas ayudan al paciente a elaborar relatos útiles para la sesión con el psicólogo.',
+      options?.hasTextContext || options?.hasKnowledgeContext
+        ? '- Alinee las preguntas al contexto del psicólogo (texto y/o documentos), traduciendo a lenguaje cotidiano.'
+        : '- Base en el relato actual del paciente para orientar las preguntas.',
       '- Elija lo que tenga sentido para el mensaje actual; no siga un orden fijo.',
       mentionedInMessage.length
         ? `- El paciente mencionó: ${mentionedInMessage.join(', ')} — puede profundizar eso.`
@@ -621,7 +715,11 @@ export const buildQuestionAngleGuidance = (
       '- Si el paciente trajo algo nuevo, priorícelo antes de cambiar de tema.',
     ],
     en: [
-      'EXPLORATION (suggestion — not a script):',
+      'REPORT GUIDANCE (suggestion — not a script):',
+      '- Your questions help the patient elaborate reports useful for the session with the psychologist.',
+      options?.hasTextContext || options?.hasKnowledgeContext
+        ? '- Align questions with the psychologist context (text and/or documents), translated into everyday language.'
+        : '- Base questions on the patient\'s current report.',
       '- Choose what fits the current message; do not follow a fixed order.',
       mentionedInMessage.length
         ? `- The patient mentioned: ${mentionedInMessage.join(', ')} — you may deepen that.`
@@ -948,6 +1046,7 @@ export const buildPatientChatPacingGuidance = (
   const blocks: Record<AppLanguage, string[]> = {
     pt: [
       `RITMO DA CONVERSA (máximo ${maxQuestionsPerInteraction} perguntas por interação):`,
+      '- Cada interação ajuda o paciente a construir relatos do dia a dia para a sessão com o psicólogo.',
       `- Perguntas já feitas nesta interação: ${questionCount} de ${maxQuestionsPerInteraction}.`,
       questionsRemaining > 0
         ? `- Restam ${questionsRemaining} pergunta(s) nesta interação — use com parcimônia.`
@@ -965,6 +1064,7 @@ export const buildPatientChatPacingGuidance = (
     ],
     es: [
       `RITMO DE LA CONVERSACIÓN (máximo ${maxQuestionsPerInteraction} preguntas por interacción):`,
+      '- Cada interacción ayuda al paciente a construir relatos del día a día para la sesión con el psicólogo.',
       `- Preguntas ya hechas en esta interacción: ${questionCount} de ${maxQuestionsPerInteraction}.`,
       questionsRemaining > 0
         ? `- Quedan ${questionsRemaining} pregunta(s) en esta interacción — úselas con moderación.`
@@ -982,6 +1082,7 @@ export const buildPatientChatPacingGuidance = (
     ],
     en: [
       `CONVERSATION PACING (max ${maxQuestionsPerInteraction} questions per interaction):`,
+      '- Each interaction helps the patient build day-to-day reports for the session with the psychologist.',
       `- Questions already asked in this interaction: ${questionCount} of ${maxQuestionsPerInteraction}.`,
       questionsRemaining > 0
         ? `- ${questionsRemaining} question(s) left in this interaction — use them sparingly.`

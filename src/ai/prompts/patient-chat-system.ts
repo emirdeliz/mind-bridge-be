@@ -7,6 +7,7 @@ import {
   buildPatientChatCoreGuidance,
   buildPatientChatPacingGuidance,
   buildPresentMomentGuidance,
+  buildPsychologistContextUsageGuidance,
 } from './patient-chat-interaction.js';
 import { normalizeAppLanguage } from './psychologist-copilot-system.js';
 
@@ -35,7 +36,8 @@ export const buildPatientChatSystemPrompt = (
   const language = normalizeAppLanguage(languageInput);
   const psychologistContext =
     context.psychologistContext.trim() || notProvided(language);
-  const hasContext = Boolean(context.psychologistContext.trim());
+  const hasTextContext = Boolean(context.psychologistContext.trim());
+  const hasKnowledgeContext = Boolean(context.retrievalContext?.trim());
   const questionCount = context.questionCount;
 
   const focusBlock = buildContextFocusBlock(
@@ -50,11 +52,33 @@ export const buildPatientChatSystemPrompt = (
   );
   const coreGuidance = buildPatientChatCoreGuidance(language);
   const presentMomentGuidance = buildPresentMomentGuidance(language);
+  const contextUsageGuidance = buildPsychologistContextUsageGuidance(
+    language,
+    { hasTextContext, hasKnowledgeContext }
+  );
 
   const roleLine: Record<AppLanguage, string> = {
-    pt: 'Você acompanha o paciente entre sessões. Conversa natural de escuta — sem diagnóstico, sem jargão, sem substituir o psicólogo.',
-    es: 'Acompañas al paciente entre sesiones. Conversación natural de escucha — sin diagnóstico, sin jerga, sin reemplazar al psicólogo.',
-    en: 'You accompany the patient between sessions. Natural listening conversation — no diagnosis, no jargon, do not replace the psychologist.',
+    pt: 'Você acompanha o paciente entre sessões, ajudando-o a registrar relatos do dia a dia que serão úteis na sessão com o psicólogo. Conversa de escuta — sem diagnóstico, sem jargão, sem substituir o psicólogo.',
+    es: 'Acompañas al paciente entre sesiones, ayudándole a registrar relatos del día a día que serán útiles en la sesión con el psicólogo. Conversación de escucha — sin diagnóstico, sin jerga, sin reemplazar al psicólogo.',
+    en: 'You accompany the patient between sessions, helping them record day-to-day reports that will be useful in the session with the psychologist. Listening conversation — no diagnosis, no jargon, do not replace the psychologist.',
+  };
+
+  const textContextLabel: Record<AppLanguage, string> = {
+    pt: 'Contexto de texto do psicólogo (campo da sessão — uso interno, traduza para linguagem simples):',
+    es: 'Contexto de texto del psicólogo (campo de la sesión — uso interno, traduzca a lenguaje simple):',
+    en: 'Psychologist text context (session field — internal use, translate to simple language):',
+  };
+
+  const knowledgeHeader: Record<AppLanguage, string> = {
+    pt: 'Trechos de documentos PDF do psicólogo (protocolos/orientações — referência interna para direcionar perguntas):',
+    es: 'Fragmentos de documentos PDF del psicólogo (protocolos/orientaciones — referencia interna para orientar preguntas):',
+    en: 'Excerpts from psychologist PDF documents (protocols/guidance — internal reference to guide questions):',
+  };
+
+  const knowledgeNote: Record<AppLanguage, string> = {
+    pt: 'Use estes trechos para formular perguntas mais pertinentes ao contexto clínico. Não cite o documento nem termos técnicos ao paciente.',
+    es: 'Use estos fragmentos para formular preguntas más pertinentes al contexto clínico. No cite el documento ni términos técnicos al paciente.',
+    en: 'Use these excerpts to ask more relevant questions for the clinical context. Do not cite the document or technical terms to the patient.',
   };
 
   const forbiddenLine: Record<AppLanguage, string> = {
@@ -63,21 +87,16 @@ export const buildPatientChatSystemPrompt = (
     en: 'FORBIDDEN: internal reasoning, analysis, "Thinking Process", numbered lists. Send ONLY the final message to the patient.',
   };
 
-  const knowledgeNote: Record<AppLanguage, string> = {
-    pt: 'Use somente como referência interna. Não cite o documento nem termos técnicos ao paciente.',
-    es: 'Úsalo solo como referencia interna. No cites el documento ni términos técnicos al paciente.',
-    en: 'Use only as internal reference. Do not cite the document or technical terms to the patient.',
-  };
-
   return [
     roleLine[language] ?? roleLine.pt,
     coreGuidance,
+    contextUsageGuidance,
     presentMomentGuidance,
     pacingGuidance,
-    `Contexto do psicólogo (uso interno — traduza para linguagem simples):\n${psychologistContext}`,
-    hasContext ? focusBlock : '',
+    `${textContextLabel[language] ?? textContextLabel.pt}\n${psychologistContext}`,
+    hasTextContext ? focusBlock : '',
     knowledgeBlock
-      ? `${knowledgeBlock}\n${knowledgeNote[language] ?? knowledgeNote.pt}`
+      ? `${knowledgeHeader[language] ?? knowledgeHeader.pt}\n${knowledgeBlock}\n${knowledgeNote[language] ?? knowledgeNote.pt}`
       : '',
     forbiddenLine[language] ?? forbiddenLine.pt,
   ]

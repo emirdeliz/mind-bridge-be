@@ -36,31 +36,26 @@ export const buildContextFocusBlock = (
   const focusPoints = extractContextFocusPoints(context);
 
   if (!focusPoints.length) {
-    const empty: Record<AppLanguage, string> = {
-      pt: 'Sem contexto do psicólogo. Siga o relato do paciente com curiosidade.',
-      es: 'Sin contexto del psicólogo. Siga el relato del paciente con curiosidad.',
-      en: 'No psychologist context. Follow the patient report with curiosity.',
-    };
-    return empty[language];
+    return '';
   }
 
   const listedThemes = focusPoints.map((point) => `- ${point}`).join('\n');
 
   const blocks: Record<AppLanguage, string> = {
     pt: [
-      'Temas do contexto do psicólogo (referência interna):',
+      'Temas prioritários do psicólogo (use para direcionar perguntas sobre relatos do dia a dia):',
       listedThemes,
-      'Use os temas só internamente; na resposta, traduza para linguagem simples e siga o que o paciente acabou de dizer.',
+      'Traduza estes temas para linguagem simples e use-os para orientar o paciente no relato — sem mencionar que veio do psicólogo.',
     ].join('\n'),
     es: [
-      'Temas del contexto del psicólogo (referencia interna):',
+      'Temas prioritarios del psicólogo (use para orientar preguntas sobre relatos del día a día):',
       listedThemes,
-      'Use los temas solo internamente; en la respuesta, traduzca a lenguaje simple y siga lo que el paciente acaba de decir.',
+      'Traduzca estos temas a lenguaje simple y úselos para orientar al paciente en el relato — sin mencionar que viene del psicólogo.',
     ].join('\n'),
     en: [
-      'Themes from psychologist context (internal reference):',
+      'Priority themes from the psychologist (use to guide questions about day-to-day reports):',
       listedThemes,
-      'Use themes internally only; in the reply, translate to simple language and follow what the patient just said.',
+      'Translate these themes into simple language and use them to guide the patient in their report — without mentioning they came from the psychologist.',
     ].join('\n'),
   };
 
@@ -70,12 +65,15 @@ export const buildContextFocusBlock = (
 export const buildPatientChatTurnGuidance = (
   language: AppLanguage,
   userMessage: string,
-  _context: string,
+  psychologistContext: string,
   questionCount: number,
   chatHistory: ClinicalChatMessage[] = [],
   retryAttempt = 0,
-  rejectedReply?: string
+  rejectedReply?: string,
+  retrievalContext = ''
 ): string => {
+  const hasTextContext = Boolean(psychologistContext.trim());
+  const hasKnowledgeContext = Boolean(retrievalContext.trim());
   const priorAgentReplies = extractRecentAgentQuestions(chatHistory);
   const antiRepetitionBlock = buildAntiRepetitionGuidance(
     language,
@@ -84,7 +82,8 @@ export const buildPatientChatTurnGuidance = (
   const angleGuidance = buildQuestionAngleGuidance(
     language,
     userMessage,
-    priorAgentReplies
+    priorAgentReplies,
+    { hasTextContext, hasKnowledgeContext }
   );
   const retryBlock =
     retryAttempt > 0 && rejectedReply
@@ -99,16 +98,16 @@ export const buildPatientChatTurnGuidance = (
   const stepHints: Record<AppLanguage, string> = {
     pt:
       questionCount === 0
-        ? 'Responda à mensagem atual — acolha e, se couber, convide a elaborar.'
-        : 'Responda ao que o paciente acabou de dizer; pergunta ou reflexão breve, conforme fizer sentido.',
+        ? 'Ajude o paciente a iniciar ou continuar um relato do dia a dia — acolha e faça uma pergunta que o direcione a contar mais (use o contexto do psicólogo se disponível).'
+        : 'Direcione o paciente no meio do relato com uma pergunta alinhada ao contexto do psicólogo ou, se couber, apenas acolha/reflita brevemente.',
     es:
       questionCount === 0
-        ? 'Responda al mensaje actual — acoja e, si encaja, invite a elaborar.'
-        : 'Responda a lo que el paciente acaba de decir; pregunta o reflexión breve, según tenga sentido.',
+        ? 'Ayude al paciente a iniciar o continuar un relato del día a día — acoja y haga una pregunta que lo oriente a contar más (use el contexto del psicólogo si está disponible).'
+        : 'Oriente al paciente en medio del relato con una pregunta alineada al contexto del psicólogo o, si corresponde, solo acoja/reflexione brevemente.',
     en:
       questionCount === 0
-        ? 'Reply to the current message — acknowledge and, if it fits, invite elaboration.'
-        : 'Reply to what the patient just said; question or brief reflection, as appropriate.',
+        ? 'Help the patient start or continue a day-to-day report — acknowledge and ask a question that guides them to say more (use psychologist context if available).'
+        : 'Guide the patient through their report with a question aligned to the psychologist context or, if appropriate, only acknowledge/reflect briefly.',
   };
 
   const blocks: Record<AppLanguage, string[]> = {

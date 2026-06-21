@@ -456,12 +456,25 @@ const patchPatientClinicalContent = async (
 export const updatePatientLikertCheckIn = async (
   admin: SupabaseClient,
   patientId: string,
-  scores: Partial<Record<LikertDimensionId, number>>
+  scores: Partial<Record<LikertDimensionId, number>>,
+  localDate: string
 ): Promise<PatientClinicalContent> => {
   const content = await ensurePatientClinicalContent(admin, patientId);
+  const existing = content.likertCheckIn;
+  const existingDate =
+    existing?.checkInDate ??
+    (existing?.updatedAt ? existing.updatedAt.slice(0, 10) : null);
+  const isSameCheckInDay = existingDate === localDate;
+
+  const mergedScores =
+    isSameCheckInDay && existing?.scores
+      ? { ...existing.scores, ...scores }
+      : { ...scores };
+
   const likertCheckIn: LikertCheckIn = {
-    scores,
+    scores: mergedScores,
     updatedAt: new Date().toISOString(),
+    checkInDate: localDate,
   };
 
   const nextPayload: ClinicalContentSeedPayload = {

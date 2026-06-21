@@ -42,6 +42,8 @@ export type LikertDimensionId = 'mood' | 'anxiety' | 'sleep' | 'wellbeing';
 export type LikertCheckIn = {
   scores: Partial<Record<LikertDimensionId, number>>;
   updatedAt: string | null;
+  /** Local calendar date (YYYY-MM-DD) from the patient device when saved. */
+  checkInDate?: string | null;
 };
 
 export const LIKERT_DIMENSION_IDS: LikertDimensionId[] = [

@@ -6,18 +6,8 @@ import type { AppLanguage } from '@domain/types.js';
 import { splitChatIntoInteractions } from './patient-chat-interaction-groups.js';
 
 const MAX_INTERACTIONS_IN_SUMMARY = 8;
-const MAX_SUMMARY_ITEM_CHARS = 220;
-const MAX_FALLBACK_SNIPPET_CHARS = 100;
 
 const LIST_PREFIX_PATTERN = /^(?:[-•*]\s*|\d+[.)]\s*)/;
-
-const truncate = (text: string, maxChars: number): string => {
-  const trimmed = text.trim();
-  if (trimmed.length <= maxChars) {
-    return trimmed;
-  }
-  return `${trimmed.slice(0, maxChars - 1).trimEnd()}…`;
-};
 
 const countUserMessages = (messages: ClinicalChatMessage[]): number =>
   messages.filter((entry) => entry.sender === 'user').length;
@@ -53,17 +43,15 @@ const formatInteractionItem = (
     return '';
   }
 
-  return `${formatInteractionLabel(index, userCount, language)}: ${truncate(summary, MAX_SUMMARY_ITEM_CHARS)}`;
+  return `${formatInteractionLabel(index, userCount, language)}: ${summary.trim()}`;
 };
 
 const briefFallbackSummary = (messages: ClinicalChatMessage[]): string => {
-  const userText = messages
+  return messages
     .filter((entry) => entry.sender === 'user')
     .map((entry) => entry.text.trim())
     .filter(Boolean)
     .join(' ');
-
-  return truncate(userText, MAX_FALLBACK_SNIPPET_CHARS);
 };
 
 const parseAgenticSummaryLines = (

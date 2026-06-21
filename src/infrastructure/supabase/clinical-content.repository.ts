@@ -240,7 +240,12 @@ export const updatePatientInteractionSummary = async (
     patientSummaryUserMessageCount ??
     content.patientChatSeed.filter((entry) => entry.sender === 'user').length;
 
-  await patchPatientClinicalContent(admin, patientId, { patientSummary });
+  await patchPatientClinicalContent(admin, patientId, {
+    patientSummary,
+    ...(content.psychologistSummary != null
+      ? { psychologistSummary: patientSummary }
+      : {}),
+  });
   const { error: countError } = await admin
     .from('patient_clinical_content')
     .update({
@@ -259,6 +264,9 @@ export const updatePatientInteractionSummary = async (
     ...content,
     patientSummary,
     patientSummaryUserMessageCount: summaryUserMessageCount,
+    ...(content.psychologistSummary != null
+      ? { psychologistSummary: patientSummary }
+      : {}),
   };
 };
 

@@ -46,6 +46,11 @@ const findInsightBodyByTitle = (
   content.sessionInsights.find((insight) => insight.title.trim() === title)
     ?.body;
 
+const hasTruncatedSummaryLines = (summary: string): boolean =>
+  summary
+    .split(/\r?\n+/)
+    .some((line) => /…\s*$/.test(line.trim()) || /\.\.\.\s*$/.test(line.trim()));
+
 /** Refresh only when summary is missing or patient chat has new user messages. */
 export const needsPatientInteractionSummaryRefresh = (
   content: PatientClinicalContent
@@ -56,8 +61,13 @@ export const needsPatientInteractionSummaryRefresh = (
 
   const currentCount = countPatientUserMessagesInContent(content);
   const summaryCount = content.patientSummaryUserMessageCount ?? 0;
+  const summary = content.patientSummary?.trim() ?? '';
 
-  if (!content.patientSummary?.trim()) {
+  if (!summary) {
+    return true;
+  }
+
+  if (hasTruncatedSummaryLines(summary)) {
     return true;
   }
 
@@ -75,7 +85,9 @@ export const needsPsychologistSessionInsightsRefresh = (
   }
 
   return (
-    !content.psychologistSummary?.trim() || !content.sessionInsights?.length
+    !content.psychologistSummary?.trim() ||
+    !content.sessionInsights?.length ||
+    hasTruncatedSummaryLines(content.psychologistSummary)
   );
 };
 

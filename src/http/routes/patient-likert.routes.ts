@@ -19,6 +19,7 @@ export const createPatientLikertRoutes =
       async (request) => {
         const auth = request.auth!;
         const body = request.body as {
+          localDate: string;
           scores: Partial<Record<LikertDimensionId, number>>;
         };
 
@@ -27,7 +28,8 @@ export const createPatientLikertRoutes =
         const content = await updatePatientLikertCheckIn(
           admin,
           auth.userId,
-          body.scores
+          body.scores,
+          body.localDate
         );
 
         return { content };

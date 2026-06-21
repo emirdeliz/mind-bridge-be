@@ -3,9 +3,7 @@ import type { AppLanguage } from '@domain/types.js';
 
 import {
   buildAntiRepetitionGuidance,
-  buildPatientChatSimplicityGuidance,
   buildPatientChatRetryGuidance,
-  buildPsychologistStanceGuidance,
   buildQuestionAngleGuidance,
   extractRecentAgentQuestions,
 } from './patient-chat-interaction.js';
@@ -31,9 +29,9 @@ export const extractContextFocusPoints = (context: string): string[] => {
   return [normalized.slice(0, 220)];
 };
 
-export const resolveQuestionFocusHint = (
-  context: string,
-  questionCount: number
+export const buildContextFocusBlock = (
+  language: AppLanguage,
+  context: string
 ): string => {
   const focusPoints = extractContextFocusPoints(context);
 
@@ -41,67 +39,23 @@ export const resolveQuestionFocusHint = (
     return '';
   }
 
-  return focusPoints[questionCount % focusPoints.length] ?? '';
-};
-
-const specificQuestionRules: Record<AppLanguage, string> = {
-  pt: [
-    'PERGUNTA (aberta e contextualizada):',
-    '- Ancore na mensagem do paciente (pessoa, situação, sentimento que ele trouxe).',
-    '- PROIBIDO: "Como você está?", perguntas sobre ontem/hoje, termos clínicos, fórmulas ("o que sente agora").',
-    '- Exemplo BOM: "Quando pensa na conversa com seus colegas, o que mais pesa para você nessa situação?"',
-  ].join('\n'),
-  es: [
-    'PREGUNTA (abierta y contextualizada):',
-    '- Ancle en el mensaje del paciente (persona, situación, sentimiento que trajo).',
-    '- PROHIBIDO: "¿Cómo estás?", preguntas sobre ayer/hoy, términos clínicos, fórmulas ("qué siente ahora").',
-    '- Ejemplo BUENO: "Cuando piensa en la conversación con sus colegas, ¿qué pesa más para usted en esa situación?"',
-  ].join('\n'),
-  en: [
-    'QUESTION (open and contextual):',
-    '- Anchor on the patient message (person, situation, feeling they brought up).',
-    '- FORBIDDEN: "How are you?", yesterday/today questions, clinical terms, formulas ("what you feel now").',
-    '- GOOD example: "When you think about the conversation with your colleagues, what weighs on you most in that situation?"',
-  ].join('\n'),
-};
-
-export const buildContextFocusBlock = (
-  language: AppLanguage,
-  context: string,
-  questionCount: number
-): string => {
-  const focusPoints = extractContextFocusPoints(context);
-  const focusHint = resolveQuestionFocusHint(context, questionCount);
-
-  if (!focusPoints.length) {
-    const empty: Record<AppLanguage, string> = {
-      pt: 'Sem contexto do psicólogo. Explore o relato do paciente com curiosidade — convide-o a elaborar um aspecto que mencionou.',
-      es: 'Sin contexto del psicólogo. Explore el relato del paciente con curiosidad — invítelo a elaborar un aspecto que mencionó.',
-      en: 'No psychologist context. Explore the patient report with curiosity — invite them to elaborate on an aspect they mentioned.',
-    };
-    return empty[language];
-  }
-
   const listedThemes = focusPoints.map((point) => `- ${point}`).join('\n');
 
   const blocks: Record<AppLanguage, string> = {
     pt: [
-      'Temas do contexto do psicólogo:',
+      'Temas prioritários do psicólogo (use para direcionar perguntas sobre relatos do dia a dia):',
       listedThemes,
-      `Tema sugerido nesta pergunta: ${focusHint}`,
-      'Use o tema só internamente. Na pergunta ao paciente, sintetize em linguagem simples sobre situações do dia a dia.',
+      'Traduza estes temas para linguagem simples e use-os para orientar o paciente no relato — sem mencionar que veio do psicólogo.',
     ].join('\n'),
     es: [
-      'Temas del contexto del psicólogo:',
+      'Temas prioritarios del psicólogo (use para orientar preguntas sobre relatos del día a día):',
       listedThemes,
-      `Tema sugerido en esta pregunta: ${focusHint}`,
-      'Usa el tema solo internamente. En la pregunta al paciente, sintetiza con palabras simples sobre situaciones del día a día.',
+      'Traduzca estos temas a lenguaje simple y úselos para orientar al paciente en el relato — sin mencionar que viene del psicólogo.',
     ].join('\n'),
     en: [
-      'Themes from psychologist context:',
+      'Priority themes from the psychologist (use to guide questions about day-to-day reports):',
       listedThemes,
-      `Suggested theme for this question: ${focusHint}`,
-      'Use the theme internally only. In the question to the patient, synthesize with simple words about everyday situations.',
+      'Translate these themes into simple language and use them to guide the patient in their report — without mentioning they came from the psychologist.',
     ].join('\n'),
   };
 
@@ -111,25 +65,32 @@ export const buildContextFocusBlock = (
 export const buildPatientChatTurnGuidance = (
   language: AppLanguage,
   userMessage: string,
-  context: string,
+  psychologistContext: string,
   questionCount: number,
   chatHistory: ClinicalChatMessage[] = [],
   retryAttempt = 0,
-  rejectedReply?: string
+  rejectedReply?: string,
+  retrievalContext = ''
 ): string => {
-  const focusHint = resolveQuestionFocusHint(context, questionCount);
-  const priorAgentQuestions = extractRecentAgentQuestions(chatHistory);
+  const hasTextContext = Boolean(psychologistContext.trim());
+  const hasKnowledgeContext = Boolean(retrievalContext.trim());
+  const priorAgentReplies = extractRecentAgentQuestions(chatHistory);
   const antiRepetitionBlock = buildAntiRepetitionGuidance(
     language,
-    priorAgentQuestions
+    priorAgentReplies
   );
-  const angleGuidance = buildQuestionAngleGuidance(language, questionCount);
+  const angleGuidance = buildQuestionAngleGuidance(
+    language,
+    userMessage,
+    priorAgentReplies,
+    { hasTextContext, hasKnowledgeContext }
+  );
   const retryBlock =
     retryAttempt > 0 && rejectedReply
       ? buildPatientChatRetryGuidance(
           language,
           rejectedReply,
-          priorAgentQuestions,
+          priorAgentReplies,
           retryAttempt
         )
       : '';
@@ -137,56 +98,42 @@ export const buildPatientChatTurnGuidance = (
   const stepHints: Record<AppLanguage, string> = {
     pt:
       questionCount === 0
-        ? 'Primeira pergunta: acolha brevemente e convide o paciente a elaborar UM aspecto do relato atual.'
-        : 'Faça UMA pergunta aberta com ângulo NOVO — diferente das anteriores nesta interação.',
+        ? 'Ajude o paciente a iniciar ou continuar um relato do dia a dia — acolha e faça uma pergunta que o direcione a contar mais (use o contexto do psicólogo se disponível).'
+        : 'Direcione o paciente no meio do relato com uma pergunta alinhada ao contexto do psicólogo ou, se couber, apenas acolha/reflita brevemente.',
     es:
       questionCount === 0
-        ? 'Primera pregunta: acoja brevemente e invite al paciente a elaborar UN aspecto del relato actual.'
-        : 'Haga UNA pregunta abierta con ángulo NUEVO — diferente de las anteriores en esta interacción.',
+        ? 'Ayude al paciente a iniciar o continuar un relato del día a día — acoja y haga una pregunta que lo oriente a contar más (use el contexto del psicólogo si está disponible).'
+        : 'Oriente al paciente en medio del relato con una pregunta alineada al contexto del psicólogo o, si corresponde, solo acoja/reflexione brevemente.',
     en:
       questionCount === 0
-        ? 'First question: briefly acknowledge and invite the patient to elaborate on ONE aspect of the current report.'
-        : 'Ask ONE open question from a NEW angle — different from prior ones in this interaction.',
+        ? 'Help the patient start or continue a day-to-day report — acknowledge and ask a question that guides them to say more (use psychologist context if available).'
+        : 'Guide the patient through their report with a question aligned to the psychologist context or, if appropriate, only acknowledge/reflect briefly.',
   };
-
-  const psychologistStance = buildPsychologistStanceGuidance(language);
 
   const blocks: Record<AppLanguage, string[]> = {
     pt: [
       retryBlock,
-      psychologistStance,
       angleGuidance,
-      `Perguntas do agente nesta interação: ${questionCount}`,
       antiRepetitionBlock,
-      specificQuestionRules.pt,
-      focusHint ? `Tema do psicólogo (uso interno): ${focusHint}` : '',
+      `Perguntas feitas nesta interação: ${questionCount}`,
       stepHints.pt,
-      buildPatientChatSimplicityGuidance('pt'),
-      `Responda à mensagem atual do paciente: "${userMessage}"`,
+      `Mensagem atual do paciente: "${userMessage}"`,
     ],
     es: [
       retryBlock,
-      psychologistStance,
       angleGuidance,
-      `Preguntas del agente en esta interacción: ${questionCount}`,
       antiRepetitionBlock,
-      specificQuestionRules.es,
-      focusHint ? `Tema del psicólogo (uso interno): ${focusHint}` : '',
+      `Preguntas hechas en esta interacción: ${questionCount}`,
       stepHints.es,
-      buildPatientChatSimplicityGuidance('es'),
-      `Responda al mensaje actual del paciente: "${userMessage}"`,
+      `Mensaje actual del paciente: "${userMessage}"`,
     ],
     en: [
       retryBlock,
-      psychologistStance,
       angleGuidance,
-      `Agent questions in this interaction: ${questionCount}`,
       antiRepetitionBlock,
-      specificQuestionRules.en,
-      focusHint ? `Psychologist theme (internal): ${focusHint}` : '',
+      `Questions asked in this interaction: ${questionCount}`,
       stepHints.en,
-      buildPatientChatSimplicityGuidance('en'),
-      `Reply to the patient's current message: "${userMessage}"`,
+      `Patient's current message: "${userMessage}"`,
     ],
   };
 

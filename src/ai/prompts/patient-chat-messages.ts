@@ -45,7 +45,8 @@ export const buildPatientChatSystemContent = (
       questionCount,
       context.chatHistory,
       context.retryAttempt ?? 0,
-      context.rejectedReply
+      context.rejectedReply,
+      context.retrievalContext
     ),
     resolveLanguageInstruction(context.language),
   ]

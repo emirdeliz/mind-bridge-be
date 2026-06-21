@@ -7,8 +7,8 @@ import type { Env } from '@config/env.js';
 
 const OPENROUTER_BASE_URL = 'https://openrouter.ai/api/v1';
 
-/** Patient chat — balance between variety and brief, on-format replies. */
-export const PATIENT_CHAT_TEMPERATURE = 0.3;
+/** Patient chat — warmer replies with more natural variation. */
+export const PATIENT_CHAT_TEMPERATURE = 0.55;
 
 /** Patient chat generation budget; sentence cap applied in post-processing. */
 export const PATIENT_CHAT_MAX_OUTPUT_TOKENS = 256;

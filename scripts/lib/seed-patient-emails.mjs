@@ -13,6 +13,9 @@ const CORE_DEMO_PATIENTS = [
   'carlosamaro@gmail.com',
 ];
 
+/** Patient kept when pruning other seed/demo accounts */
+export const KEEP_SEED_PATIENT_EMAIL = 'maurosouza@gmail.com';
+
 const buildExtraDemoPatientEmails = () => {
   const emails = [];
   for (let psychologistIndex = 0; psychologistIndex < 7; psychologistIndex += 1) {

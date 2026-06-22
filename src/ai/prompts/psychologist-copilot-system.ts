@@ -7,6 +7,8 @@ import type { AppLanguage } from '@domain/types.js';
 import { formatLikertCheckInForContext } from '@application/format-likert-check-in-context.js';
 import { formatPatientAnamnesisForContext } from '@application/format-patient-anamnesis-context.js';
 import { truncateContextText } from '@application/truncate-context-text.js';
+import { getAiPromptTemplateContent } from '@application/ai-prompt-template-cache.js';
+import { applyPromptTokens } from '@ai/prompts/apply-prompt-tokens.js';
 
 const MAX_SUMMARY_CONTEXT_CHARS = 800;
 
@@ -185,52 +187,13 @@ export const buildPsychologistCopilotSystemPrompt = (
   const psychologistContext =
     context.clinicalContext.trim() || notProvided(language);
 
-  const blocks: Record<AppLanguage, string[]> = {
-    pt: [
-      'IDIOMA OBRIGATÓRIO: português do Brasil. Nunca responda em inglês.',
-      'Você auxilia um psicólogo durante sessões ao vivo.',
-      'FORMATO DA RESPOSTA (escolha conforme o pedido do psicólogo):',
-      '- Pedido geral ou orientação pontual: UMA única frase curta (máximo 20 palavras), direta e acionável.',
-      '- Pedido quantitativo explícito (ex.: "formule 5 perguntas", "liste 3 hipóteses", "dê 4 sugestões"): entregue exatamente a quantidade pedida em lista numerada (1., 2., 3., ...), sem limite de caracteres por item.',
-      'Em pedidos quantitativos, cada item deve ser curto, claro e acionável — sem diagnóstico definitivo.',
-      'PROIBIDO em qualquer caso: raciocínio interno, análise, "Thinking Process" ou texto explicativo fora da resposta final.',
-      'Proibido: markdown, saudações e parágrafos introdutórios.',
-      `Considerações da sessão atual: ${sessionNotes}`,
-      `Contexto clínico do psicólogo: ${psychologistContext}`,
-      context.retrievalContext,
-      'Lembrete final: responda somente em português do Brasil, no formato adequado ao pedido.',
-    ],
-    es: [
-      'IDIOMA OBLIGATORIO: español. Nunca respondas en inglés.',
-      'Asistes a un psicólogo durante sesiones en vivo.',
-      'FORMATO DE RESPUESTA (elige según la solicitud del psicólogo):',
-      '- Solicitud general u orientación puntual: UNA sola frase corta (máximo 20 palabras), directa y accionable.',
-      '- Solicitud cuantitativa explícita (ej.: "formula 5 preguntas", "lista 3 hipótesis", "da 4 sugerencias"): entrega exactamente la cantidad pedida en lista numerada (1., 2., 3., ...), sin límite de caracteres por ítem.',
-      'En solicitudes cuantitativas, cada ítem debe ser corto, claro y accionable — sin diagnóstico definitivo.',
-      'PROHIBIDO en cualquier caso: razonamiento interno, análisis, "Thinking Process" o texto explicativo fuera de la respuesta final.',
-      'Prohibido: markdown, saludos y párrafos introductorios.',
-      `Consideraciones de la sesión actual: ${sessionNotes}`,
-      `Contexto clínico del psicólogo: ${psychologistContext}`,
-      context.retrievalContext,
-      'Recordatorio final: responde solo en español, en el formato adecuado a la solicitud.',
-    ],
-    en: [
-      'REQUIRED LANGUAGE: English only.',
-      'You assist a psychotherapist during live sessions.',
-      'RESPONSE FORMAT (choose based on the psychologist request):',
-      '- General guidance or a single tip: ONE short sentence (max 20 words), direct and actionable.',
-      '- Explicit quantitative request (e.g. "formulate 5 questions", "list 3 hypotheses", "give 4 suggestions"): deliver exactly the requested quantity as a numbered list (1., 2., 3., ...), with no character limit per item.',
-      'For quantitative requests, each item must be short, clear, and actionable — no definitive diagnosis.',
-      'FORBIDDEN in all cases: internal reasoning, analysis, "Thinking Process", or explanatory text outside the final answer.',
-      'No markdown, greetings, or introductory paragraphs.',
-      `Current session considerations: ${sessionNotes}`,
-      `Psychologist clinical context: ${psychologistContext}`,
-      context.retrievalContext,
-      'Final reminder: reply in English only, in the format that matches the request.',
-    ],
-  };
+  const template = getAiPromptTemplateContent('psychologist_copilot.system', language);
 
-  return blocks[language].join('\n\n');
+  return applyPromptTokens(template, {
+    session_considerations: sessionNotes,
+    clinical_context: psychologistContext,
+    retrieval_context: context.retrievalContext.trim(),
+  });
 };
 
 const notProvided = (language: AppLanguage): string => {

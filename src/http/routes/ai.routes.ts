@@ -19,6 +19,7 @@ import {
   ForbiddenError,
 } from '@application/authorization.js';
 import { getRecentInteractionsMessages } from '@application/patient-chat-interaction-groups.js';
+import { ensureAiPromptTemplateCache } from '@application/ai-prompt-template-cache.js';
 import {
   runPatientChatGraph,
   streamPatientChatGraph,
@@ -195,6 +196,11 @@ export const createAiRoutes =
   (env: Env): FastifyPluginAsync =>
   async (app) => {
     const admin = createAdminSupabaseClient(env);
+
+    app.addHook('preHandler', async () => {
+      await ensureAiPromptTemplateCache(admin);
+    });
+
     app.post(
       '/ai/patient/chat',
       {

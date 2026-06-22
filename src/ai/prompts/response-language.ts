@@ -1,5 +1,7 @@
 import type { AppLanguage } from '@domain/types.js';
 
+import { getAiPromptTemplateContent } from '@application/ai-prompt-template-cache.js';
+
 const LANGUAGE_INSTRUCTIONS: Record<AppLanguage, string> = {
   pt: 'Responda sempre em português do Brasil, de forma clara e empática.',
   es: 'Responde siempre en español, de forma clara y empática.',
@@ -8,7 +10,14 @@ const LANGUAGE_INSTRUCTIONS: Record<AppLanguage, string> = {
 
 export const resolveLanguageInstruction = (
   language: AppLanguage | undefined
-): string => LANGUAGE_INSTRUCTIONS[language ?? 'pt'];
+): string => {
+  const resolved = language ?? 'pt';
+  try {
+    return getAiPromptTemplateContent('response_language.instruction', resolved);
+  } catch {
+    return LANGUAGE_INSTRUCTIONS[resolved];
+  }
+};
 
 const PSYCHOLOGIST_BREVITY_INSTRUCTIONS: Record<AppLanguage, string> = {
   pt: 'Responda em UMA única frase curta (máximo 20 palavras). Vá direto ao ponto. Proibido: listas, tópicos, markdown, saudações e explicações longas.',
@@ -19,4 +28,14 @@ const PSYCHOLOGIST_BREVITY_INSTRUCTIONS: Record<AppLanguage, string> = {
 /** Keeps psychologist copilot replies brief during live sessions. */
 export const resolvePsychologistBrevityInstruction = (
   language: AppLanguage | undefined
-): string => PSYCHOLOGIST_BREVITY_INSTRUCTIONS[language ?? 'pt'];
+): string => {
+  const resolved = language ?? 'pt';
+  try {
+    return getAiPromptTemplateContent(
+      'response_language.psychologist_brevity',
+      resolved
+    );
+  } catch {
+    return PSYCHOLOGIST_BREVITY_INSTRUCTIONS[resolved];
+  }
+};

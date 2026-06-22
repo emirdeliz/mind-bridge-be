@@ -1,6 +1,9 @@
 import type { ClinicalChatMessage } from '@domain/clinical-content.types.js';
 import type { AppLanguage } from '@domain/types.js';
 
+import { getAiPromptTemplateContent } from '@application/ai-prompt-template-cache.js';
+import { applyPromptTokens } from '@ai/prompts/apply-prompt-tokens.js';
+
 import {
   buildAntiRepetitionGuidance,
   buildPatientChatRetryGuidance,
@@ -110,34 +113,16 @@ export const buildPatientChatTurnGuidance = (
         : 'Guide the patient through their report with a question aligned to the psychologist context or, if appropriate, only acknowledge/reflect briefly.',
   };
 
-  const blocks: Record<AppLanguage, string[]> = {
-    pt: [
-      retryBlock,
-      angleGuidance,
-      antiRepetitionBlock,
-      `Perguntas feitas nesta interação: ${questionCount}`,
-      stepHints.pt,
-      `Mensagem atual do paciente: "${userMessage}"`,
-    ],
-    es: [
-      retryBlock,
-      angleGuidance,
-      antiRepetitionBlock,
-      `Preguntas hechas en esta interacción: ${questionCount}`,
-      stepHints.es,
-      `Mensaje actual del paciente: "${userMessage}"`,
-    ],
-    en: [
-      retryBlock,
-      angleGuidance,
-      antiRepetitionBlock,
-      `Questions asked in this interaction: ${questionCount}`,
-      stepHints.en,
-      `Patient's current message: "${userMessage}"`,
-    ],
-  };
+  const template = getAiPromptTemplateContent('patient_chat.turn_guidance', language);
 
-  return (blocks[language] ?? blocks.pt).filter(Boolean).join('\n');
+  return applyPromptTokens(template, {
+    retry_guidance: retryBlock,
+    angle_guidance: angleGuidance,
+    anti_repetition_guidance: antiRepetitionBlock,
+    question_count: String(questionCount),
+    step_hint: stepHints[language] ?? stepHints.pt,
+    user_message: userMessage,
+  });
 };
 
 /** @deprecated Use buildPatientChatTurnGuidance with multi-turn history instead. */

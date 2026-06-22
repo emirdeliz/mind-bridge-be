@@ -10,10 +10,13 @@ import type { AppLanguage } from '@domain/types.js';
 
 import { buildPatientChatTurnGuidance } from './patient-chat-context-focus.js';
 import { countAgentQuestionsInChat } from './patient-chat-interaction.js';
+import { PATIENT_CHAT_CONTEXT_INTERACTION_LIMIT } from '../../application/patient-chat-interaction-groups.js';
 import { buildPatientChatSystemPrompt } from './patient-chat-system.js';
 import { resolveLanguageInstruction } from './response-language.js';
 
-export const PATIENT_CHAT_MAX_HISTORY_MESSAGES = 10;
+/** Safety cap on messages after interaction-window filtering (~5 conversations). */
+export const PATIENT_CHAT_MAX_HISTORY_MESSAGES =
+  PATIENT_CHAT_CONTEXT_INTERACTION_LIMIT * 12;
 
 export type PatientChatGenerationContext = {
   language: AppLanguage;

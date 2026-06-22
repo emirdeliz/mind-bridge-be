@@ -18,6 +18,7 @@ import {
   assertPsychologistPatientAccess,
   ForbiddenError,
 } from '@application/authorization.js';
+import { getRecentInteractionsMessages } from '@application/patient-chat-interaction-groups.js';
 import {
   runPatientChatGraph,
   streamPatientChatGraph,
@@ -222,12 +223,13 @@ export const createAiRoutes =
         const chatHistory = clinicalContent.patientChatSeed ?? [];
         const { interactionId, isNewInteraction } =
           resolvePatientChatInteraction(chatHistory);
-        const interactionHistory = getInteractionScopedHistory(
+        const currentInteractionHistory = getInteractionScopedHistory(
           chatHistory,
           interactionId,
           isNewInteraction
         );
-        const questionCount = countAgentQuestionsInChat(interactionHistory);
+        const contextHistory = getRecentInteractionsMessages(chatHistory);
+        const questionCount = countAgentQuestionsInChat(currentInteractionHistory);
         const forcedClosing = shouldClosePatientChatInteraction(questionCount);
         const patientPsychologistIds =
           await listActivePsychologistIdsForPatient(admin, auth.userId);
@@ -253,7 +255,7 @@ export const createAiRoutes =
                 patientId: auth.userId,
                 userMessage: body.message,
                 psychologistContext,
-                chatHistory: interactionHistory,
+                chatHistory: contextHistory,
                 language,
                 retrievalContext: knowledgeRetrieval,
               },
@@ -265,7 +267,7 @@ export const createAiRoutes =
             patientId: auth.userId,
             userMessage: body.message,
             psychologistContext,
-            chatHistory: interactionHistory,
+            chatHistory: contextHistory,
             language,
             retrievalContext: knowledgeRetrieval,
           });

@@ -3,6 +3,9 @@ import type { ClinicalChatMessage } from '@domain/clinical-content.types.js';
 /** Lookback window for weekly pattern detection (7 days). */
 export const PATIENT_CHAT_WEEKLY_LOOKBACK_MS = 7 * 24 * 60 * 60 * 1000;
 
+/** Max past conversation blocks included in patient-chat LLM context. */
+export const PATIENT_CHAT_CONTEXT_INTERACTION_LIMIT = 5;
+
 /** Splits patient chat into conversation blocks (by interactionId / isInteractionStart). */
 export const splitChatIntoInteractions = (
   messages: ClinicalChatMessage[]
@@ -40,6 +43,17 @@ export const splitChatIntoInteractions = (
   }
 
   return interactions.length ? interactions : [messages];
+};
+
+export const getRecentInteractionsMessages = (
+  messages: ClinicalChatMessage[],
+  maxInteractions: number = PATIENT_CHAT_CONTEXT_INTERACTION_LIMIT
+): ClinicalChatMessage[] => {
+  if (!messages.length || maxInteractions <= 0) {
+    return [];
+  }
+
+  return splitChatIntoInteractions(messages).slice(-maxInteractions).flat();
 };
 
 const parseMessageTime = (message: ClinicalChatMessage): number | null => {

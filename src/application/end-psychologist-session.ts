@@ -8,6 +8,7 @@ import {
   ensurePatientClinicalContent,
   type EndPsychologistSessionPayload,
 } from '@infrastructure/supabase/clinical-content.repository.js';
+import { updatePatientLastConsultationAt } from '@infrastructure/supabase/patient.repository.js';
 
 import { enrichDashboardSnapshotWithPatientActivity } from './enrich-dashboard-snapshot.js';
 import { generateDashboardSnapshotAfterSession } from './generate-dashboard-snapshot.js';
@@ -15,6 +16,7 @@ import { generateDashboardSnapshotAfterSession } from './generate-dashboard-snap
 export const endPsychologistSession = async (
   env: Env,
   admin: SupabaseClient,
+  psychologistId: string,
   patientId: string,
   payload: EndPsychologistSessionPayload,
   language: AppLanguage = 'pt'
@@ -46,10 +48,19 @@ export const endPsychologistSession = async (
     content.patientChatSeed
   );
 
-  return endPsychologistPatientSession(
+  const endedContent = await endPsychologistPatientSession(
     admin,
     patientId,
     payload,
     dashboardSnapshot
   );
+
+  await updatePatientLastConsultationAt(
+    admin,
+    psychologistId,
+    patientId,
+    new Date().toISOString()
+  );
+
+  return endedContent;
 };

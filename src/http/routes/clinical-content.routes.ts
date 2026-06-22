@@ -179,6 +179,7 @@ export const createClinicalContentRoutes =
         const content = await endPsychologistSession(
           env,
           admin,
+          auth.userId,
           patientId,
           body,
           normalizeAppLanguage(body.language)

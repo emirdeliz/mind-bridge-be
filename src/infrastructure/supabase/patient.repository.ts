@@ -438,6 +438,26 @@ export const updatePatientForPsychologist = async (
   return updated;
 };
 
+export const updatePatientLastConsultationAt = async (
+  admin: SupabaseClient,
+  psychologistId: string,
+  patientId: string,
+  lastConsultationAt: string
+): Promise<void> => {
+  const { error } = await admin
+    .from('care_relationships')
+    .update(toSnakeRecord({ lastConsultationAt }))
+    .eq('psychologist_id', psychologistId)
+    .eq('patient_id', patientId)
+    .eq('is_deleted', false);
+
+  if (error) {
+    throw new Error(
+      `Failed to update last consultation: ${error.message}`
+    );
+  }
+};
+
 export const softDeletePatientForPsychologist = async (
   admin: SupabaseClient,
   psychologistId: string,

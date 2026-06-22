@@ -5,6 +5,7 @@ import type { Env } from '@config/env.js';
 import { mapErrorToStatus } from '@http/errors.js';
 import { registerAuthHook } from '@http/plugins/auth.js';
 import { createAdminRoutes } from '@http/routes/admin.routes.js';
+import { createAdminPromptTemplateRoutes } from '@http/routes/admin-prompt-templates.routes.js';
 import { createAiRoutes } from '@http/routes/ai.routes.js';
 import { createAuthRoutes } from '@http/routes/auth.routes.js';
 import { createPsychologistInviteCodeRoutes } from '@http/routes/psychologist-invite-code.routes.js';
@@ -43,6 +44,7 @@ export const buildServer = async (env: Env) => {
   await app.register(createAuthRoutes(env));
   await app.register(meRoutes);
   await app.register(createAdminRoutes(env));
+  await app.register(createAdminPromptTemplateRoutes(env));
   await app.register(createAiRoutes(env));
   await app.register(createPsychologistChatShortcutsRoutes(env));
   await app.register(createPsychologistPatientsRoutes(env));

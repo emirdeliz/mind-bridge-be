@@ -4,14 +4,24 @@ import {
   getAiPromptTemplateDefinition,
   listAiPromptTemplateDefinitions,
 } from '@ai/prompts/ai-prompt-registry.js';
+import { NotFoundError } from '@application/authorization.js';
 import type {
   AiPromptTemplateListItem,
   AiPromptTemplateTranslations,
   UpsertAiPromptTemplateBody,
 } from '@domain/ai-prompt-template.types.js';
 import type { AppLanguage } from '@domain/types.js';
-import { NotFoundError } from '@application/authorization.js';
-import { BadRequestError } from '@http/errors.js';
+
+import {
+  getAiPromptTemplateDefaultTranslations,
+  loadAllAiPromptTemplateDefaultTranslations,
+} from './ai-prompt-template-default.repository.js';
+import {
+  extractPromptTokens,
+  resolvePromptTemplateLanguageContent,
+  sanitizePromptTemplateTranslations,
+  validateAllowedPromptTokens,
+} from './ai-prompt-template.shared.js';
 
 type PromptTemplateRow = {
   key: string;
@@ -20,14 +30,19 @@ type PromptTemplateRow = {
   updated_by: string | null;
 };
 
+const toDefaultContent = (
+  translations: AiPromptTemplateTranslations
+): Record<AppLanguage, string> => ({
+  pt: translations.pt ?? '',
+  en: translations.en ?? translations.pt ?? '',
+  es: translations.es ?? translations.pt ?? '',
+});
+
 const mapListItem = (
-  definition: ReturnType<typeof getAiPromptTemplateDefinition>,
+  definition: NonNullable<ReturnType<typeof getAiPromptTemplateDefinition>>,
+  defaultTranslations: AiPromptTemplateTranslations,
   override: PromptTemplateRow | undefined
 ): AiPromptTemplateListItem => {
-  if (!definition) {
-    throw new Error('Prompt template definition missing');
-  }
-
   const overrideTranslations = override?.translations ?? null;
   const isCustomized = Boolean(
     overrideTranslations &&
@@ -42,7 +57,7 @@ const mapListItem = (
     label: definition.label,
     description: definition.description,
     allowedTokens: definition.allowedTokens,
-    defaultContent: definition.defaultContent,
+    defaultContent: toDefaultContent(defaultTranslations),
     override: isCustomized ? overrideTranslations : null,
     isCustomized,
     updatedAt: override?.updated_at ?? null,
@@ -52,20 +67,32 @@ const mapListItem = (
 export const listAiPromptTemplates = async (
   admin: SupabaseClient
 ): Promise<AiPromptTemplateListItem[]> => {
-  const { data, error } = await admin
-    .from('ai_prompt_templates')
-    .select('key, translations, updated_at, updated_by');
+  const [defaults, overridesResult] = await Promise.all([
+    loadAllAiPromptTemplateDefaultTranslations(admin),
+    admin
+      .from('ai_prompt_templates')
+      .select('key, translations, updated_at, updated_by'),
+  ]);
 
-  if (error) {
-    throw new Error(`Failed to list prompt templates: ${error.message}`);
+  if (overridesResult.error) {
+    throw new Error(
+      `Failed to list prompt templates: ${overridesResult.error.message}`
+    );
   }
 
   const overrides = new Map(
-    (data as PromptTemplateRow[] | null)?.map((row) => [row.key, row]) ?? []
+    (overridesResult.data as PromptTemplateRow[] | null)?.map((row) => [
+      row.key,
+      row,
+    ]) ?? []
   );
 
   return listAiPromptTemplateDefinitions().map((definition) =>
-    mapListItem(definition, overrides.get(definition.key))
+    mapListItem(
+      definition,
+      defaults.get(definition.key) ?? {},
+      overrides.get(definition.key)
+    )
   );
 };
 
@@ -102,8 +129,8 @@ export const saveAiPromptTemplateOverride = async (
     throw new NotFoundError('Prompt template not found');
   }
 
-  const translations = sanitizeTranslations(body.translations);
-  validateAllowedTokens(definition.allowedTokens, translations);
+  const translations = sanitizePromptTemplateTranslations(body.translations);
+  validateAllowedPromptTokens(definition.allowedTokens, translations);
 
   const { data, error } = await admin
     .from('ai_prompt_templates')
@@ -120,10 +147,15 @@ export const saveAiPromptTemplateOverride = async (
     .single();
 
   if (error) {
-    throw new Error(`Failed to load prompt template: ${error.message}`);
+    throw new Error(`Failed to save prompt template: ${error.message}`);
   }
 
-  return mapListItem(definition, data as PromptTemplateRow);
+  const defaultTranslations = await getAiPromptTemplateDefaultTranslations(
+    admin,
+    key
+  );
+
+  return mapListItem(definition, defaultTranslations, data as PromptTemplateRow);
 };
 
 export const restoreAiPromptTemplateDefault = async (
@@ -138,10 +170,15 @@ export const restoreAiPromptTemplateDefault = async (
   const { error } = await admin.from('ai_prompt_templates').delete().eq('key', key);
 
   if (error) {
-    throw new Error(`Failed to load prompt template: ${error.message}`);
+    throw new Error(`Failed to restore prompt template: ${error.message}`);
   }
 
-  return mapListItem(definition, undefined);
+  const defaultTranslations = await getAiPromptTemplateDefaultTranslations(
+    admin,
+    key
+  );
+
+  return mapListItem(definition, defaultTranslations, undefined);
 };
 
 export const resolveStoredPromptTemplate = async (
@@ -154,70 +191,30 @@ export const resolveStoredPromptTemplate = async (
     throw new Error(`Unknown prompt template key: ${key}`);
   }
 
-  const override = await getAiPromptTemplateOverride(admin, key);
-  const customized =
-    override?.translations?.[language]?.trim() ||
-    override?.translations?.pt?.trim();
+  const [defaultTranslations, override] = await Promise.all([
+    getAiPromptTemplateDefaultTranslations(admin, key),
+    getAiPromptTemplateOverride(admin, key),
+  ]);
+
+  const customized = resolvePromptTemplateLanguageContent(
+    override?.translations,
+    language
+  );
 
   if (customized) {
     return customized;
   }
 
-  return definition.defaultContent[language] ?? definition.defaultContent.pt;
-};
+  const fallback = resolvePromptTemplateLanguageContent(
+    defaultTranslations,
+    language
+  );
 
-const sanitizeTranslations = (
-  translations: AiPromptTemplateTranslations
-): AiPromptTemplateTranslations => {
-  const entries = (['pt', 'en', 'es'] as AppLanguage[])
-    .map((language) => {
-      const value = translations[language];
-      if (typeof value !== 'string') {
-        return null;
-      }
-      const trimmed = value.trim();
-      return trimmed ? ([language, trimmed] as const) : null;
-    })
-    .filter(Boolean) as [AppLanguage, string][];
-
-  if (!entries.length) {
-    throw new BadRequestError('At least one language translation is required');
+  if (!fallback) {
+    throw new Error(`Prompt template default missing for key: ${key}`);
   }
 
-  return Object.fromEntries(entries) as AiPromptTemplateTranslations;
+  return fallback;
 };
 
-const TOKEN_PATTERN = /#([a-z_]+)/gi;
-
-const validateAllowedTokens = (
-  allowedTokens: string[],
-  translations: AiPromptTemplateTranslations
-): void => {
-  if (!allowedTokens.length) {
-    return;
-  }
-
-  const allowed = new Set(allowedTokens);
-
-  for (const content of Object.values(translations)) {
-    if (typeof content !== 'string') {
-      continue;
-    }
-
-    const usedTokens = [...content.matchAll(TOKEN_PATTERN)].map((match) =>
-      match[1].toLowerCase()
-    );
-    const invalid = usedTokens.filter((token) => !allowed.has(token));
-
-    if (invalid.length) {
-      throw new BadRequestError(
-        `Invalid reserved words for this prompt: ${invalid.join(', ')}`
-      );
-    }
-  }
-};
-
-export const extractPromptTokens = (content: string): string[] => {
-  const matches = content.matchAll(TOKEN_PATTERN);
-  return [...new Set([...matches].map((match) => match[1].toLowerCase()))];
-};
+export { extractPromptTokens };

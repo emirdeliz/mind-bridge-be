@@ -1,4 +1,4 @@
--- Platform-wide AI prompt overrides (defaults live in application code).
+-- Platform-wide AI prompt overrides (defaults live in ai_prompt_template_defaults).
 
 create table if not exists public.ai_prompt_templates (
   key text primary key,

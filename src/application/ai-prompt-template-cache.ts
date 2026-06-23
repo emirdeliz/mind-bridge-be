@@ -4,29 +4,42 @@ import { getAiPromptTemplateDefinition } from '@ai/prompts/ai-prompt-registry.js
 import type { AiPromptTemplateTranslations } from '@domain/ai-prompt-template.types.js';
 import type { AppLanguage } from '@domain/types.js';
 
+import {
+  ensureAiPromptTemplateDefaultsSeeded,
+  loadAllAiPromptTemplateDefaultTranslations,
+} from '@infrastructure/supabase/ai-prompt-template-default.repository.js';
+import { resolvePromptTemplateLanguageContent } from '@infrastructure/supabase/ai-prompt-template.shared.js';
+
 type OverrideCache = Map<string, AiPromptTemplateTranslations>;
+type DefaultCache = Map<string, AiPromptTemplateTranslations>;
 
 let overrideCache: OverrideCache = new Map();
+let defaultCache: DefaultCache = new Map();
 let cacheReady = false;
 
 export const invalidateAiPromptTemplateCache = (): void => {
   overrideCache = new Map();
+  defaultCache = new Map();
   cacheReady = false;
 };
 
 export const warmAiPromptTemplateCache = async (
   admin: SupabaseClient
 ): Promise<void> => {
-  const { data, error } = await admin
-    .from('ai_prompt_templates')
-    .select('key, translations');
+  await ensureAiPromptTemplateDefaultsSeeded(admin);
 
-  if (error) {
-    throw error;
+  const [defaults, overridesResult] = await Promise.all([
+    loadAllAiPromptTemplateDefaultTranslations(admin),
+    admin.from('ai_prompt_templates').select('key, translations'),
+  ]);
+
+  if (overridesResult.error) {
+    throw overridesResult.error;
   }
 
+  defaultCache = defaults;
   overrideCache = new Map(
-    (data ?? []).map((row) => [
+    (overridesResult.data ?? []).map((row) => [
       row.key as string,
       (row.translations ?? {}) as AiPromptTemplateTranslations,
     ])
@@ -51,15 +64,25 @@ export const getAiPromptTemplateContent = (
     throw new Error(`Unknown prompt template key: ${key}`);
   }
 
-  const override = overrideCache.get(key);
-  const customized =
-    override?.[language]?.trim() || override?.pt?.trim() || '';
+  const customized = resolvePromptTemplateLanguageContent(
+    overrideCache.get(key),
+    language
+  );
 
   if (customized) {
     return customized;
   }
 
-  return definition.defaultContent[language] ?? definition.defaultContent.pt;
+  const fallback = resolvePromptTemplateLanguageContent(
+    defaultCache.get(key),
+    language
+  );
+
+  if (!fallback) {
+    throw new Error(`Prompt template default missing for key: ${key}`);
+  }
+
+  return fallback;
 };
 
 export const isAiPromptTemplateCacheReady = (): boolean => cacheReady;

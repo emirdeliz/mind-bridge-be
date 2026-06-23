@@ -17,8 +17,17 @@ export type AiPromptTemplateDefinition = {
   category: string;
   label: Record<AppLanguage, string>;
   description: Record<AppLanguage, string>;
-  defaultContent: Record<AppLanguage, string>;
   allowedTokens: string[];
+};
+
+export type AiPromptTemplateDefaultListItem = {
+  key: string;
+  category: string;
+  label: Record<AppLanguage, string>;
+  description: Record<AppLanguage, string>;
+  allowedTokens: string[];
+  defaultContent: Record<AppLanguage, string>;
+  updatedAt: string | null;
 };
 
 export type AiPromptTokenDefinition = {

@@ -17,6 +17,10 @@ import {
   restoreAiPromptTemplateDefault,
   saveAiPromptTemplateOverride,
 } from '@infrastructure/supabase/ai-prompt-template.repository.js';
+import {
+  listAiPromptTemplateDefaults,
+  saveAiPromptTemplateDefault,
+} from '@infrastructure/supabase/ai-prompt-template-default.repository.js';
 import { createAdminSupabaseClient } from '@infrastructure/supabase/client.js';
 
 export const createAdminPromptTemplateRoutes =
@@ -79,6 +83,48 @@ export const createAdminPromptTemplateRoutes =
         const { key } = request.params as { key: string };
 
         const template = await restoreAiPromptTemplateDefault(admin, key);
+        invalidateAiPromptTemplateCache();
+
+        return { template };
+      }
+    );
+
+    app.get('/admin/prompt-template-defaults', async (request) => {
+      assertAdmin(request.auth);
+      const templates = await listAiPromptTemplateDefaults(admin);
+      return { templates };
+    });
+
+    app.patch(
+      '/admin/prompt-template-defaults/:key',
+      {
+        preHandler: [
+          validateParams(aiPromptTemplateKeyParamsSchema),
+          validateBody(saveAiPromptTemplateBodySchema),
+        ],
+      },
+      async (request) => {
+        const auth = request.auth!;
+        assertAdmin(auth);
+        const { key } = request.params as { key: string };
+        const body = request.body as SaveAiPromptTemplateBody;
+        const definition = getAiPromptTemplateDefinition(key);
+        if (!definition) {
+          throw new NotFoundError('Prompt template not found');
+        }
+
+        const translations = await generateAiPromptTemplateTranslations(env, {
+          content: body.content,
+          sourceLanguage: body.sourceLanguage,
+          allowedTokens: definition.allowedTokens,
+        });
+
+        const template = await saveAiPromptTemplateDefault(
+          admin,
+          key,
+          { translations },
+          auth.userId
+        );
         invalidateAiPromptTemplateCache();
 
         return { template };

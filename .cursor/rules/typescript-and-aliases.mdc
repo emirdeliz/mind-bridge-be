@@ -3,27 +3,37 @@ description: Enforce TypeScript and prefer path aliases
 globs:
   - src/**/*.ts
   - src/**/*.tsx
-alwaysApply: false
+alwaysApply: true
 ---
 
 # TypeScript And Aliases
 
 - All application code must be written in TypeScript (`.ts` / `.tsx`).
 - Avoid creating new JavaScript source files (`.js` / `.jsx`) in `src`.
-- Use one path alias per module root in `tsconfig.json` (e.g. `@api`, `@services`). Do not add duplicate entries such as `@api` and `@api/*` for the same root.
-- Import from each layer's `index.ts` barrel (`@api`, `@services`, `@components`, `@templates`, `@i18n`, `@atoms`, etc.), not from deep file paths under those folders.
-- Avoid deep relative paths like `../../../` when a barrel alias exists.
-- Within the same package (e.g. `services/ai/hooks` importing `services/ai/agentGuardrails`), prefer relative imports to avoid circular dependencies through the barrel.
+- Use path aliases from `tsconfig.json` for cross-layer imports. Each layer uses `@layer/*` (e.g. `@application/*`, `@domain/*`, `@infrastructure/*`, `@http/*`, `@ai/*`, `@config/*`).
+- Include the `.js` extension in alias imports (NodeNext / ESM).
+- Import from `@helpers` for the helpers barrel; use `@helpers/*` only when importing a specific helper file not re-exported by the barrel.
+- Avoid deep relative paths like `../../application/...` when a layer alias exists.
+- Within the same layer folder, prefer relative imports to avoid unnecessary coupling. This includes:
+  - `application/*` importing sibling files under `application/` (e.g. `./patient-chat-interaction-groups.js`)
+  - `ai/prompts/*` importing sibling prompts (e.g. `./patient-chat-system.js`)
+  - `infrastructure/supabase/*` importing sibling repositories (e.g. `./clinical-content.repository.js`)
+  - `domain/*` importing sibling types (e.g. `./types.js`)
 
 ## Example
 
 ```ts
-// ✅
-import { useAuth } from "@services";
-import type { UserRole } from "@api";
-import { AppShell } from "@templates";
+// ✅ cross-layer — use alias with .js extension
+import { endPsychologistSession } from '@application/end-psychologist-session.js';
+import type { AppLanguage } from '@domain/types.js';
+import { createAdminSupabaseClient } from '@infrastructure/supabase/client.js';
+import { keysToCamel } from '@helpers';
 
-// ❌ deep path under an aliased root
-import { useAuth } from "@services/auth/hooks/useAuth";
-import type { UserRole } from "@api/dto/auth/AuthDto";
+// ✅ same layer — relative sibling
+import { splitChatIntoInteractions } from './patient-chat-interaction-groups.js';
+import { buildPatientChatSystemPrompt } from './patient-chat-system.js';
+
+// ❌ cross-layer via relative path
+import { PATIENT_CHAT_WEEKLY_LOOKBACK_MS } from '../../application/patient-chat-interaction-groups.js';
+import { NotFoundError } from '../application/authorization.js';
 ```

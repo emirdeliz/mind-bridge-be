@@ -5,8 +5,8 @@ import type {
 } from '@domain/clinical-content.types.js';
 import type { AppLanguage } from '@domain/types.js';
 
-import { splitChatIntoInteractions } from '../../application/patient-chat-interaction-groups.js';
-import { formatLikertCheckInForContext } from '../../application/format-likert-check-in-context.js';
+import { splitChatIntoInteractions } from '@application/patient-chat-interaction-groups.js';
+import { formatLikertCheckInForContext } from '@application/format-likert-check-in-context.js';
 import { normalizeAppLanguage } from './psychologist-copilot-system.js';
 
 type SessionInsightsContext = {

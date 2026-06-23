@@ -1,7 +1,7 @@
 import type { ClinicalChatMessage } from '@domain/clinical-content.types.js';
 import type { AppLanguage } from '@domain/types.js';
 
-import { PATIENT_CHAT_WEEKLY_LOOKBACK_MS } from '../../application/patient-chat-interaction-groups.js';
+import { PATIENT_CHAT_WEEKLY_LOOKBACK_MS } from '@application/patient-chat-interaction-groups.js';
 import { formatWeeklyPatientChatContext } from './patient-chat-weekly-context.js';
 import { normalizeAppLanguage } from './psychologist-copilot-system.js';
 

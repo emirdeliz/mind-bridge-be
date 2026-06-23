@@ -1,0 +1,70 @@
+{
+  "root": true,
+  "parser": "@typescript-eslint/parser",
+  "parserOptions": {
+    "ecmaVersion": 2022,
+    "sourceType": "module"
+  },
+  "overrides": [
+    {
+      "files": ["src/**/*.ts"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": [
+                  "**/application/**",
+                  "../application/**",
+                  "../../application/**"
+                ],
+                "message": "Use @application/* instead of relative imports into src/application."
+              },
+              {
+                "group": [
+                  "**/infrastructure/**",
+                  "../infrastructure/**",
+                  "../../infrastructure/**"
+                ],
+                "message": "Use @infrastructure/* instead of relative imports into src/infrastructure."
+              },
+              {
+                "group": [
+                  "**/http/**",
+                  "../http/**",
+                  "../../http/**"
+                ],
+                "message": "Use @http/* instead of relative imports into src/http."
+              },
+              {
+                "group": [
+                  "**/domain/**",
+                  "../domain/**",
+                  "../../domain/**"
+                ],
+                "message": "Use @domain/* instead of relative imports into src/domain."
+              },
+              {
+                "group": [
+                  "**/config/**",
+                  "../config/**",
+                  "../../config/**"
+                ],
+                "message": "Use @config/* instead of relative imports into src/config."
+              },
+              {
+                "group": [
+                  "**/ai/**",
+                  "../ai/**",
+                  "../../ai/**"
+                ],
+                "message": "Use @ai/* instead of relative imports into src/ai."
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

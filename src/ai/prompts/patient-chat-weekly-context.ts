@@ -1,7 +1,7 @@
 import type { ClinicalChatMessage } from '@domain/clinical-content.types.js';
 import type { AppLanguage } from '@domain/types.js';
 
-import { getInteractionGroupsFromLastWeek } from '../../application/patient-chat-interaction-groups.js';
+import { getInteractionGroupsFromLastWeek } from '@application/patient-chat-interaction-groups.js';
 
 const formatInteractionDate = (
   message: ClinicalChatMessage | undefined,

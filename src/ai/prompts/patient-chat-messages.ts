@@ -10,7 +10,7 @@ import type { AppLanguage } from '@domain/types.js';
 
 import { buildPatientChatTurnGuidance } from './patient-chat-context-focus.js';
 import { countAgentQuestionsInChat } from './patient-chat-interaction.js';
-import { PATIENT_CHAT_CONTEXT_INTERACTION_LIMIT } from '../../application/patient-chat-interaction-groups.js';
+import { PATIENT_CHAT_CONTEXT_INTERACTION_LIMIT } from '@application/patient-chat-interaction-groups.js';
 import { buildPatientChatSystemPrompt } from './patient-chat-system.js';
 import { resolveLanguageInstruction } from './response-language.js';
 

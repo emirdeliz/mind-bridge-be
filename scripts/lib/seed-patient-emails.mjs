@@ -9,11 +9,9 @@ const CORE_DEMO_PATIENTS = [
   'diego.demo@mindbridge.local',
   'elisa.demo@mindbridge.local',
   'josecarlos@gmail.com',
-  'maurosouza@gmail.com',
-  'carlosamaro@gmail.com',
 ];
 
-/** Patient kept when pruning other seed/demo accounts */
+/** Patient kept when pruning other seed/demo accounts (legacy). */
 export const KEEP_SEED_PATIENT_EMAIL = 'maurosouza@gmail.com';
 
 const buildExtraDemoPatientEmails = () => {
@@ -33,7 +31,6 @@ export const SEED_PATIENT_EMAILS = [
   ...new Set([
     ...CORE_DEMO_PATIENTS,
     ...Object.keys(DEMO_CLINICAL_BY_EMAIL),
-    'carlosamaro@gmail.com',
     ...buildExtraDemoPatientEmails(),
   ]),
 ].sort();

@@ -24,6 +24,7 @@
     "seed:demo-patients": "npm run seed:local",
     "reset:seed-reports": "node --env-file=.env scripts/reset-seed-patient-reports.mjs",
     "delete:seed-patients-except-mauro": "node --env-file=.env scripts/delete-seed-patients-except.mjs --yes",
+    "delete:aluizio-seed-patients": "node --env-file=.env scripts/remove-aluizio-seed-patients.mjs --yes",
     "billing:snapshot": "tsx --env-file=.env scripts/run-billing-jobs.ts snapshot",
     "billing:finalize": "tsx --env-file=.env scripts/run-billing-jobs.ts finalize",
     "billing:jobs": "tsx --env-file=.env scripts/run-billing-jobs.ts all",

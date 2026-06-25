@@ -125,6 +125,13 @@ const assertServiceRoleKey = async () => {
   throw new Error(`Auth admin check failed: ${error.message}`);
 };
 
+const PLATFORM_ADMIN = {
+  fullName: 'Admin',
+  email: process.env.SEED_ADMIN_EMAIL ?? 'admin@mindbridge.local',
+  password: process.env.SEED_ADMIN_PASSWORD ?? 'Admin@123456',
+  phone: null,
+};
+
 const DEMO_PSYCHOLOGIST = {
   fullName: 'Psicólogo Demo',
   email: 'psicologo.demo@mindbridge.local',
@@ -210,13 +217,6 @@ const EMIR_PATIENTS = [
   ...DEMO_PATIENTS,
 ];
 
-const daysAgoIso = (daysAgo, hourUTC = 12) => {
-  const date = new Date();
-  date.setUTCDate(date.getUTCDate() - daysAgo);
-  date.setUTCHours(hourUTC, 0, 0, 0);
-  return date.toISOString();
-};
-
 const getLocalWeekdayIndex = (date = new Date()) => {
   const day = date.getDay();
   return day === 0 ? 6 : day - 1;
@@ -228,33 +228,6 @@ const dateForCurrentWeekday = (weekdayIndex, reference = new Date()) => {
   date.setDate(date.getDate() - todayWeekdayIndex + weekdayIndex);
   return date;
 };
-
-const atCurrentWeekDayIso = (weekdayIndex, hourUTC = 12) => {
-  const date = dateForCurrentWeekday(weekdayIndex);
-  date.setUTCHours(hourUTC, 0, 0, 0);
-  return date.toISOString();
-};
-
-const ALUIZIO_PATIENTS = [
-  {
-    fullName: 'Mauro Souza',
-    email: 'maurosouza@gmail.com',
-    phone: null,
-    password: 'Data@123',
-    lastConsultationAt: null,
-    isDeleted: false,
-    enabledSinceMonthsAgo: 0,
-  },
-  {
-    fullName: 'Carlos Amaro',
-    email: 'carlosamaro@gmail.com',
-    phone: '11988776655',
-    password: 'Data@123',
-    lastConsultationAt: daysAgoIso(4, 15),
-    isDeleted: false,
-    enabledSinceMonthsAgo: 2,
-  },
-];
 
 /** Same convention as scheduling UI: -getTimezoneOffset() (e.g. −180 for Brazil UTC−3). */
 const getSchedulingTzOffsetMinutes = () => -new Date().getTimezoneOffset();
@@ -277,121 +250,6 @@ const atCurrentWeekSlotIso = (
     tzOffsetMinutes * 60_000;
   return new Date(utcMs).toISOString();
 };
-
-const ALUIZIO_SCHEDULING_SETTINGS = {
-  sessionDurationMinutes: 50,
-  dayStartTime: '08:00:00',
-  dayEndTime: '20:00:00',
-  breakIntervals: [{ startTime: '12:00', endTime: '13:00' }],
-};
-
-/**
- * weekdayIndex 0 = Monday (semana atual no fuso Brasil, UTC−3).
- * Horários de consulta alinham aos slots de 50 min (intervalo 12:00–13:00).
- * Compromissos particulares usam o slot clicado e a duração da sessão (50 min).
- */
-const ALUIZIO_SCHEDULING_APPOINTMENT_SEEDS = [
-  {
-    patientEmail: 'maurosouza@gmail.com',
-    weekdayIndex: 0,
-    time: '09:40',
-    notes: null,
-  },
-  {
-    patientEmail: 'ana.demo@mindbridge.local',
-    weekdayIndex: 0,
-    time: '14:40',
-    notes: 'Acompanhamento semanal — técnicas de grounding',
-  },
-  {
-    patientEmail: 'maurosouza@gmail.com',
-    weekdayIndex: 1,
-    time: '08:00',
-    notes: null,
-  },
-  {
-    patientEmail: 'carlosamaro@gmail.com',
-    weekdayIndex: 1,
-    time: '10:30',
-    notes: 'Retorno TCC — reativação comportamental',
-  },
-  {
-    isPersonalCommitment: true,
-    weekdayIndex: 1,
-    time: '18:00',
-    description: 'Consulta médica — cardiologista',
-  },
-  {
-    patientEmail: 'bruno.demo@mindbridge.local',
-    weekdayIndex: 2,
-    time: '09:40',
-    notes: null,
-  },
-  {
-    patientEmail: 'carlosamaro@gmail.com',
-    weekdayIndex: 2,
-    time: '14:40',
-    notes: null,
-  },
-  {
-    patientEmail: 'carla.demo@mindbridge.local',
-    weekdayIndex: 3,
-    time: '08:00',
-    notes: 'Sessão online',
-  },
-  {
-    patientEmail: 'maurosouza@gmail.com',
-    weekdayIndex: 3,
-    time: '13:00',
-    notes: 'Avaliação inicial presencial',
-  },
-  {
-    isPersonalCommitment: true,
-    weekdayIndex: 3,
-    time: '17:10',
-    description: 'Compromisso pessoal — jantar de família',
-  },
-  {
-    patientEmail: 'diego.demo@mindbridge.local',
-    weekdayIndex: 4,
-    time: '10:30',
-    notes: 'Encaminhamento pós-avaliação',
-  },
-];
-
-/** Demo session payments for Aluizio — monthsAgo 0 = current month. */
-const ALUIZIO_PATIENT_PAYMENT_SEEDS = [
-  {
-    patientEmail: 'carlosamaro@gmail.com',
-    payments: [
-      {
-        monthsAgo: 0,
-        amountCents: 35000,
-        notes: 'Sessão presencial — pagamento via PIX',
-      },
-      {
-        monthsAgo: 1,
-        amountCents: 35000,
-        notes: null,
-      },
-      {
-        monthsAgo: 2,
-        amountCents: 30000,
-        notes: 'Valor acordado na avaliação inicial',
-      },
-    ],
-  },
-];
-
-/** Known demo patients also linked to Aluizio (in addition to Emir). */
-const ALUIZIO_ALL_PATIENTS = [...ALUIZIO_PATIENTS, ...DEMO_PATIENTS];
-
-const ALL_PATIENT_SEEDS_BY_EMAIL = new Map(
-  [...EMIR_PATIENTS, ...ALUIZIO_ALL_PATIENTS].map((patient) => [
-    patient.email.trim().toLowerCase(),
-    patient,
-  ])
-);
 
 const EXTRA_DEMO_PSYCHOLOGISTS = [
   {
@@ -452,20 +310,21 @@ const buildExtraDemoPatients = (psychologistIndex, patientCount) =>
 const PSYCHOLOGIST_ACCOUNTS = [
   { psychologist: DEMO_PSYCHOLOGIST, patients: [] },
   { psychologist: EMIR_PSYCHOLOGIST, patients: EMIR_PATIENTS },
-  {
-    psychologist: ALUIZIO_PSYCHOLOGIST,
-    patients: ALUIZIO_ALL_PATIENTS,
-    patientPaymentSeeds: ALUIZIO_PATIENT_PAYMENT_SEEDS,
-    schedulingSettings: ALUIZIO_SCHEDULING_SETTINGS,
-    schedulingAppointmentSeeds: ALUIZIO_SCHEDULING_APPOINTMENT_SEEDS,
-  },
+  { psychologist: ALUIZIO_PSYCHOLOGIST, patients: [] },
   ...EXTRA_DEMO_PSYCHOLOGISTS.map((psychologist, index) => ({
     psychologist,
     patients: buildExtraDemoPatients(index, 2 + (index % 4)),
   })),
 ];
 
-const upsertProfile = async ({ userId, email, role, fullName, phone }) => {
+const upsertProfile = async ({
+  userId,
+  email,
+  role,
+  fullName,
+  phone,
+  isAdmin = false,
+}) => {
   const { error } = await admin.from('profiles').upsert(
     {
       id: userId,
@@ -474,6 +333,7 @@ const upsertProfile = async ({ userId, email, role, fullName, phone }) => {
       full_name: fullName,
       phone,
       language: 'pt',
+      is_admin: isAdmin,
       updated_at: new Date().toISOString(),
     },
     { onConflict: 'id' }
@@ -526,6 +386,44 @@ const ensureAuthUser = async ({ email, password, role, fullName, phone }) => {
 
   await upsertProfile({ userId, email, role, fullName, phone });
   return userId;
+};
+
+const ensurePlatformAdmin = async () => {
+  const { error: clearAdminError } = await admin
+    .from('profiles')
+    .update({
+      is_admin: false,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('is_admin', true);
+
+  if (clearAdminError) {
+    throw new Error(`Failed to clear admin flags: ${clearAdminError.message}`);
+  }
+
+  const userId = await ensureAuthUser({
+    email: PLATFORM_ADMIN.email,
+    password: PLATFORM_ADMIN.password,
+    role: 'psychologist',
+    fullName: PLATFORM_ADMIN.fullName,
+    phone: PLATFORM_ADMIN.phone,
+  });
+
+  const { error: adminFlagError } = await admin
+    .from('profiles')
+    .update({
+      is_admin: true,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', userId);
+
+  if (adminFlagError) {
+    throw new Error(`Failed to seed platform admin: ${adminFlagError.message}`);
+  }
+
+  console.log(
+    `Platform admin: ${PLATFORM_ADMIN.fullName} (${PLATFORM_ADMIN.email})`
+  );
 };
 
 const linkedAtFromMonthsAgo = (monthsAgo = 0) => {
@@ -1042,67 +940,6 @@ const upsertClinical = async (patientId, email) => {
   }
 };
 
-const linkPatientsWithoutCareToPsychologist = async (
-  psychologistId,
-  psychologistEmail
-) => {
-  const { data: patientProfiles, error: patientsError } = await admin
-    .from('profiles')
-    .select('id, email, full_name, phone')
-    .eq('role', 'patient');
-
-  if (patientsError) {
-    throw new Error(
-      `Failed to list patient profiles: ${patientsError.message}`
-    );
-  }
-
-  const { data: careRows, error: careError } = await admin
-    .from('care_relationships')
-    .select('patient_id');
-
-  if (careError) {
-    throw new Error(`Failed to list care relationships: ${careError.message}`);
-  }
-
-  const linkedPatientIds = new Set(
-    (careRows ?? []).map((row) => row.patient_id)
-  );
-  const unlinkedPatients = (patientProfiles ?? []).filter(
-    (profile) => !linkedPatientIds.has(profile.id)
-  );
-
-  if (!unlinkedPatients.length) {
-    return 0;
-  }
-
-  for (const profile of unlinkedPatients) {
-    const emailKey = profile.email?.trim().toLowerCase() ?? '';
-    const seed = ALL_PATIENT_SEEDS_BY_EMAIL.get(emailKey);
-    const demo = seed ?? {
-      email: profile.email,
-      fullName: profile.full_name ?? profile.email ?? 'Paciente',
-      phone: profile.phone,
-      lastConsultationAt: null,
-      isDeleted: false,
-      enabledSinceMonthsAgo: 0,
-    };
-
-    await linkPatient(psychologistId, profile.id, demo);
-
-    if (emailKey && resolveDemoClinicalPayload(emailKey)) {
-      await upsertClinical(profile.id, profile.email);
-      await seedPatientInteractions(profile.id, profile.email);
-    }
-
-    console.log(
-      `  Linked orphan patient to ${psychologistEmail}: ${profile.email}`
-    );
-  }
-
-  return unlinkedPatients.length;
-};
-
 const seedPsychologistChatShortcuts = async (psychologistId) => {
   const { count, error: countError } = await admin
     .from('psychologist_chat_shortcuts')
@@ -1225,45 +1062,15 @@ const main = async () => {
 
   await seedPsychologistChatShortcutsForAll();
 
-  const { error: adminFlagError } = await admin
-    .from('profiles')
-    .update({
-      is_admin: true,
-      updated_at: new Date().toISOString(),
-    })
-    .in('email', [EMIR_PSYCHOLOGIST.email, ALUIZIO_PSYCHOLOGIST.email]);
-
-  if (adminFlagError) {
-    throw new Error(`Failed to seed admin flags: ${adminFlagError.message}`);
-  }
-
-  console.log('Admin flags: Emir and Aluizio');
-
-  const { data: aluizioProfile, error: aluizioProfileError } = await admin
-    .from('profiles')
-    .select('id')
-    .eq('email', ALUIZIO_PSYCHOLOGIST.email)
-    .maybeSingle();
-
-  if (aluizioProfileError) {
-    throw new Error(
-      `Failed to resolve Aluizio profile: ${aluizioProfileError.message}`
-    );
-  }
-
-  if (aluizioProfile) {
-    const orphanCount = await linkPatientsWithoutCareToPsychologist(
-      aluizioProfile.id,
-      ALUIZIO_PSYCHOLOGIST.email
-    );
-    if (orphanCount > 0) {
-      console.log(
-        `Aluizio: ${orphanCount} paciente(s) sem vínculo foram associados a ${ALUIZIO_PSYCHOLOGIST.email}`
-      );
-    }
-  }
+  await ensurePlatformAdmin();
 
   console.log('Done.');
+  console.log(
+    'Login platform admin:',
+    PLATFORM_ADMIN.email,
+    '/',
+    PLATFORM_ADMIN.password
+  );
   console.log(
     'Login demo psychologist:',
     DEMO_PSYCHOLOGIST.email,
@@ -1287,27 +1094,6 @@ const main = async () => {
     EMIR_PATIENTS[0].email,
     '/',
     EMIR_PATIENTS[0].password
-  );
-  console.log(
-    'Login Mauro Souza (patient):',
-    ALUIZIO_PATIENTS[0].email,
-    '/',
-    ALUIZIO_PATIENTS[0].password
-  );
-  console.log(
-    'Login Carlos Amaro (patient, charts demo):',
-    ALUIZIO_PATIENTS[1].email,
-    '/',
-    ALUIZIO_PATIENTS[1].password
-  );
-  console.log(
-    'Aluizio patient payments: Carlos Amaro pago nos últimos 3 meses; Mauro Souza inadimplente no mês atual.'
-  );
-  console.log(
-    'Aluizio scheduling: 9 consultas + 2 compromissos particulares na semana atual — /psychologist/scheduling'
-  );
-  console.log(
-    'Aluizio patients: Mauro, Carlos, Ana, Bruno, Carla, Diego e Elisa (demo) — mais órfãos sem psicólogo no banco'
   );
   console.log(
     'Login demo patient (Ana):',

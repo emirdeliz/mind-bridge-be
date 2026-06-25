@@ -21,3 +21,22 @@ export type AdminPlatformMetrics = {
   platformRevenueCents: number;
   points: AdminPlatformMetricsPoint[];
 };
+
+export type AdminPsychologistListItem = {
+  id: string;
+  fullName: string | null;
+  email: string | null;
+  phone: string | null;
+  activePatientCount: number;
+  totalPatientCount: number;
+};
+
+export type AdminPsychologistPatientListItem = {
+  id: string;
+  fullName: string | null;
+  email: string | null;
+  phone: string | null;
+  lastConsultationAt: string | null;
+  isDeleted: boolean;
+  aiInteractionCount: number;
+};

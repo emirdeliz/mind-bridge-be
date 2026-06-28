@@ -7,7 +7,7 @@ import type { AppLanguage } from '@domain/types.js';
 import { formatLikertCheckInForContext } from '@application/format-likert-check-in-context.js';
 import { formatPatientAnamnesisForContext } from '@application/format-patient-anamnesis-context.js';
 import { truncateContextText } from '@application/truncate-context-text.js';
-import { getAiPromptTemplateContent } from '@application/ai-prompt-template-cache.js';
+import { getActiveAiPromptTemplateContent } from '@application/ai-prompt-template-resolver.js';
 import { applyPromptTokens } from '@ai/prompts/apply-prompt-tokens.js';
 
 const MAX_SUMMARY_CONTEXT_CHARS = 800;
@@ -187,7 +187,10 @@ export const buildPsychologistCopilotSystemPrompt = (
   const psychologistContext =
     context.clinicalContext.trim() || notProvided(language);
 
-  const template = getAiPromptTemplateContent('psychologist_copilot.system', language);
+  const template = getActiveAiPromptTemplateContent(
+    'psychologist_copilot.system',
+    language
+  );
 
   return applyPromptTokens(template, {
     session_considerations: sessionNotes,

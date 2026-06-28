@@ -1,7 +1,7 @@
 import type { ClinicalChatMessage } from '@domain/clinical-content.types.js';
 import type { AppLanguage } from '@domain/types.js';
 
-import { getAiPromptTemplateContent } from '@application/ai-prompt-template-cache.js';
+import { getActiveAiPromptTemplateContent } from '@application/ai-prompt-template-resolver.js';
 import { PATIENT_CHAT_MAX_QUESTIONS_PER_INTERACTION } from './patient-chat-session.js';
 import { buildContextFocusBlock } from './patient-chat-context-focus.js';
 import {
@@ -97,7 +97,10 @@ export const buildPatientChatSystemPrompt = (
     en: 'FORBIDDEN: internal reasoning, analysis, "Thinking Process", numbered lists. Send ONLY the final message to the patient.',
   };
 
-  const template = getAiPromptTemplateContent('patient_chat.system', language);
+  const template = getActiveAiPromptTemplateContent(
+    'patient_chat.system',
+    language
+  );
 
   return applyPromptTokens(template, {
     core_guidance: coreGuidance,

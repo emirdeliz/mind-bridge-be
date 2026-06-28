@@ -1,6 +1,6 @@
 import type { AppLanguage } from '@domain/types.js';
 
-import { getAiPromptTemplateContent } from '@application/ai-prompt-template-cache.js';
+import { getActiveAiPromptTemplateContent } from '@application/ai-prompt-template-resolver.js';
 
 const LANGUAGE_INSTRUCTIONS: Record<AppLanguage, string> = {
   pt: 'Responda sempre em português do Brasil, de forma clara e empática.',
@@ -13,7 +13,7 @@ export const resolveLanguageInstruction = (
 ): string => {
   const resolved = language ?? 'pt';
   try {
-    return getAiPromptTemplateContent('response_language.instruction', resolved);
+    return getActiveAiPromptTemplateContent('response_language.instruction', resolved);
   } catch {
     return LANGUAGE_INSTRUCTIONS[resolved];
   }
@@ -31,7 +31,7 @@ export const resolvePsychologistBrevityInstruction = (
 ): string => {
   const resolved = language ?? 'pt';
   try {
-    return getAiPromptTemplateContent(
+    return getActiveAiPromptTemplateContent(
       'response_language.psychologist_brevity',
       resolved
     );

@@ -1,7 +1,7 @@
 import type { ClinicalChatMessage } from '@domain/clinical-content.types.js';
 import type { AppLanguage } from '@domain/types.js';
 
-import { getAiPromptTemplateContent } from '@application/ai-prompt-template-cache.js';
+import { getActiveAiPromptTemplateContent } from '@application/ai-prompt-template-resolver.js';
 import { applyPromptTokens } from '@ai/prompts/apply-prompt-tokens.js';
 
 import {
@@ -113,7 +113,10 @@ export const buildPatientChatTurnGuidance = (
         : 'Guide the patient through their report with a question aligned to the psychologist context or, if appropriate, only acknowledge/reflect briefly.',
   };
 
-  const template = getAiPromptTemplateContent('patient_chat.turn_guidance', language);
+  const template = getActiveAiPromptTemplateContent(
+    'patient_chat.turn_guidance',
+    language
+  );
 
   return applyPromptTokens(template, {
     retry_guidance: retryBlock,

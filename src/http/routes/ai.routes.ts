@@ -20,6 +20,7 @@ import {
 } from '@application/authorization.js';
 import { getRecentInteractionsMessages } from '@application/patient-chat-interaction-groups.js';
 import { ensureAiPromptTemplateCache } from '@application/ai-prompt-template-cache.js';
+import { runWithPsychologistPromptTemplateResolver } from '@application/ai-prompt-template-resolver.js';
 import {
   runPatientChatGraph,
   streamPatientChatGraph,
@@ -251,32 +252,43 @@ export const createAiRoutes =
         const agentMessageId = randomUUID();
 
         let agentReply: string;
+        const psychologistIdForPrompts = patientPsychologistIds[0];
         if (forcedClosing) {
           agentReply = getPatientChatInteractionClosingReply(language);
         } else if (useStream) {
-          agentReply = await streamLlmReply(reply, (onDelta) =>
-            streamPatientChatGraph(
-              env,
-              {
+          agentReply = await runWithPsychologistPromptTemplateResolver(
+            admin,
+            psychologistIdForPrompts,
+            () =>
+              streamLlmReply(reply, (onDelta) =>
+                streamPatientChatGraph(
+                  env,
+                  {
+                    patientId: auth.userId,
+                    userMessage: body.message,
+                    psychologistContext,
+                    chatHistory: contextHistory,
+                    language,
+                    retrievalContext: knowledgeRetrieval,
+                  },
+                  onDelta
+                )
+              )
+          );
+        } else {
+          agentReply = await runWithPsychologistPromptTemplateResolver(
+            admin,
+            psychologistIdForPrompts,
+            () =>
+              runPatientChatGraph(env, {
                 patientId: auth.userId,
                 userMessage: body.message,
                 psychologistContext,
                 chatHistory: contextHistory,
                 language,
                 retrievalContext: knowledgeRetrieval,
-              },
-              onDelta
-            )
+              })
           );
-        } else {
-          agentReply = await runPatientChatGraph(env, {
-            patientId: auth.userId,
-            userMessage: body.message,
-            psychologistContext,
-            chatHistory: contextHistory,
-            language,
-            retrievalContext: knowledgeRetrieval,
-          });
         }
 
         const isInteractionEnd = isAgentInteractionEndReply(
@@ -428,12 +440,21 @@ export const createAiRoutes =
 
         let agentReply: string;
         if (useStream) {
-          agentReply = await streamLlmReply(reply, (onDelta) =>
-            streamPsychologistCopilotGraph(env, graphInput, onDelta)
+          agentReply = await runWithPsychologistPromptTemplateResolver(
+            admin,
+            auth.userId,
+            () =>
+              streamLlmReply(reply, (onDelta) =>
+                streamPsychologistCopilotGraph(env, graphInput, onDelta)
+              )
           );
           finishAiStream(reply, { type: 'done', message: agentReply });
         } else {
-          agentReply = await runPsychologistCopilotGraph(env, graphInput);
+          agentReply = await runWithPsychologistPromptTemplateResolver(
+            admin,
+            auth.userId,
+            () => runPsychologistCopilotGraph(env, graphInput)
+          );
         }
 
         const exchangedAt = new Date().toISOString();

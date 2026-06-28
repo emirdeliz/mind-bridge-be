@@ -14,6 +14,7 @@ import { createPatientSpeechRoutes } from '@http/routes/patient-speech.routes.js
 import { createPatientLikertRoutes } from '@http/routes/patient-likert.routes.js';
 import { createPatientInviteCodeRoutes } from '@http/routes/patient-invite-code.routes.js';
 import { createPatientInteractionRoutes } from '@http/routes/patient-interactions.routes.js';
+import { createPsychologistPromptTemplateRoutes } from '@http/routes/psychologist-prompt-templates.routes.js';
 import { createPsychologistChatShortcutsRoutes } from '@http/routes/psychologist-chat-shortcuts.routes.js';
 import { createPsychologistBillingRoutes } from '@http/routes/psychologist-billing.routes.js';
 import { createPsychologistPatientPaymentsRoutes } from '@http/routes/psychologist-patient-payments.routes.js';
@@ -47,6 +48,7 @@ export const buildServer = async (env: Env) => {
   await app.register(createAdminRoutes(env));
   await app.register(createAdminPromptTemplateRoutes(env));
   await app.register(createAiRoutes(env));
+  await app.register(createPsychologistPromptTemplateRoutes(env));
   await app.register(createPsychologistChatShortcutsRoutes(env));
   await app.register(createPsychologistPatientsRoutes(env));
   await app.register(createPsychologistInviteCodeRoutes(env));

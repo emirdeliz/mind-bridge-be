@@ -37,6 +37,11 @@ export type AiPromptTokenDefinition = {
   example: Record<AppLanguage, string>;
 };
 
+export type EnrichedAiPromptTokenDefinition = AiPromptTokenDefinition & {
+  source: Record<AppLanguage, string>;
+  preview: Record<AppLanguage, string>;
+};
+
 export type AiPromptTemplateListItem = {
   key: string;
   category: string;

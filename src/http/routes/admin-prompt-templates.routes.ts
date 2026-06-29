@@ -4,7 +4,7 @@ import { generateAiPromptTemplateTranslations } from '@application/generate-ai-p
 import { invalidateAiPromptTemplateCache } from '@application/ai-prompt-template-cache.js';
 import { assertAdmin, NotFoundError } from '@application/authorization.js';
 import { getAiPromptTemplateDefinition } from '@ai/prompts/ai-prompt-registry.js';
-import { AI_PROMPT_TOKEN_DEFINITIONS } from '@ai/prompts/ai-prompt-tokens.js';
+import { listEnrichedAiPromptTokens } from '@application/list-enriched-ai-prompt-tokens.js';
 import type { Env } from '@config/env.js';
 import type { SaveAiPromptTemplateBody } from '@domain/ai-prompt-template.types.js';
 import { validateBody, validateParams } from '@http/middleware/validate.js';
@@ -36,7 +36,7 @@ export const createAdminPromptTemplateRoutes =
 
     app.get('/admin/prompt-templates/tokens', async (request) => {
       assertAdmin(request.auth);
-      return { tokens: AI_PROMPT_TOKEN_DEFINITIONS };
+      return { tokens: listEnrichedAiPromptTokens() };
     });
 
     app.patch(

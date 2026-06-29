@@ -3,7 +3,7 @@ import type { FastifyPluginAsync } from 'fastify';
 import { generateAiPromptTemplateTranslations } from '@application/generate-ai-prompt-template-translations.js';
 import { assertPsychologist, NotFoundError } from '@application/authorization.js';
 import { getAiPromptTemplateDefinition } from '@ai/prompts/ai-prompt-registry.js';
-import { AI_PROMPT_TOKEN_DEFINITIONS } from '@ai/prompts/ai-prompt-tokens.js';
+import { listEnrichedAiPromptTokens } from '@application/list-enriched-ai-prompt-tokens.js';
 import type { Env } from '@config/env.js';
 import type { SaveAiPromptTemplateBody } from '@domain/ai-prompt-template.types.js';
 import { validateBody, validateParams } from '@http/middleware/validate.js';
@@ -35,7 +35,7 @@ export const createPsychologistPromptTemplateRoutes =
 
     app.get('/psychologist/prompt-templates/tokens', async (request) => {
       assertPsychologist(request.auth);
-      return { tokens: AI_PROMPT_TOKEN_DEFINITIONS };
+      return { tokens: listEnrichedAiPromptTokens() };
     });
 
     app.patch(

@@ -31,7 +31,7 @@ const notProvided = (language: AppLanguage): string => {
   return labels[language];
 };
 
-const buildKnowledgeSection = (
+export const buildPatientChatKnowledgeSection = (
   language: AppLanguage,
   retrievalContext: string
 ): string => {
@@ -59,6 +59,24 @@ const buildKnowledgeSection = (
   ].join('\n');
 };
 
+const PATIENT_CHAT_TEXT_CONTEXT_LABEL: Record<AppLanguage, string> = {
+  pt: 'Contexto de texto do psicólogo (campo da sessão — uso interno, traduza para linguagem simples):',
+  es: 'Contexto de texto del psicólogo (campo de la sesión — uso interno, traduzca a lenguaje simple):',
+  en: 'Psychologist text context (session field — internal use, translate to simple language):',
+};
+
+const PATIENT_CHAT_FORBIDDEN_LINE: Record<AppLanguage, string> = {
+  pt: 'PROIBIDO: raciocínio interno, análise, "Thinking Process", listas numeradas. Envie SOMENTE a mensagem final ao paciente.',
+  es: 'PROHIBIDO: razonamiento interno, análisis, "Thinking Process", listas numeradas. Envía SOLO el mensaje final al paciente.',
+  en: 'FORBIDDEN: internal reasoning, analysis, "Thinking Process", numbered lists. Send ONLY the final message to the patient.',
+};
+
+export const getPatientChatTextContextLabel = (language: AppLanguage): string =>
+  PATIENT_CHAT_TEXT_CONTEXT_LABEL[language] ?? PATIENT_CHAT_TEXT_CONTEXT_LABEL.pt;
+
+export const getPatientChatForbiddenLine = (language: AppLanguage): string =>
+  PATIENT_CHAT_FORBIDDEN_LINE[language] ?? PATIENT_CHAT_FORBIDDEN_LINE.pt;
+
 export const buildPatientChatSystemPrompt = (
   languageInput: unknown,
   context: PatientChatPromptContext
@@ -85,18 +103,6 @@ export const buildPatientChatSystemPrompt = (
     hasKnowledgeContext,
   });
 
-  const textContextLabel: Record<AppLanguage, string> = {
-    pt: 'Contexto de texto do psicólogo (campo da sessão — uso interno, traduza para linguagem simples):',
-    es: 'Contexto de texto del psicólogo (campo de la sesión — uso interno, traduzca a lenguaje simple):',
-    en: 'Psychologist text context (session field — internal use, translate to simple language):',
-  };
-
-  const forbiddenLine: Record<AppLanguage, string> = {
-    pt: 'PROIBIDO: raciocínio interno, análise, "Thinking Process", listas numeradas. Envie SOMENTE a mensagem final ao paciente.',
-    es: 'PROHIBIDO: razonamiento interno, análisis, "Thinking Process", listas numeradas. Envía SOLO el mensaje final al paciente.',
-    en: 'FORBIDDEN: internal reasoning, analysis, "Thinking Process", numbered lists. Send ONLY the final message to the patient.',
-  };
-
   const template = getActiveAiPromptTemplateContent(
     'patient_chat.system',
     language
@@ -107,14 +113,14 @@ export const buildPatientChatSystemPrompt = (
     context_usage_guidance: contextUsageGuidance,
     present_moment_guidance: presentMomentGuidance,
     pacing_guidance: pacingGuidance,
-    text_context_label: textContextLabel[language] ?? textContextLabel.pt,
+    text_context_label: getPatientChatTextContextLabel(language),
     psychologist_context: psychologistContext,
     focus_block: focusBlock,
-    knowledge_section: buildKnowledgeSection(
+    knowledge_section: buildPatientChatKnowledgeSection(
       language,
       context.retrievalContext ?? ''
     ),
-    forbidden_line: forbiddenLine[language] ?? forbiddenLine.pt,
+    forbidden_line: getPatientChatForbiddenLine(language),
     retrieval_context: context.retrievalContext?.trim() ?? '',
     question_count: String(questionCount),
     max_questions: String(PATIENT_CHAT_MAX_QUESTIONS_PER_INTERACTION),

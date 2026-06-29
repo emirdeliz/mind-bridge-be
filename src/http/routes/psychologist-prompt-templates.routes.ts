@@ -6,16 +6,19 @@ import { getAiPromptTemplateDefinition } from '@ai/prompts/ai-prompt-registry.js
 import { listEnrichedAiPromptTokens } from '@application/list-enriched-ai-prompt-tokens.js';
 import type { Env } from '@config/env.js';
 import type { SaveAiPromptTemplateBody } from '@domain/ai-prompt-template.types.js';
+import type { AppLanguage } from '@domain/types.js';
 import { validateBody, validateParams } from '@http/middleware/validate.js';
 import {
   aiPromptTemplateKeyParamsSchema,
   saveAiPromptTemplateBodySchema,
+  testAiPromptTemplateBodySchema,
 } from '@http/schemas/ai-prompt-template.schemas.js';
 import {
   listPsychologistPromptTemplates,
   restorePsychologistPromptTemplateDefault,
   savePsychologistPromptTemplateOverride,
 } from '@infrastructure/supabase/psychologist-prompt-template.repository.js';
+import { testPsychologistPromptTemplate } from '@application/test-psychologist-prompt-template.js';
 import { createAdminSupabaseClient } from '@infrastructure/supabase/client.js';
 
 export const createPsychologistPromptTemplateRoutes =
@@ -71,6 +74,50 @@ export const createPsychologistPromptTemplateRoutes =
         );
 
         return { template };
+      }
+    );
+
+    app.post(
+      '/psychologist/prompt-templates/:key/test',
+      {
+        preHandler: [
+          validateParams(aiPromptTemplateKeyParamsSchema),
+          validateBody(testAiPromptTemplateBodySchema),
+        ],
+      },
+      async (request) => {
+        const auth = request.auth!;
+        assertPsychologist(auth);
+        const { key } = request.params as { key: string };
+        const body = request.body as {
+          content: string;
+          sourceLanguage: AppLanguage;
+          testMessage: string;
+          psychologistContext?: string;
+          sessionConsiderations?: string;
+          clinicalContext?: string;
+        };
+        const definition = getAiPromptTemplateDefinition(key);
+        if (!definition) {
+          throw new NotFoundError('Prompt template not found');
+        }
+
+        const result = await testPsychologistPromptTemplate(
+          env,
+          admin,
+          auth.userId,
+          {
+            key,
+            content: body.content,
+            sourceLanguage: body.sourceLanguage,
+            testMessage: body.testMessage,
+            psychologistContext: body.psychologistContext,
+            sessionConsiderations: body.sessionConsiderations,
+            clinicalContext: body.clinicalContext,
+          }
+        );
+
+        return result;
       }
     );
 

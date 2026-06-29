@@ -11,7 +11,10 @@ import { validateBody, validateParams } from '@http/middleware/validate.js';
 import {
   aiPromptTemplateKeyParamsSchema,
   saveAiPromptTemplateBodySchema,
+  testAiPromptTemplateBodySchema,
 } from '@http/schemas/ai-prompt-template.schemas.js';
+import { testAiPromptTemplate } from '@application/test-psychologist-prompt-template.js';
+import type { AppLanguage } from '@domain/types.js';
 import {
   listAiPromptTemplates,
   restoreAiPromptTemplateDefault,
@@ -75,6 +78,57 @@ export const createAdminPromptTemplateRoutes =
       }
     );
 
+    const handlePromptTemplateTest = async (
+      key: string,
+      body: {
+        content: string;
+        sourceLanguage: AppLanguage;
+        testMessage: string;
+        psychologistContext?: string;
+        sessionConsiderations?: string;
+        clinicalContext?: string;
+      }
+    ) => {
+      const definition = getAiPromptTemplateDefinition(key);
+      if (!definition) {
+        throw new NotFoundError('Prompt template not found');
+      }
+
+      return testAiPromptTemplate(env, admin, undefined, {
+        key,
+        content: body.content,
+        sourceLanguage: body.sourceLanguage,
+        testMessage: body.testMessage,
+        psychologistContext: body.psychologistContext,
+        sessionConsiderations: body.sessionConsiderations,
+        clinicalContext: body.clinicalContext,
+      });
+    };
+
+    app.post(
+      '/admin/prompt-templates/:key/test',
+      {
+        preHandler: [
+          validateParams(aiPromptTemplateKeyParamsSchema),
+          validateBody(testAiPromptTemplateBodySchema),
+        ],
+      },
+      async (request) => {
+        assertAdmin(request.auth);
+        const { key } = request.params as { key: string };
+        const body = request.body as {
+          content: string;
+          sourceLanguage: AppLanguage;
+          testMessage: string;
+          psychologistContext?: string;
+          sessionConsiderations?: string;
+          clinicalContext?: string;
+        };
+
+        return handlePromptTemplateTest(key, body);
+      }
+    );
+
     app.post(
       '/admin/prompt-templates/:key/restore',
       { preHandler: validateParams(aiPromptTemplateKeyParamsSchema) },
@@ -94,6 +148,30 @@ export const createAdminPromptTemplateRoutes =
       const templates = await listAiPromptTemplateDefaults(admin);
       return { templates };
     });
+
+    app.post(
+      '/admin/prompt-template-defaults/:key/test',
+      {
+        preHandler: [
+          validateParams(aiPromptTemplateKeyParamsSchema),
+          validateBody(testAiPromptTemplateBodySchema),
+        ],
+      },
+      async (request) => {
+        assertAdmin(request.auth);
+        const { key } = request.params as { key: string };
+        const body = request.body as {
+          content: string;
+          sourceLanguage: AppLanguage;
+          testMessage: string;
+          psychologistContext?: string;
+          sessionConsiderations?: string;
+          clinicalContext?: string;
+        };
+
+        return handlePromptTemplateTest(key, body);
+      }
+    );
 
     app.patch(
       '/admin/prompt-template-defaults/:key',

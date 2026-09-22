@@ -59,7 +59,7 @@ npm run supabase:start         # sobe containers (somente local)
 npm run supabase:restart-data  # reinicia schema (local: start + db reset + env)
 npm run supabase:reset         # local: db reset + env | cloud: mensagem de orientação
 npm run supabase:env           # só atualiza SUPABASE_* no .env (local, após reset)
-npm run seed:psychologists     # cria Emir Marques e Aluizio Vilar (psicólogos)
+npm run seed:psychologists     # Emir + Aluizio + 1 paciente cada + admin (senha Emir#262689)
 ```
 
 **Supabase Cloud:**

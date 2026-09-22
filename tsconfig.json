@@ -17,16 +17,15 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
-    "baseUrl": ".",
     "paths": {
-      "@config/*": ["src/config/*"],
-      "@domain/*": ["src/domain/*"],
-      "@application/*": ["src/application/*"],
-      "@infrastructure/*": ["src/infrastructure/*"],
-      "@http/*": ["src/http/*"],
-      "@ai/*": ["src/ai/*"],
-      "@helpers": ["src/helpers/index.ts"],
-      "@helpers/*": ["src/helpers/*"]
+      "@config/*": ["./src/config/*"],
+      "@domain/*": ["./src/domain/*"],
+      "@application/*": ["./src/application/*"],
+      "@infrastructure/*": ["./src/infrastructure/*"],
+      "@http/*": ["./src/http/*"],
+      "@ai/*": ["./src/ai/*"],
+      "@helpers": ["./src/helpers/index.ts"],
+      "@helpers/*": ["./src/helpers/*"]
     }
   },
   "include": ["src/**/*.ts"],

@@ -17,7 +17,32 @@ const DEFAULT_SETTINGS: Omit<
   breakIntervals: [{ startTime: '12:00', endTime: '13:00' }],
 };
 
-const normalizeTime = (value: string): string => value.slice(0, 5);
+const normalizeTime = (value: string | null | undefined): string => {
+  if (!value || typeof value !== 'string') {
+    return '00:00';
+  }
+  return value.slice(0, 5);
+};
+
+const normalizeBreakInterval = (
+  interval: Record<string, unknown>
+): SchedulingBreakInterval => {
+  const start =
+    (typeof interval.startTime === 'string' && interval.startTime) ||
+    (typeof interval.start_time === 'string' && interval.start_time) ||
+    (typeof interval.start === 'string' && interval.start) ||
+    null;
+  const end =
+    (typeof interval.endTime === 'string' && interval.endTime) ||
+    (typeof interval.end_time === 'string' && interval.end_time) ||
+    (typeof interval.end === 'string' && interval.end) ||
+    null;
+
+  return {
+    startTime: normalizeTime(start),
+    endTime: normalizeTime(end),
+  };
+};
 
 const mapSettings = (
   psychologistId: string,
@@ -27,7 +52,7 @@ const mapSettings = (
     sessionDurationMinutes: number;
     dayStartTime: string;
     dayEndTime: string;
-    breakIntervals: SchedulingBreakInterval[];
+    breakIntervals: Record<string, unknown>[];
     updatedAt: string;
   }>(row);
 
@@ -36,10 +61,9 @@ const mapSettings = (
     sessionDurationMinutes: record.sessionDurationMinutes,
     dayStartTime: normalizeTime(record.dayStartTime),
     dayEndTime: normalizeTime(record.dayEndTime),
-    breakIntervals: (record.breakIntervals ?? []).map((interval) => ({
-      startTime: normalizeTime(interval.startTime),
-      endTime: normalizeTime(interval.endTime),
-    })),
+    breakIntervals: (record.breakIntervals ?? []).map((interval) =>
+      normalizeBreakInterval(interval)
+    ),
     updatedAt: record.updatedAt,
   };
 };

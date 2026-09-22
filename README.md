@@ -161,7 +161,7 @@ Login/signup stay on the **web client** via `@supabase/supabase-js`; this API do
 
 ## Knowledge RAG (OpenRouter + pgvector)
 
-1. Apply migration `017_knowledge_rag.sql` (`npm run supabase:push:cloud` or local reset).
+1. Apply migrations (`npm run supabase:push:cloud` or local reset).
 2. Set in `.env`:
    - `RAG_ENABLED=true`
    - `OPENROUTER_API_KEY=...`

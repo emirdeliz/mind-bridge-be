@@ -398,7 +398,7 @@ const seedChatShortcuts = async (psychologistId) => {
 
   if (countError) {
     if (isMissingTableError(countError)) {
-      console.warn('  Atalhos: tabela ausente (migration 015)');
+      console.warn('  Atalhos: tabela ausente');
       return;
     }
     throw new Error(`Falha ao checar atalhos: ${countError.message}`);
@@ -564,7 +564,7 @@ const seedPatientPayments = async (psychologistId, patientId, patient) => {
 
   if (deleteError) {
     if (isMissingTableError(deleteError)) {
-      console.warn('  Pagamentos: tabela ausente (migration 010)');
+      console.warn('  Pagamentos: tabela ausente');
       return;
     }
     throw new Error(`Payments cleanup: ${deleteError.message}`);
@@ -600,7 +600,7 @@ const seedScheduling = async (psychologistId, patientId, patientEmail) => {
         session_duration_minutes: 50,
         day_start_time: '08:00',
         day_end_time: '20:00',
-        break_intervals: [{ start: '12:00', end: '13:00' }],
+        break_intervals: [{ startTime: '12:00', endTime: '13:00' }],
         updated_at: new Date().toISOString(),
       },
       { onConflict: 'psychologist_id' }
@@ -608,7 +608,7 @@ const seedScheduling = async (psychologistId, patientId, patientEmail) => {
 
   if (settingsError) {
     if (isMissingTableError(settingsError)) {
-      console.warn('  Agenda: tabela ausente (migration 011)');
+      console.warn('  Agenda: tabela ausente');
       return;
     }
     throw new Error(`Scheduling settings: ${settingsError.message}`);

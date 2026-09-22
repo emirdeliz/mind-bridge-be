@@ -31,12 +31,14 @@ Na primeira execução o CLI baixa imagens; pode levar alguns minutos.
 Com os containers rodando e `SUPABASE_URL=http://127.0.0.1:54321` no `.env`:
 
 ```bash
-npm run supabase:reset
+npm run supabase:restart-data
 ```
 
-Isso recria o banco local e executa todas as migrations em `supabase/migrations/`.
+Isso sobe o Supabase se estiver parado, recria o banco local (`db reset`) e sincroniza o `.env`.
 
-**Se o `.env` apontar para Supabase Cloud** (`*.supabase.co`), `supabase:reset` executa apenas o seed idempotente — use `npx supabase db push` para migrations no projeto remoto.
+Alternativa equivalente: `npm run supabase:reset`.
+
+**Se o `.env` apontar para Supabase Cloud** (`*.supabase.co`), use `npm run supabase:restart-data -- --confirm` (destrutivo) ou `npx supabase db push` só para migrations.
 
 ## Conectar a API ao Supabase local
 

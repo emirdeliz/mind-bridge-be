@@ -55,21 +55,23 @@ npm install
 **Supabase local (Docker):** see [docker/README.md](./docker/README.md).
 
 ```bash
-npm run supabase:start    # sobe containers (somente local)
-npm run supabase:reset    # local: db reset + seed | cloud: só seed idempotente
-npm run supabase:env      # só atualiza SUPABASE_* no .env (local, após reset)
-npm run seed:local        # seed demo (local ou cloud, idempotente)
-npm run seed:cloud        # alias de seed:local quando .env aponta para Supabase Cloud
+npm run supabase:start         # sobe containers (somente local)
+npm run supabase:restart-data  # reinicia schema (local: start + db reset + env)
+npm run supabase:reset         # local: db reset + env | cloud: mensagem de orientação
+npm run supabase:env           # só atualiza SUPABASE_* no .env (local, após reset)
+npm run seed:psychologists     # cria Emir Marques e Aluizio Vilar (psicólogos)
 ```
 
 **Supabase Cloud:**
 
-| Comando                                     | O que faz                                        |
-| ------------------------------------------- | ------------------------------------------------ |
-| `npm run supabase:push:cloud`               | Aplica migrations no Cloud                       |
-| `npm run seed:cloud`                        | Push migrations + seed idempotente               |
-| `npm run supabase:reset`                    | Igual ao seed quando `.env` aponta para Cloud    |
-| `npm run supabase:reset:cloud -- --confirm` | **Reset destrutivo**: `db reset --linked` + seed |
+| Comando                                        | O que faz                                                          |
+| ---------------------------------------------- | ------------------------------------------------------------------ |
+| `npm run supabase:push:cloud`                  | Aplica migrations no Cloud                                         |
+| `npm run supabase:reset`                       | Orienta uso do reset Cloud (não altera o remoto sozinho)            |
+| `npm run supabase:restart-data -- --confirm`   | **Restart completo**: `db reset --linked`                          |
+| `npm run supabase:restart-data -- --confirm --purge-auth` | Idem + apaga `auth.users` remanescentes                  |
+| `npm run supabase:restart-data -- --data-only --confirm` | Só limpa dados via API (sem migrations)                  |
+| `npm run supabase:reset:cloud -- --confirm`    | Alias legado do reset destrutivo Cloud                             |
 
 Pré-requisitos para reset Cloud:
 
@@ -77,9 +79,7 @@ Pré-requisitos para reset Cloud:
 2. `SUPABASE_DB_PASSWORD` no `.env` (senha do banco no dashboard)
 3. Primeira vez: `npx supabase link --project-ref <ref>` (o script tenta linkar automaticamente)
 
-O reset Cloud apaga dados das tabelas públicas e reaplica migrations. Usuários em `auth.users` **permanecem**; o seed reutiliza contas existentes.
-
-**Contas demo após seed local:** `psicologo.demo@mindbridge.local` / `demo123456` · paciente `ana.demo@mindbridge.local` / `demo123456`
+O reset Cloud apaga dados das tabelas públicas e reaplica migrations. Usuários em `auth.users` **podem permanecer**; use `--purge-auth` no `supabase:restart-data` para removê-los.
 
 **LLM — Google Gemini API (padrão):**
 
@@ -156,7 +156,7 @@ Login/signup stay on the **web client** via `@supabase/supabase-js`; this API do
 ## Next steps
 
 - Persist chat turns to `chat_messages`
-- Persist session notes / dashboard edits via API (hoje seed + leitura)
+- Persist session notes / dashboard edits via API
 
 ## Knowledge RAG (OpenRouter + pgvector)
 

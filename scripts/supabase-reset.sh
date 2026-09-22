@@ -22,16 +22,12 @@ if is_cloud_url "$SUPABASE_URL"; then
   echo "SUPABASE_URL aponta para Supabase Cloud: $SUPABASE_URL"
   echo ""
   echo "supabase db reset (sem --linked) só reseta o banco LOCAL do Docker."
-  echo "No Cloud, este comando executa apenas o seed idempotente."
-  echo ""
-  echo "Migrations no Cloud:     npx supabase link && npx supabase db push"
-  echo "Reset destrutivo Cloud:  npm run supabase:reset:cloud -- --confirm"
-  echo ""
-  npm run seed:local
+  echo "Para reset destrutivo no Cloud: npm run supabase:reset:cloud -- --confirm"
+  echo "Para aplicar migrations:        npm run supabase:push:cloud"
   exit 0
 fi
 
-echo "SUPABASE_URL aponta para Supabase local. Executando db reset + seed…"
+echo "SUPABASE_URL aponta para Supabase local. Executando db reset…"
 npx supabase db reset
 npm run supabase:env
-npm run seed:local
+echo "Reset local concluído (schema recriado; sem seed de dados demo)."

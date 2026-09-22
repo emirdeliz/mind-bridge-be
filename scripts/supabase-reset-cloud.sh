@@ -18,7 +18,8 @@ require_confirmation() {
 
   echo "ATENÇÃO: reset destrutivo no Supabase Cloud."
   echo "Apaga dados das tabelas públicas e reaplica migrations."
-  echo "Usuários em auth.users NÃO são removidos (o seed reutiliza contas existentes)."
+  echo "Usuários em auth.users NÃO são removidos por padrão."
+  echo "Para apagá-los também: npm run supabase:restart-data -- --confirm --purge-auth"
   echo ""
   echo "Confirme com:"
   echo "  npm run supabase:reset:cloud -- --confirm"
@@ -41,8 +42,4 @@ echo "Resetando banco remoto (migrations + --no-seed)…"
 npx supabase db reset --linked --yes --no-seed
 
 echo ""
-echo "Executando seed idempotente…"
-npm run seed:local
-
-echo ""
-echo "Reset Cloud concluído."
+echo "Reset Cloud concluído (schema recriado; sem seed de dados demo)."

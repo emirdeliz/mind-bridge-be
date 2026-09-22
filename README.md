@@ -59,7 +59,8 @@ npm run supabase:start         # sobe containers (somente local)
 npm run supabase:restart-data  # reinicia schema (local: start + db reset + env)
 npm run supabase:reset         # local: db reset + env | cloud: mensagem de orientação
 npm run supabase:env           # só atualiza SUPABASE_* no .env (local, após reset)
-npm run seed:psychologists     # Emir + Aluizio + 1 paciente cada + admin (senha Emir#262689)
+npm run supabase:purge-data -- --yes   # zera TODOS os dados (schema intacto); exige --yes
+npm run seed:psychologists             # Emir + Aluizio + 1 paciente cada + admin (senha Emir#262689)
 ```
 
 **Supabase Cloud:**

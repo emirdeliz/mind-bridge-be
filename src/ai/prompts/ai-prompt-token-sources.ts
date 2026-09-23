@@ -1,51 +1,51 @@
 import type { AppLanguage } from '@domain/types.js';
 
 const systemSource: Record<AppLanguage, string> = {
-  pt: 'Gerado automaticamente pelo aplicativo em cada mensagem. Não é editável nesta tela — a prévia mostra o que será inserido no lugar de #palavra_reservada.',
-  en: 'Generated automatically by the app on each message. Not editable on this screen — the preview shows what will be inserted in place of #reserved_word.',
-  es: 'Generado automáticamente por la aplicación en cada mensaje. No es editable en esta pantalla — la vista previa muestra lo que se insertará en lugar de #palabra_reservada.',
+  pt: 'Preenchido automaticamente pelo aplicativo a cada mensagem.',
+  en: 'Filled automatically by the app on each message.',
+  es: 'Completado automáticamente por la aplicación en cada mensaje.',
 };
 
 const psychologistTextSource: Record<AppLanguage, string> = {
-  pt: 'Vem do campo de contexto de texto que você preenche na sessão com o paciente.',
-  en: 'Comes from the text context field you fill in during the patient session.',
-  es: 'Proviene del campo de contexto de texto que completa en la sesión con el paciente.',
+  pt: 'Vem do texto de contexto que você preenche na sessão.',
+  en: 'Comes from the context text you fill in during the session.',
+  es: 'Proviene del texto de contexto que completa en la sesión.',
 };
 
 const psychologistDocumentsSource: Record<AppLanguage, string> = {
-  pt: 'Montado a partir dos trechos recuperados dos PDFs enviados em Configurações → Documentos de contexto.',
-  en: 'Built from excerpts retrieved from PDFs uploaded under Settings → Context documents.',
-  es: 'Montado a partir de fragmentos recuperados de los PDF enviados en Configuración → Documentos de contexto.',
+  pt: 'Vem dos PDFs enviados em Configurações → Documentos de contexto.',
+  en: 'Comes from PDFs uploaded under Settings → Context documents.',
+  es: 'Proviene de los PDF enviados en Configuración → Documentos de contexto.',
 };
 
 const patientMessageSource: Record<AppLanguage, string> = {
-  pt: 'Vem da mensagem enviada pelo paciente nesta conversa.',
-  en: 'Comes from the message sent by the patient in this conversation.',
-  es: 'Proviene del mensaje enviado por el paciente en esta conversación.',
+  pt: 'Vem da mensagem enviada pelo paciente.',
+  en: 'Comes from the message sent by the patient.',
+  es: 'Proviene del mensaje enviado por el paciente.',
 };
 
 const patientHistorySource: Record<AppLanguage, string> = {
-  pt: 'Montado automaticamente a partir das mensagens anteriores entre paciente e agente.',
-  en: 'Built automatically from previous messages between patient and agent.',
-  es: 'Montado automáticamente a partir de los mensajes anteriores entre paciente y agente.',
+  pt: 'Montado a partir das mensagens anteriores da conversa.',
+  en: 'Built from earlier messages in the conversation.',
+  es: 'Montado a partir de los mensajes anteriores de la conversación.',
 };
 
 const runtimeCounterSource: Record<AppLanguage, string> = {
-  pt: 'Calculado automaticamente durante a conversa com base no andamento da interação.',
-  en: 'Calculated automatically during the conversation based on interaction progress.',
-  es: 'Calculado automáticamente durante la conversación según el progreso de la interacción.',
+  pt: 'Calculado automaticamente conforme a conversa avança.',
+  en: 'Calculated automatically as the conversation progresses.',
+  es: 'Calculado automáticamente a medida que avanza la conversación.',
 };
 
 const conditionalSource: Record<AppLanguage, string> = {
-  pt: 'Inserido somente em situações específicas; na maioria das mensagens fica vazio.',
-  en: 'Inserted only in specific situations; empty on most messages.',
-  es: 'Insertado solo en situaciones específicas; en la mayoría de los mensajes queda vacío.',
+  pt: 'Só aparece em situações específicas; na maioria das vezes fica vazio.',
+  en: 'Only appears in specific situations; usually empty.',
+  es: 'Solo aparece en situaciones específicas; por lo general queda vacío.',
 };
 
 const languageInstructionSource: Record<AppLanguage, string> = {
-  pt: 'Texto fixo anexado pelo aplicativo para manter o idioma da resposta.',
-  en: 'Fixed text appended by the app to keep the response language consistent.',
-  es: 'Texto fijo añadido por la aplicación para mantener el idioma de la respuesta.',
+  pt: 'Texto fixo do aplicativo para manter o idioma da resposta.',
+  en: 'Fixed app text to keep the response language consistent.',
+  es: 'Texto fijo de la aplicación para mantener el idioma de la respuesta.',
 };
 
 export const AI_PROMPT_TOKEN_SOURCES: Record<

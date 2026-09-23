@@ -324,7 +324,7 @@ export const buildPsychologistContextUsageGuidance = (
         ? '- Texto da sessão: indica temas, foco clínico e o que o psicólogo quer acompanhar — traduza para linguagem simples ao perguntar.'
         : '- Texto da sessão: não informado — baseie-se no relato do paciente e nos documentos, se houver.',
       options.hasKnowledgeContext
-        ? '- Documentos PDF (RAG): ampliam seu entendimento interno sobre abordagem e protocolo — use para formular perguntas mais pertinentes, sem citar o documento ao paciente.'
+        ? '- Documentos PDF: ampliam o entendimento interno sobre abordagem e protocolo — use para formular perguntas mais pertinentes, sem citar o documento ao paciente.'
         : '- Documentos PDF: nenhum trecho relevante nesta mensagem — use o texto da sessão e o relato do paciente.',
       '- As perguntas devem ajudar o paciente a relatar experiências do dia a dia alinhadas a esse contexto, sempre com palavras simples.',
     ],
@@ -335,7 +335,7 @@ export const buildPsychologistContextUsageGuidance = (
         ? '- Texto de la sesión: indica temas, foco clínico y qué quiere acompañar el psicólogo — traduzca a lenguaje simple al preguntar.'
         : '- Texto de la sesión: no informado — base en el relato del paciente y en los documentos, si hay.',
       options.hasKnowledgeContext
-        ? '- Documentos PDF (RAG): amplían su comprensión interna sobre enfoque y protocolo — úselos para formular preguntas más pertinentes, sin citar el documento al paciente.'
+        ? '- Documentos PDF: amplían la comprensión interna sobre enfoque y protocolo — úselos para formular preguntas más pertinentes, sin citar el documento al paciente.'
         : '- Documentos PDF: ningún fragmento relevante en este mensaje — use el texto de la sesión y el relato del paciente.',
       '- Las preguntas deben ayudar al paciente a relatar experiencias del día a día alineadas con ese contexto, siempre con palabras simples.',
     ],
@@ -346,7 +346,7 @@ export const buildPsychologistContextUsageGuidance = (
         ? '- Session text: indicates themes, clinical focus, and what the psychologist wants to track — translate to simple language when asking.'
         : '- Session text: not provided — rely on the patient report and documents, if any.',
       options.hasKnowledgeContext
-        ? '- PDF documents (RAG): broaden your internal understanding of approach and protocol — use them to ask more relevant questions, without citing the document to the patient.'
+        ? '- PDF documents: broaden your internal understanding of approach and protocol — use them to ask more relevant questions, without citing the document to the patient.'
         : '- PDF documents: no relevant excerpt for this message — use session text and the patient report.',
       '- Questions should help the patient report day-to-day experiences aligned with that context, always in simple words.',
     ],

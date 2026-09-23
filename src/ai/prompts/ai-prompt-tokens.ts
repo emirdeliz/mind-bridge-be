@@ -28,9 +28,9 @@ export const AI_PROMPT_TOKEN_DEFINITIONS: AiPromptTokenDefinition[] = [
       es: 'Historial de conversación',
     },
     description: {
-      pt: 'Mensagens recentes entre paciente e agente, formatadas para contexto.',
-      en: 'Recent messages between patient and agent, formatted for context.',
-      es: 'Mensajes recientes entre paciente y agente, formateados para contexto.',
+      pt: 'Mensagens recentes entre paciente e assistente.',
+      en: 'Recent messages between patient and assistant.',
+      es: 'Mensajes recientes entre paciente y asistente.',
     },
     example: {
       pt: 'Paciente: Ontem foi difícil no trabalho.\nAgente: O que aconteceu?',
@@ -64,9 +64,9 @@ export const AI_PROMPT_TOKEN_DEFINITIONS: AiPromptTokenDefinition[] = [
       es: 'Conteo de preguntas',
     },
     description: {
-      pt: 'Número de perguntas já feitas pelo agente na interação atual.',
-      en: 'Number of questions already asked by the agent in the current interaction.',
-      es: 'Número de preguntas ya hechas por el agente en la interacción actual.',
+      pt: 'Número de perguntas já feitas nesta conversa.',
+      en: 'Number of questions already asked in this conversation.',
+      es: 'Número de preguntas ya hechas en esta conversación.',
     },
     example: { pt: '2', en: '2', es: '2' },
   },
@@ -87,14 +87,14 @@ export const AI_PROMPT_TOKEN_DEFINITIONS: AiPromptTokenDefinition[] = [
   {
     key: 'retrieval_context',
     label: {
-      pt: 'Trechos de documentos (RAG)',
-      en: 'Document excerpts (RAG)',
-      es: 'Fragmentos de documentos (RAG)',
+      pt: 'Trechos de documentos',
+      en: 'Document excerpts',
+      es: 'Fragmentos de documentos',
     },
     description: {
-      pt: 'Trechos recuperados de PDFs do psicólogo via busca semântica.',
-      en: 'Excerpts retrieved from psychologist PDFs via semantic search.',
-      es: 'Fragmentos recuperados de PDFs del psicólogo vía búsqueda semántica.',
+      pt: 'Trechos dos PDFs enviados pelo psicólogo, escolhidos automaticamente conforme a conversa.',
+      en: 'Excerpts from psychologist PDFs, chosen automatically based on the conversation.',
+      es: 'Fragmentos de los PDF del psicólogo, elegidos automáticamente según la conversación.',
     },
     example: {
       pt: '[Doc: protocolo.pdf] Técnicas de regulação emocional...',
@@ -105,14 +105,14 @@ export const AI_PROMPT_TOKEN_DEFINITIONS: AiPromptTokenDefinition[] = [
   {
     key: 'knowledge_section',
     label: {
-      pt: 'Seção de conhecimento',
-      en: 'Knowledge section',
-      es: 'Sección de conocimiento',
+      pt: 'Seção de documentos',
+      en: 'Documents section',
+      es: 'Sección de documentos',
     },
     description: {
-      pt: 'Bloco completo com cabeçalho, trechos RAG e instruções de uso (vazio se não houver documentos).',
-      en: 'Full block with header, RAG excerpts, and usage instructions (empty if no documents).',
-      es: 'Bloque completo con encabezado, fragmentos RAG e instrucciones de uso (vacío si no hay documentos).',
+      pt: 'Bloco com trechos dos documentos enviados (fica vazio se não houver material relevante).',
+      en: 'Block with excerpts from uploaded documents (empty if nothing relevant).',
+      es: 'Bloque con fragmentos de los documentos enviados (vacío si no hay material relevante).',
     },
     example: {
       pt: 'Trechos de documentos PDF do psicólogo:\n...',
@@ -146,9 +146,9 @@ export const AI_PROMPT_TOKEN_DEFINITIONS: AiPromptTokenDefinition[] = [
       es: 'Orientaciones centrales',
     },
     description: {
-      pt: 'Regras centrais de conduta do agente de chat do paciente.',
-      en: 'Core conduct rules for the patient chat agent.',
-      es: 'Reglas centrales de conducta del agente de chat del paciente.',
+      pt: 'Regras principais de como a conversa deve acontecer.',
+      en: 'Main rules for how the conversation should work.',
+      es: 'Reglas principales de cómo debe desarrollarse la conversación.',
     },
     example: {
       pt: 'Faça uma pergunta por vez. Não diagnostique...',
@@ -249,14 +249,14 @@ export const AI_PROMPT_TOKEN_DEFINITIONS: AiPromptTokenDefinition[] = [
   {
     key: 'retry_guidance',
     label: {
-      pt: 'Orientação de retry',
-      en: 'Retry guidance',
-      es: 'Orientación de reintento',
+      pt: 'Se a resposta for rejeitada',
+      en: 'If the reply is rejected',
+      es: 'Si la respuesta es rechazada',
     },
     description: {
-      pt: 'Instruções quando uma resposta anterior foi rejeitada (vazio se não houver retry).',
-      en: 'Instructions when a previous reply was rejected (empty if no retry).',
-      es: 'Instrucciones cuando una respuesta anterior fue rechazada (vacío si no hay reintento).',
+      pt: 'Orientações extras quando uma resposta anterior não foi aceita (em geral fica vazio).',
+      en: 'Extra guidance when a previous reply was not accepted (usually empty).',
+      es: 'Orientaciones extra cuando una respuesta anterior no fue aceptada (por lo general vacío).',
     },
     example: {
       pt: 'A resposta anterior foi rejeitada. Reformule sem repetir...',

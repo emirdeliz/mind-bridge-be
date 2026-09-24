@@ -426,6 +426,12 @@ export const createAiRoutes =
           clinicalRetrieval,
           knowledgeRetrieval
         );
+        const contextUsage = {
+          usedDocuments: Boolean(knowledgeRetrieval.trim()),
+          usedSessionNotes: Boolean(body.sessionConsiderations?.trim()),
+          usedPsychologistContext: Boolean(body.clinicalContext?.trim()),
+          usedClinicalRecord: Boolean(clinicalRetrieval.trim()),
+        };
 
         const graphInput = {
           psychologistId: auth.userId,
@@ -448,7 +454,11 @@ export const createAiRoutes =
                 streamPsychologistCopilotGraph(env, graphInput, onDelta)
               )
           );
-          finishAiStream(reply, { type: 'done', message: agentReply });
+          finishAiStream(reply, {
+            type: 'done',
+            message: agentReply,
+            contextUsage,
+          });
         } else {
           agentReply = await runWithPsychologistPromptTemplateResolver(
             admin,
@@ -512,6 +522,7 @@ export const createAiRoutes =
           psychologistId: auth.userId,
           psychologistSummary: clinicalContent.psychologistSummary,
           sessionInsights: clinicalContent.sessionInsights,
+          contextUsage,
         };
       }
     );

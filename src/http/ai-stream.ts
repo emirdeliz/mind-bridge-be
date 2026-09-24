@@ -2,9 +2,21 @@ import type { FastifyReply } from 'fastify';
 
 import type { ClinicalChatMessage } from '@domain/clinical-content.types.js';
 
+export type AiContextUsage = {
+  usedDocuments: boolean;
+  usedSessionNotes: boolean;
+  usedPsychologistContext: boolean;
+  usedClinicalRecord: boolean;
+};
+
 export type AiStreamEvent =
   | { type: 'delta'; delta: string }
-  | { type: 'done'; message: string; messages?: ClinicalChatMessage[] }
+  | {
+      type: 'done';
+      message: string;
+      messages?: ClinicalChatMessage[];
+      contextUsage?: AiContextUsage;
+    }
   | { type: 'error'; error: string };
 
 export const wantsAiStream = (request: {

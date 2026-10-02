@@ -6,9 +6,8 @@ import { buildServer } from '@http/server.js';
 import { createAdminSupabaseClient } from '@infrastructure/supabase/client.js';
 
 /**
- * Vercel Fastify detection requires a value import of `fastify` in the
- * entrypoint file (`src/server.ts`). The real instance is created in
- * `buildServer`; this binding keeps the import live for the detector/tsc.
+ * Local/dev entrypoint (`npm run dev` / `npm start`).
+ * Production on Vercel uses `api/index.js` → `dist/vercel-handler.js`.
  */
 export { Fastify };
 
@@ -26,13 +25,9 @@ const start = async () => {
   const port = Number(process.env.PORT) || env.PORT;
   await app.listen({ port, host: '0.0.0.0' });
   app.log.info(`mind-bridge-be listening on port ${port}`);
-
-  return app;
 };
 
-const appPromise = start().catch((error) => {
+start().catch((error) => {
   console.error(error);
   process.exit(1);
 });
-
-export default appPromise;

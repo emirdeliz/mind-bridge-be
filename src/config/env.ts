@@ -44,7 +44,7 @@ const envSchema = Joi.object({
     .valid('development', 'production', 'test')
     .default('development'),
   PORT: Joi.number().port().default(4000),
-  CORS_ORIGIN: Joi.string().uri().default('http://localhost:3001'),
+  CORS_ORIGIN: Joi.string().min(1).default('http://localhost:3001'),
   SUPABASE_URL: Joi.string().uri().required(),
   SUPABASE_ANON_KEY: Joi.string().required(),
   SUPABASE_SERVICE_ROLE_KEY: Joi.string().required(),

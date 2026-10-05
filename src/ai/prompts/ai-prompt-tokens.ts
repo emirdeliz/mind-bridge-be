@@ -195,14 +195,14 @@ export const AI_PROMPT_TOKEN_DEFINITIONS: AiPromptTokenDefinition[] = [
   {
     key: 'context_usage_guidance',
     label: {
-      pt: 'Uso do contexto',
-      en: 'Context usage',
-      es: 'Uso del contexto',
+      pt: 'Como a IA usa seu contexto',
+      en: 'How the AI uses your context',
+      es: 'Cómo la IA usa su contexto',
     },
     description: {
-      pt: 'Como usar contexto textual e documentos sem expor jargão ao paciente.',
-      en: 'How to use text context and documents without exposing jargon to the patient.',
-      es: 'Cómo usar contexto textual y documentos sin exponer jerga al paciente.',
+      pt: 'Instruções para a IA aproveitar o texto da sessão e os documentos que você enviou — só para fazer perguntas melhores, sem repetir termos técnicos ou trechos de protocolo ao paciente.',
+      en: 'Instructions for the AI to use your session notes and uploaded documents — only to ask better questions, without repeating technical terms or protocol excerpts to the patient.',
+      es: 'Instrucciones para que la IA aproveche el texto de la sesión y los documentos que envió — solo para hacer mejores preguntas, sin repetir términos técnicos ni fragmentos de protocolo al paciente.',
     },
     example: {
       pt: 'Use o contexto internamente para formular perguntas simples...',
